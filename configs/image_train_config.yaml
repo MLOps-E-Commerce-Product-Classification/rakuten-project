@@ -3,6 +3,8 @@ training:
   num_epochs: 10
   weight_decay: 0.0001
   batch_size: 32
+  num_workers: 4
+  seed: 42
 
 model:
   name: efficientnet_b0
@@ -12,3 +14,9 @@ model:
 metrics:
   compute_per_class_f1: true
   main_metric: macro_f1
+
+data:
+  image_id_col: image_id
+  label_col: rakuten_code
+  encoded_label_col: label
+  return_quality_report: false
