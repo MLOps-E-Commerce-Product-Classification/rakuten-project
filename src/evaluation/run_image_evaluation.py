@@ -6,9 +6,9 @@ import torch
 import yaml
 from torch.utils.data import DataLoader
 
-from image_dataset import RakutenImageDataset
+from src.data.image_dataset import RakutenImageDataset
 from image_evaluate import evaluate_model, save_evaluation_results
-from image_model import build_image_model
+from src.models.image_classifier import build_image_model
 
 
 def load_config(config_path: str | Path) -> dict:

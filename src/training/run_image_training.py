@@ -9,9 +9,9 @@ import yaml
 from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader
 
-from image_dataset import RakutenImageDataset
-from image_model import build_image_model
-from train import train_model
+from src.data.image_dataset import RakutenImageDataset
+from src.models.image_classifier import build_image_model
+from src.training.train_image import train_model
 
 
 ARTIFACTS_PATH = Path("artifacts")

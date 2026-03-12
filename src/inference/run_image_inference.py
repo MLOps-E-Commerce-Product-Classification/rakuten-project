@@ -4,8 +4,8 @@ import json
 import torch
 import yaml
 
-from image_model import build_image_model
-from image_preprocessing import preprocess_image
+from src.models.image_classifier import build_image_model
+from src.data.image_preprocessing import preprocess_image
 
 
 RESULTS_PATH = Path("results")

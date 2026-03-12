@@ -1,10 +1,10 @@
 import argparse
 from pathlib import Path
 
-from run_image_training import run_image_training
-from run_image_evaluation import run_image_evaluation
-from run_image_inference import run_image_inference
-from random_search import run_random_search
+from src.training.run_image_training import run_image_training
+from src.evaluation.run_image_evaluation import run_image_evaluation
+from src.inference.run_image_inference import run_image_inference
+from src.training.image_random_search_hyperparameters import run_random_search
 
 
 def build_parser() -> argparse.ArgumentParser:
