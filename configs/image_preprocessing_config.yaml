@@ -1,0 +1,10 @@
+preprocessing:
+  output_size: [224, 224]
+  convert_rgb: true
+  normalization: true
+  normalize_mode: zero_one
+  keep_aspect_ratio: false
+  resample_method: bilinear
+
+quality:
+  compute_quality_report: false
