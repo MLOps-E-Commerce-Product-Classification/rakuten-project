@@ -1,0 +1,28 @@
+# data
+data/
+datasets/
+
+# trained models
+models/
+trained_models/
+search/
+artifacts/
+
+# results
+results/
+
+# logs
+logs/
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+
+# environments
+.venv/
+venv/
+env/
+
+# system
+.DS_Store
