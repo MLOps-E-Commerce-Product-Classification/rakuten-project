@@ -4,7 +4,7 @@ training:
   weight_decay: 0.0001
   batch_size: 32
   num_workers: 4
-  seed: 42
+  seed: 17
 
 model:
   name: efficientnet_b0
