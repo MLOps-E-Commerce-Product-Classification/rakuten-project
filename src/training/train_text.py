@@ -154,9 +154,9 @@ def train_model(
     training_config = config.get("training", {})
     metrics_config = config.get("metrics", {})
 
-    learning_rate = training_config.get("learning_rate", 2e-5)
-    num_epochs = training_config.get("num_epochs", 5)
-    weight_decay = training_config.get("weight_decay", 0.01)
+    learning_rate = float(training_config.get("learning_rate", 2e-5))
+    num_epochs = int(training_config.get("num_epochs", 5))
+    weight_decay = float(training_config.get("weight_decay", 0.01))
     compute_per_class_f1 = metrics_config.get("compute_per_class_f1", False)
     main_metric = metrics_config.get("main_metric", "macro_f1")
 

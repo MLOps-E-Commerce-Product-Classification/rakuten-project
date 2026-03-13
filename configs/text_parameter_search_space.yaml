@@ -1,0 +1,22 @@
+search_space:
+  training.learning_rate:
+    - 0.00001
+    - 0.00002
+    - 0.00003
+
+  training.weight_decay:
+    - 0.0
+    - 0.01
+    - 0.05
+
+  training.batch_size:
+    - 16
+    - 32
+
+  model.freeze_backbone:
+    - true
+    - false
+
+random_search:
+  n_trials: 5
+  optimization_metric: val_macro_f1

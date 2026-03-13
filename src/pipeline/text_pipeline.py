@@ -49,7 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--best_train_config_path",
         type=str,
-        default="configs/text_best_train_config.yaml",
+        default="configs/text_train_config.yaml",
         help="Path to best training config YAML.",
     )
     parser.add_argument(
@@ -87,7 +87,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--label_mapping_path",
         type=str,
-        default="configs/best_label_mapping.json",
+        default="artifacts/label_mapping.json",
         help="Path to label mapping JSON.",
     )
     parser.add_argument(
