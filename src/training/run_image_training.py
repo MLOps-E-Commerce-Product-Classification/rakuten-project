@@ -241,6 +241,7 @@ def run_image_training(
     preprocessing_config_path: str | Path = "configs/image_preprocessing_config.yaml",
     model_save_path: str | Path = "models/best_image_model.pt",
     label_encoding_path: str | Path = "configs/label_encoding.json",
+    use_best_config_if_available: bool = True,   # <-- NEU
 ) -> tuple[torch.nn.Module, dict, dict]:
     """
     Run end-to-end image training with:
