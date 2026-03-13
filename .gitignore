@@ -18,7 +18,7 @@ datasets/
 models/
 trained_models/
 search/
-artifacts/
+hyperparameter_search/
 
 # results
 results/
