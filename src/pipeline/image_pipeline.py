@@ -132,12 +132,6 @@ def build_parser() -> argparse.ArgumentParser:
         default="search/best_model.pt",
         help="Path to export best model during random search.",
     )
-    parser.add_argument(
-        "--final_best_label_mapping_path",
-        type=str,
-        default="artifacts/best_label_mapping.json",
-        help="Path to export best label mapping during random search.",
-    )
 
     parser.add_argument(
         "--image_path",
@@ -162,7 +156,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--random_seed",
         type=int,
-        default=42,
+        default=17,
         help="Random seed for random search.",
     )
 
