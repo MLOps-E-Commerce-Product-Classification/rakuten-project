@@ -21,3 +21,14 @@ python -m src.pipeline.image_pipeline --mode evaluate
 ### Inference 
 
 python -m src.pipeline.image_pipeline --mode inference --image_path data/images/image_train/image_1263597046_product_3804725264.jpg
+
+
+## To Dos:
+
+* train "final" model
+ python -m src.pipeline.image_pipeline --mode random_search
+ save best_model.pt, best_train_config.yaml & random_search_results.csv to google drive
+
+ * dockerize
+
+ * unit tests 
