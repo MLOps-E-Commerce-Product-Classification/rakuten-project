@@ -257,6 +257,17 @@ def run_image_training(
     tuple[torch.nn.Module, dict, dict]
         trained_model, history, label_encoding
     """
+
+    train_config_path = Path(train_config_path)
+
+    best_config_path = train_config_path.parent / "best_train_config.yaml"
+
+    if use_best_config_if_available and best_config_path.exists():
+        print(f"Using best training config from random search: {best_config_path}")
+        train_config_path = best_config_path
+    else:
+        print(f"Using training config: {train_config_path}")
+
     config = load_config(train_config_path)
     label_encoding = load_label_encoding(label_encoding_path)
 
