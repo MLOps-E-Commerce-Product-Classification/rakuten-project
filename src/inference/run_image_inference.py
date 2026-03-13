@@ -22,18 +22,16 @@ def load_config(config_path: str | Path) -> dict:
         return yaml.safe_load(f)
 
 
-def load_label_mapping(mapping_path: str | Path) -> dict[str, int]:
-    mapping_path = Path(mapping_path)
+def load_label_encoding(label_encoding_path: str | Path) -> dict:
+    label_encoding_path = Path(label_encoding_path)
 
-    if not mapping_path.exists():
-        raise FileNotFoundError(f"Label mapping file not found: {mapping_path}")
+    if not label_encoding_path.exists():
+        raise FileNotFoundError(
+            f"Label encoding file not found: {label_encoding_path}"
+        )
 
-    with mapping_path.open("r", encoding="utf-8") as f:
+    with label_encoding_path.open("r", encoding="utf-8") as f:
         return json.load(f)
-
-
-def invert_label_mapping(label_mapping: dict[str, int]) -> dict[int, str]:
-    return {int(encoded): original for original, encoded in label_mapping.items()}
 
 
 def prepare_image_tensor(
@@ -60,7 +58,7 @@ def predict_single_image(
     image_path: str | Path,
     preprocessing_config_path: str | Path,
     device: torch.device,
-    idx_to_label: dict[int, str],
+    idx_to_code: dict[str, int],
     top_k: int = 5,
 ) -> dict:
     image_path = Path(image_path)
@@ -87,21 +85,22 @@ def predict_single_image(
 
     top_predictions = []
     for class_idx, prob in zip(top_indices, top_probs):
+        rakuten_code = idx_to_code[str(class_idx)]
         top_predictions.append(
             {
                 "encoded_label": int(class_idx),
-                "rakuten_code": idx_to_label[int(class_idx)],
+                "rakuten_code": int(rakuten_code),
                 "probability": float(prob),
             }
         )
 
     predicted_class_idx = int(top_indices[0])
-    predicted_label = idx_to_label[predicted_class_idx]
+    predicted_rakuten_code = int(idx_to_code[str(predicted_class_idx)])
 
     return {
         "image_path": str(image_path),
         "predicted_encoded_label": predicted_class_idx,
-        "predicted_rakuten_code": predicted_label,
+        "predicted_rakuten_code": predicted_rakuten_code,
         "top_k_predictions": top_predictions,
     }
 
@@ -112,7 +111,7 @@ def predict_multiple_images(
     image_paths: list[str | Path],
     preprocessing_config_path: str | Path,
     device: torch.device,
-    idx_to_label: dict[int, str],
+    idx_to_code: dict[str, int],
     top_k: int = 5,
 ) -> list[dict]:
     results = []
@@ -123,7 +122,7 @@ def predict_multiple_images(
             image_path=image_path,
             preprocessing_config_path=preprocessing_config_path,
             device=device,
-            idx_to_label=idx_to_label,
+            idx_to_code=idx_to_code,
             top_k=top_k,
         )
         results.append(result)
@@ -144,30 +143,29 @@ def save_inference_results(
 
 def run_image_inference(
     image_input: str | Path | list[str | Path],
-    train_config_path: str | Path = "configs/train_config.yaml",
+    train_config_path: str | Path = "configs/image_train_config.yaml",
     preprocessing_config_path: str | Path = "configs/image_preprocessing_config.yaml",
     model_weights_path: str | Path = "models/best_image_model.pt",
-    label_mapping_path: str | Path = "artifacts/label_mapping.json",
+    label_encoding_path: str | Path = "configs/label_encoding.json",
     output_path: str | Path = "results/inference_results.json",
     top_k: int = 5,
 ) -> dict | list[dict]:
     train_config = load_config(train_config_path)
-    label_mapping = load_label_mapping(label_mapping_path)
-    idx_to_label = invert_label_mapping(label_mapping)
+    label_encoding = load_label_encoding(label_encoding_path)
 
     model_config = train_config.get("model", {})
 
     model_name = model_config.get("name", "efficientnet_b0")
-    pretrained = False
-    freeze_backbone = False
 
-    num_classes = len(label_mapping)
+    # For inference we rebuild the architecture and then load trained weights.
+    num_classes = len(label_encoding["classes"])
+    idx_to_code = label_encoding["idx_to_code"]
 
     model = build_image_model(
         model_name=model_name,
         num_classes=num_classes,
-        pretrained=pretrained,
-        freeze_backbone=freeze_backbone,
+        pretrained=False,
+        freeze_backbone=False,
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -187,7 +185,7 @@ def run_image_inference(
             image_path=image_input,
             preprocessing_config_path=preprocessing_config_path,
             device=device,
-            idx_to_label=idx_to_label,
+            idx_to_code=idx_to_code,
             top_k=top_k,
         )
     else:
@@ -196,7 +194,7 @@ def run_image_inference(
             image_paths=image_input,
             preprocessing_config_path=preprocessing_config_path,
             device=device,
-            idx_to_label=idx_to_label,
+            idx_to_code=idx_to_code,
             top_k=top_k,
         )
 
@@ -208,13 +206,13 @@ def run_image_inference(
 if __name__ == "__main__":
     results = run_image_inference(
         image_input=[
-            "data/images/example_1.jpg",
-            "data/images/example_2.jpg",
+            "data/images/image_train/image_1263597046_product_3804725264.jpg",
+            "data/images/image_train/image_1008141237_product_436067568.jpg",
         ],
-        train_config_path="configs/train_config.yaml",
+        train_config_path="configs/image_train_config.yaml",
         preprocessing_config_path="configs/image_preprocessing_config.yaml",
         model_weights_path="models/best_image_model.pt",
-        label_mapping_path="artifacts/label_mapping.json",
+        label_encoding_path="configs/label_encoding.json",
         output_path="results/inference_results.json",
         top_k=5,
     )

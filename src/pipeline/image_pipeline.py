@@ -1,5 +1,4 @@
 import argparse
-from pathlib import Path
 
 from src.training.run_image_training import run_image_training
 from src.evaluation.run_image_evaluation import run_image_evaluation
@@ -9,7 +8,10 @@ from src.training.image_random_search_hyperparameters import run_random_search
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Unified pipeline entry point for image training, evaluation, inference, and random search."
+        description=(
+            "Unified pipeline entry point for image training, evaluation, "
+            "inference, and random search."
+        )
     )
 
     parser.add_argument(
@@ -20,44 +22,46 @@ def build_parser() -> argparse.ArgumentParser:
         help="Which pipeline step to run.",
     )
 
+    # ----------------------------------------------------
+    # Data inputs
+    # ----------------------------------------------------
     parser.add_argument(
-        "--train_csv_path",
+        "--x_data_csv_path",
         type=str,
-        default="data/train_split.csv",
-        help="Path to training CSV.",
+        default="data/X_train_update.csv",
+        help="Path to X data CSV.",
     )
     parser.add_argument(
-        "--val_csv_path",
+        "--y_data_csv_path",
         type=str,
-        default="data/val_split.csv",
-        help="Path to validation CSV.",
-    )
-    parser.add_argument(
-        "--eval_csv_path",
-        type=str,
-        default="data/val_split.csv",
-        help="Path to evaluation CSV.",
-    )
-
-    parser.add_argument(
-        "--train_image_dir",
-        type=str,
-        default="data/images",
-        help="Directory containing training images.",
-    )
-    parser.add_argument(
-        "--val_image_dir",
-        type=str,
-        default="data/images",
-        help="Directory containing validation images.",
+        default="data/Y_train_CVw08PX.csv",
+        help="Path to Y data CSV.",
     )
     parser.add_argument(
         "--image_dir",
         type=str,
-        default="data/images",
-        help="Directory containing images for evaluation or inference.",
+        default="data/images/image_train",
+        help="Directory containing images.",
     )
 
+    # ----------------------------------------------------
+    # Split handling
+    # ----------------------------------------------------
+    parser.add_argument(
+        "--split_ids_dir",
+        type=str,
+        default="artifacts/splits",
+        help="Directory where train/val/test split ids are stored.",
+    )
+    parser.add_argument(
+        "--force_new_split",
+        action="store_true",
+        help="Create a new train/val/test split even if saved split ids already exist.",
+    )
+
+    # ----------------------------------------------------
+    # Config paths
+    # ----------------------------------------------------
     parser.add_argument(
         "--train_config_path",
         type=str,
@@ -88,7 +92,16 @@ def build_parser() -> argparse.ArgumentParser:
         default="configs/image_parameter_search_space.yaml",
         help="Path to random search config YAML.",
     )
+    parser.add_argument(
+        "--label_encoding_path",
+        type=str,
+        default="configs/label_encoding.json",
+        help="Path to predefined label encoding JSON.",
+    )
 
+    # ----------------------------------------------------
+    # Model / output paths
+    # ----------------------------------------------------
     parser.add_argument(
         "--model_save_path",
         type=str,
@@ -98,14 +111,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--model_weights_path",
         type=str,
-        default="models/best_model.pt",
+        default="models/best_image_model.pt",
         help="Path to model weights for evaluation or inference.",
-    )
-    parser.add_argument(
-        "--label_mapping_path",
-        type=str,
-        default="configs/best_label_mapping.json",
-        help="Path to label mapping JSON.",
     )
     parser.add_argument(
         "--results_output_path",
@@ -120,10 +127,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to save inference results.",
     )
 
+    # ----------------------------------------------------
+    # Random search outputs
+    # ----------------------------------------------------
     parser.add_argument(
         "--final_best_config_path",
         type=str,
-        default="configs/best_train_config.yaml",
+        default="configs/image_best_train_config.yaml",
         help="Path to export best config during random search.",
     )
     parser.add_argument(
@@ -132,13 +142,10 @@ def build_parser() -> argparse.ArgumentParser:
         default="search/best_model.pt",
         help="Path to export best model during random search.",
     )
-    parser.add_argument(
-        "--final_best_label_mapping_path",
-        type=str,
-        default="artifacts/best_label_mapping.json",
-        help="Path to export best label mapping during random search.",
-    )
 
+    # ----------------------------------------------------
+    # Inference inputs
+    # ----------------------------------------------------
     parser.add_argument(
         "--image_path",
         type=str,
@@ -159,10 +166,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Top-k predictions for inference.",
     )
 
+    # ----------------------------------------------------
+    # Misc
+    # ----------------------------------------------------
     parser.add_argument(
         "--random_seed",
         type=int,
-        default=42,
+        default=17,
         help="Random seed for random search.",
     )
 
@@ -170,38 +180,45 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run_train_mode(args: argparse.Namespace) -> None:
-    trained_model, history, label_encoder = run_image_training(
-        train_csv_path=args.train_csv_path,
-        val_csv_path=args.val_csv_path,
-        train_image_dir=args.train_image_dir,
-        val_image_dir=args.val_image_dir,
+    trained_model, history, label_encoding = run_image_training(
+        x_data_csv_path=args.x_data_csv_path,
+        y_data_csv_path=args.y_data_csv_path,
+        image_dir=args.image_dir,
+        split_ids_dir=args.split_ids_dir,
+        force_new_split=args.force_new_split,
         train_config_path=args.train_config_path,
         preprocessing_config_path=args.preprocessing_config_path,
         model_save_path=args.model_save_path,
-        label_mapping_path=args.label_mapping_path,
+        label_encoding_path=args.label_encoding_path,
     )
 
     print("Training finished.")
     print(f"Model saved to: {args.model_save_path}")
-    print(f"Label mapping saved to: {args.label_mapping_path}")
-    print(f"Number of classes: {len(label_encoder.classes_)}")
+    print(f"Label encoding loaded from: {args.label_encoding_path}")
+    print(f"Split IDs directory: {args.split_ids_dir}")
+    print(f"Number of classes: {len(label_encoding['classes'])}")
     print(f"Best validation macro-F1: {max(history['val_macro_f1']):.4f}")
 
 
 def run_evaluate_mode(args: argparse.Namespace) -> None:
     results = run_image_evaluation(
-        eval_csv_path=args.eval_csv_path,
+        x_data_csv_path=args.x_data_csv_path,
+        y_data_csv_path=args.y_data_csv_path,
         image_dir=args.image_dir,
+        split_ids_dir=args.split_ids_dir,
         train_config_path=args.best_train_config_path,
         eval_config_path=args.eval_config_path,
         preprocessing_config_path=args.preprocessing_config_path,
         model_weights_path=args.model_weights_path,
-        label_mapping_path=args.label_mapping_path,
+        label_encoding_path=args.label_encoding_path,
         results_output_path=args.results_output_path,
     )
 
     print("Evaluation finished.")
-    print(f"Main metric: {results['main_metric']} = {results['main_metric_value']:.4f}")
+    print(
+        f"Main metric: {results['main_metric']} = "
+        f"{results['main_metric_value']:.4f}"
+    )
     print(f"Results saved to: {args.results_output_path}")
 
 
@@ -218,7 +235,7 @@ def run_inference_mode(args: argparse.Namespace) -> None:
         train_config_path=args.best_train_config_path,
         preprocessing_config_path=args.preprocessing_config_path,
         model_weights_path=args.model_weights_path,
-        label_mapping_path=args.label_mapping_path,
+        label_encoding_path=args.label_encoding_path,
         output_path=args.inference_output_path,
         top_k=args.top_k,
     )
@@ -232,16 +249,17 @@ def run_inference_mode(args: argparse.Namespace) -> None:
 
 def run_random_search_mode(args: argparse.Namespace) -> None:
     summary = run_random_search(
-        train_csv_path=args.train_csv_path,
-        val_csv_path=args.val_csv_path,
-        train_image_dir=args.train_image_dir,
-        val_image_dir=args.val_image_dir,
+        x_data_csv_path=args.x_data_csv_path,
+        y_data_csv_path=args.y_data_csv_path,
+        image_dir=args.image_dir,
+        split_ids_dir=args.split_ids_dir,
+        force_new_split=args.force_new_split,
         base_train_config_path=args.train_config_path,
         preprocessing_config_path=args.preprocessing_config_path,
         search_space_config_path=args.search_space_config_path,
         final_best_config_path=args.final_best_config_path,
         final_best_model_path=args.final_best_model_path,
-        final_best_label_mapping_path=args.final_best_label_mapping_path,
+        label_encoding_path=args.label_encoding_path,
         random_seed=args.random_seed,
     )
 

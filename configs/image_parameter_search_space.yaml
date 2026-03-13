@@ -1,11 +1,13 @@
 search_space:
   training.learning_rate:
+    - 0.00003
     - 0.0001
     - 0.0003
     - 0.001
 
   training.weight_decay:
     - 0.0
+    - 0.00001
     - 0.0001
     - 0.001
 
@@ -18,5 +20,9 @@ search_space:
     - false
 
 random_search:
-  n_trials: 2
+  n_trials: 20
   optimization_metric: val_macro_f1
+
+  # NEW
+  trial_epochs: 3
+  final_epochs: 15
