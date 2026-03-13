@@ -1,0 +1,11 @@
+# configs/text_preprocessing_config.yaml
+preprocessing:
+  tokenizer_model: bert-base-multilingual-cased
+  max_length: 128
+  remove_html: true
+  lowercase: false
+  combine_fields: true
+  separator: " [SEP] "
+
+quality:
+  compute_quality_report: false
