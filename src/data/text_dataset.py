@@ -18,12 +18,14 @@ class RakutenTextDataset(Dataset):
         self,
         dataframe,
         config_path: str | Path,
+        label_encoding: dict,  # Add this parameter
         designation_col: str = "designation",
         description_col: str = "description",
         label_col: str = "label",
         return_quality_report: bool = False,
     ):
         self.df = dataframe.reset_index(drop=True)
+        self.label_map = label_encoding["code_to_idx"]
         self.config_path = Path(config_path)
         self.designation_col = designation_col
         self.description_col = description_col
@@ -65,7 +67,8 @@ class RakutenTextDataset(Dataset):
 
         designation = row[self.designation_col]
         description = row[self.description_col]
-        label = int(row[self.label_col])
+        raw_label = str(row[self.label_col])
+        label = self.label_map[raw_label]
 
         processed = preprocess_text(
             designation=designation,
@@ -87,11 +90,11 @@ class RakutenTextDataset(Dataset):
             return_tensors="pt",
         )
 
-        sample = {
-            "input_ids": encoding["input_ids"].squeeze(0),
-            "attention_mask": encoding["attention_mask"].squeeze(0),
-            "label": torch.tensor(label, dtype=torch.long),
-            "text": text,
+        sample = {  
+            "input_ids": encoding["input_ids"].squeeze(0),  
+            "attention_mask": encoding["attention_mask"].squeeze(0),  
+            "label": torch.tensor(label, dtype=torch.long), # Now it's 0-N  
+            "text": text,  
         }
 
         sample.update(self._get_optional_metadata(row))

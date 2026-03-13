@@ -6,6 +6,7 @@ import torch.nn as nn
 import yaml
 from sklearn.metrics import accuracy_score, f1_score
 from torch.utils.data import DataLoader
+from tqdm import tqdm  # Für Fortschrittsbalken
 
 
 LOG_PATH = Path("logs")
@@ -20,10 +21,17 @@ def setup_logger(name: str, log_file: str | Path) -> logging.Logger:
     logger.setLevel(logging.INFO)
 
     if not logger.handlers:
-        handler = logging.FileHandler(log_file, encoding="utf-8")
-        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        # File Handler
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        file_handler.setFormatter(file_formatter)
+        logger.addHandler(file_handler)
+
+        # Console Handler (Neu: Gibt Logs auch im Terminal aus)
+        console_handler = logging.StreamHandler()
+        console_formatter = logging.Formatter("%(levelname)s: %(message)s")
+        console_handler.setFormatter(console_formatter)
+        logger.addHandler(console_handler)
 
     logger.propagate = False
     return logger
@@ -34,10 +42,8 @@ TRAIN_LOGGER = setup_logger("text_training", LOG_PATH / "text_training.log")
 
 def load_train_config(config_path: str | Path) -> dict:
     config_path = Path(config_path)
-
     if not config_path.exists():
         raise FileNotFoundError(f"Train config not found: {config_path}")
-
     with config_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
@@ -52,12 +58,10 @@ def compute_classification_metrics(
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
     }
-
     if compute_per_class_f1:
         labels = list(range(num_classes)) if num_classes else sorted(set(y_true) | set(y_pred))
         per_class_f1 = f1_score(y_true, y_pred, labels=labels, average=None, zero_division=0)
         metrics["per_class_f1"] = {int(l): float(s) for l, s in zip(labels, per_class_f1)}
-
     return metrics
 
 
@@ -69,34 +73,30 @@ def train_one_epoch(
     num_classes: int | None = None,
 ) -> dict:
     model.train()
-
-    running_loss = 0.0
-    total = 0
+    running_loss, total = 0.0, 0
     all_labels, all_preds = [], []
 
-    for batch in dataloader:
+    # Fortschrittsbalken für Training
+    pbar = tqdm(dataloader, desc="Training Batches", leave=False)
+    for batch in pbar:
         input_ids = batch["input_ids"].to(device)
         attention_mask = batch["attention_mask"].to(device)
         labels = batch["label"].to(device)
 
         optimizer.zero_grad()
-
         outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
         loss = outputs.loss
-        logits = outputs.logits
-
         loss.backward()
         optimizer.step()
 
         running_loss += loss.item() * labels.size(0)
         total += labels.size(0)
+        preds = torch.argmax(outputs.logits, dim=1)
+        all_labels.extend(labels.cpu().numpy().tolist())
+        all_preds.extend(preds.cpu().numpy().tolist())
 
-        preds = torch.argmax(logits, dim=1)
-        all_labels.extend(labels.detach().cpu().numpy().tolist())
-        all_preds.extend(preds.detach().cpu().numpy().tolist())
-
-    if total == 0:
-        raise ValueError("Dataloader is empty.")
+        # Live-Update des aktuellen Loss im Balken
+        pbar.set_postfix(loss=f"{loss.item():.4f}")
 
     metrics = compute_classification_metrics(all_labels, all_preds, num_classes)
     metrics["loss"] = running_loss / total
@@ -112,29 +112,22 @@ def validate_one_epoch(
     compute_per_class_f1: bool = False,
 ) -> dict:
     model.eval()
-
-    running_loss = 0.0
-    total = 0
+    running_loss, total = 0.0, 0
     all_labels, all_preds = [], []
 
-    for batch in dataloader:
+    # Fortschrittsbalken für Validation
+    pbar = tqdm(dataloader, desc="Validation Batches", leave=False)
+    for batch in pbar:
         input_ids = batch["input_ids"].to(device)
         attention_mask = batch["attention_mask"].to(device)
         labels = batch["label"].to(device)
 
         outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-        loss = outputs.loss
-        logits = outputs.logits
-
-        running_loss += loss.item() * labels.size(0)
+        running_loss += outputs.loss.item() * labels.size(0)
         total += labels.size(0)
-
-        preds = torch.argmax(logits, dim=1)
-        all_labels.extend(labels.detach().cpu().numpy().tolist())
-        all_preds.extend(preds.detach().cpu().numpy().tolist())
-
-    if total == 0:
-        raise ValueError("Dataloader is empty.")
+        preds = torch.argmax(outputs.logits, dim=1)
+        all_labels.extend(labels.cpu().numpy().tolist())
+        all_preds.extend(preds.cpu().numpy().tolist())
 
     metrics = compute_classification_metrics(all_labels, all_preds, num_classes, compute_per_class_f1)
     metrics["loss"] = running_loss / total
@@ -150,70 +143,55 @@ def train_model(
     model_save_path: str | Path = MODEL_PATH / "best_text_model.pt",
 ) -> tuple[nn.Module, dict]:
     config = load_train_config(config_path)
-
     training_config = config.get("training", {})
     metrics_config = config.get("metrics", {})
 
-    learning_rate = float(training_config.get("learning_rate", 2e-5))
-    num_epochs = int(training_config.get("num_epochs", 5))
-    weight_decay = float(training_config.get("weight_decay", 0.01))
-    compute_per_class_f1 = metrics_config.get("compute_per_class_f1", False)
+    lr = float(training_config.get("learning_rate", 2e-5))
+    epochs = int(training_config.get("num_epochs", 5))
+    wd = float(training_config.get("weight_decay", 0.01))
+    compute_per_f1 = metrics_config.get("compute_per_class_f1", False)
     main_metric = metrics_config.get("main_metric", "macro_f1")
-
-    if main_metric not in {"macro_f1", "accuracy", "loss"}:
-        raise ValueError(f"Unsupported main_metric '{main_metric}'.")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
-
-    optimizer = torch.optim.AdamW(
-        model.parameters(),
-        lr=learning_rate,
-        weight_decay=weight_decay,
-    )
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=wd)
 
     history = {
         "train_loss": [], "train_accuracy": [], "train_macro_f1": [],
         "val_loss": [], "val_accuracy": [], "val_macro_f1": [],
     }
-
-    if compute_per_class_f1:
+    if compute_per_f1:
         history["val_per_class_f1"] = []
 
-    best_val_score = float("inf") if main_metric == "loss" else -1.0
+    best_score = float("inf") if main_metric == "loss" else -1.0
     model_save_path = Path(model_save_path)
+    TRAIN_LOGGER.info(f"Text training started on {device}")
 
-    TRAIN_LOGGER.info(f"Text training started on device={device}")
+    for epoch in range(epochs):
+        TRAIN_LOGGER.info(f"Starting epoch {epoch+1}/{epochs}")
+        
+        train_m = train_one_epoch(model, train_dataloader, optimizer, device, num_classes)
+        val_m = validate_one_epoch(model, val_dataloader, device, num_classes, compute_per_f1)
 
-    for epoch in range(num_epochs):
-        train_metrics = train_one_epoch(model, train_dataloader, optimizer, device, num_classes)
-        val_metrics = validate_one_epoch(model, val_dataloader, device, num_classes, compute_per_class_f1)
-
-        history["train_loss"].append(train_metrics["loss"])
-        history["train_accuracy"].append(train_metrics["accuracy"])
-        history["train_macro_f1"].append(train_metrics["macro_f1"])
-        history["val_loss"].append(val_metrics["loss"])
-        history["val_accuracy"].append(val_metrics["accuracy"])
-        history["val_macro_f1"].append(val_metrics["macro_f1"])
-
-        if compute_per_class_f1:
-            history["val_per_class_f1"].append(val_metrics["per_class_f1"])
+        for k in ["loss", "accuracy", "macro_f1"]:
+            history[f"train_{k}"].append(train_m[k])
+            history[f"val_{k}"].append(val_m[k])
+        if compute_per_f1:
+            history["val_per_class_f1"].append(val_m["per_class_f1"])
 
         TRAIN_LOGGER.info(
-            f"Epoch {epoch + 1}/{num_epochs} | "
-            f"train_loss={train_metrics['loss']:.4f} | "
-            f"train_macro_f1={train_metrics['macro_f1']:.4f} | "
-            f"val_loss={val_metrics['loss']:.4f} | "
-            f"val_macro_f1={val_metrics['macro_f1']:.4f}"
+            f"Epoch {epoch+1}/{epochs} | "
+            f"train_loss={train_m['loss']:.4f} | "
+            f"val_loss={val_m['loss']:.4f} | "
+            f"val_f1={val_m['macro_f1']:.4f}"
         )
 
-        current_val_score = val_metrics[main_metric]
-        is_better = current_val_score < best_val_score if main_metric == "loss" else current_val_score > best_val_score
-
+        curr_score = val_m[main_metric]
+        is_better = curr_score < best_score if main_metric == "loss" else curr_score > best_score
         if is_better:
-            best_val_score = current_val_score
+            best_score = curr_score
             torch.save(model.state_dict(), model_save_path)
-            TRAIN_LOGGER.info(f"New best model saved to {model_save_path} with val_{main_metric}={best_val_score:.4f}")
+            TRAIN_LOGGER.info(f"Saved best model with {main_metric}={best_score:.4f}")
 
     TRAIN_LOGGER.info("Text training finished")
     return model, history
