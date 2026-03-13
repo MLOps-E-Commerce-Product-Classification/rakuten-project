@@ -7,7 +7,7 @@ import shutil
 
 import yaml
 
-from run_image_training import run_image_training
+from src.training.run_image_training import run_image_training
 
 
 LOG_PATH = Path("logs")
@@ -25,14 +25,8 @@ SEARCH_RESULTS_PATH.mkdir(parents=True, exist_ok=True)
 TEMP_MODELS_PATH = SEARCH_PATH / "temp_models"
 TEMP_MODELS_PATH.mkdir(parents=True, exist_ok=True)
 
-TEMP_LABEL_MAPPINGS_PATH = SEARCH_PATH / "temp_label_mappings"
-TEMP_LABEL_MAPPINGS_PATH.mkdir(parents=True, exist_ok=True)
-
 CONFIGS_PATH = Path("configs")
 CONFIGS_PATH.mkdir(parents=True, exist_ok=True)
-
-ARTIFACTS_PATH = Path("artifacts")
-ARTIFACTS_PATH.mkdir(parents=True, exist_ok=True)
 
 
 def setup_logger(name: str, log_file: str | Path) -> logging.Logger:
@@ -166,20 +160,48 @@ def safe_delete_file(file_path: str | Path) -> None:
 
 
 def run_random_search(
-    train_csv_path: str | Path,
-    val_csv_path: str | Path,
-    train_image_dir: str | Path,
-    val_image_dir: str | Path | None = None,
-    base_train_config_path: str | Path = "configs/train_config.yaml",
+    x_data_csv_path: str | Path,
+    y_data_csv_path: str | Path,
+    image_dir: str | Path,
+    split_ids_dir: str | Path,
+    force_new_split: bool = False,
+    base_train_config_path: str | Path = "configs/image_train_config.yaml",
     preprocessing_config_path: str | Path = "configs/image_preprocessing_config.yaml",
-    search_space_config_path: str | Path = "configs/search_space.yaml",
-    final_best_config_path: str | Path = "configs/best_train_config.yaml",
+    search_space_config_path: str | Path = "configs/image_parameter_search_space.yaml",
+    final_best_config_path: str | Path = "configs/image_best_train_config.yaml",
     final_best_model_path: str | Path = "search/best_model.pt",
-    final_best_label_mapping_path: str | Path = "artifacts/best_label_mapping.json",
+    label_encoding_path: str | Path = "configs/label_encoding.json",
     random_seed: int = 42,
 ) -> dict:
     """
     Run random search over hyperparameters for image training.
+
+    Parameters
+    ----------
+    x_data_csv_path : str | Path
+        Path to X data CSV.
+    y_data_csv_path : str | Path
+        Path to Y data CSV.
+    image_dir : str | Path
+        Directory containing images.
+    split_ids_dir : str | Path
+        Directory with stored train/val/test split ids.
+    force_new_split : bool
+        Whether to force a new split. Usually keep this False during random search.
+    base_train_config_path : str | Path
+        Path to base training config.
+    preprocessing_config_path : str | Path
+        Path to preprocessing config.
+    search_space_config_path : str | Path
+        Path to random search config.
+    final_best_config_path : str | Path
+        Path where the best config should be exported.
+    final_best_model_path : str | Path
+        Path where the best model should be exported.
+    label_encoding_path : str | Path
+        Path to predefined label encoding JSON.
+    random_seed : int
+        Random seed for hyperparameter sampling.
 
     Returns
     -------
@@ -204,11 +226,9 @@ def run_random_search(
 
     final_best_config_path = Path(final_best_config_path)
     final_best_model_path = Path(final_best_model_path)
-    final_best_label_mapping_path = Path(final_best_label_mapping_path)
 
     final_best_config_path.parent.mkdir(parents=True, exist_ok=True)
     final_best_model_path.parent.mkdir(parents=True, exist_ok=True)
-    final_best_label_mapping_path.parent.mkdir(parents=True, exist_ok=True)
 
     all_trials = []
     best_score = None
@@ -216,7 +236,8 @@ def run_random_search(
 
     SEARCH_LOGGER.info(
         f"Starting random search with n_trials={n_trials}, "
-        f"optimization_metric={optimization_metric}"
+        f"optimization_metric={optimization_metric}, "
+        f"force_new_split={force_new_split}"
     )
 
     for trial_idx in range(1, n_trials + 1):
@@ -226,22 +247,20 @@ def run_random_search(
 
         trial_config_path = SEARCH_CONFIGS_PATH / f"trial_{trial_idx:03d}.yaml"
         trial_model_path = TEMP_MODELS_PATH / f"trial_{trial_idx:03d}.pt"
-        trial_label_mapping_path = (
-            TEMP_LABEL_MAPPINGS_PATH / f"trial_{trial_idx:03d}.json"
-        )
 
         save_yaml_config(sampled_config, trial_config_path)
 
         try:
-            _, history, label_encoder = run_image_training(
-                train_csv_path=train_csv_path,
-                val_csv_path=val_csv_path,
-                train_image_dir=train_image_dir,
-                val_image_dir=val_image_dir,
+            _, history, label_encoding = run_image_training(
+                x_data_csv_path=x_data_csv_path,
+                y_data_csv_path=y_data_csv_path,
+                image_dir=image_dir,
+                split_ids_dir=split_ids_dir,
+                force_new_split=force_new_split,
                 train_config_path=trial_config_path,
                 preprocessing_config_path=preprocessing_config_path,
                 model_save_path=trial_model_path,
-                label_mapping_path=trial_label_mapping_path,
+                label_encoding_path=label_encoding_path,
             )
 
             score = get_optimization_score(history, optimization_metric)
@@ -253,7 +272,7 @@ def run_random_search(
                 "config_path": str(trial_config_path),
                 "optimization_metric": optimization_metric,
                 "score": score,
-                "num_classes": len(label_encoder.classes_),
+                "num_classes": len(label_encoding["classes"]),
                 "history": history,
             }
 
@@ -266,14 +285,12 @@ def run_random_search(
                 best_score = score
 
                 shutil.copy2(trial_model_path, final_best_model_path)
-                shutil.copy2(trial_label_mapping_path, final_best_label_mapping_path)
                 shutil.copy2(trial_config_path, final_best_config_path)
 
                 best_trial = {
                     **trial_result,
                     "best_model_path": str(final_best_model_path),
                     "best_config_path": str(final_best_config_path),
-                    "best_label_mapping_path": str(final_best_label_mapping_path),
                 }
 
                 SEARCH_LOGGER.info(
@@ -282,12 +299,10 @@ def run_random_search(
                 )
                 SEARCH_LOGGER.info(
                     f"Exported best config to {final_best_config_path}, "
-                    f"best model to {final_best_model_path}, "
-                    f"best label mapping to {final_best_label_mapping_path}"
+                    f"best model to {final_best_model_path}"
                 )
 
             safe_delete_file(trial_model_path)
-            safe_delete_file(trial_label_mapping_path)
 
         except Exception as e:
             trial_result = {
@@ -304,7 +319,6 @@ def run_random_search(
             )
 
             safe_delete_file(trial_model_path)
-            safe_delete_file(trial_label_mapping_path)
 
         all_trials.append(trial_result)
 
@@ -332,16 +346,17 @@ def run_random_search(
 
 if __name__ == "__main__":
     summary = run_random_search(
-        train_csv_path="data/train_split.csv",
-        val_csv_path="data/val_split.csv",
-        train_image_dir="data/images",
-        val_image_dir="data/images",
-        base_train_config_path="configs/train_config.yaml",
+        x_data_csv_path="data/X_train_update.csv",
+        y_data_csv_path="data/Y_train_CVw08PX.csv",
+        image_dir="data/images/image_train",
+        split_ids_dir="artifacts/splits",
+        force_new_split=False,
+        base_train_config_path="configs/image_train_config.yaml",
         preprocessing_config_path="configs/image_preprocessing_config.yaml",
-        search_space_config_path="configs/search_space.yaml",
-        final_best_config_path="configs/best_train_config.yaml",
-        final_best_model_path="models/best_model.pt",
-        final_best_label_mapping_path="configs/best_label_mapping.json",
+        search_space_config_path="configs/image_parameter_search_space.yaml",
+        final_best_config_path="configs/image_best_train_config.yaml",
+        final_best_model_path="search/best_model.pt",
+        label_encoding_path="configs/label_encoding.json",
         random_seed=42,
     )
 
