@@ -1,0 +1,23 @@
+training:
+  learning_rate: 2e-5
+  num_epochs: 5
+  batch_size: 32
+  weight_decay: 0.01
+  num_workers: 0
+  seed: 42
+
+model:
+  name: bert-base-multilingual-cased
+  pretrained: true
+  freeze_backbone: false
+
+data:
+  label_col: prdtypecode
+  encoded_label_col: label
+  designation_col: designation
+  description_col: description
+  return_quality_report: false
+
+metrics:
+  main_metric: macro_f1
+  compute_per_class_f1: false
