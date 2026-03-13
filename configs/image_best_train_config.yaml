@@ -5,23 +5,18 @@ training:
   batch_size: 32
   num_workers: 4
   seed: 17
-  subset: 10
-
 model:
   name: efficientnet_b0
   pretrained: true
   freeze_backbone: false
-
 metrics:
   compute_per_class_f1: true
   main_metric: macro_f1
-
 data:
   image_id_col: imageid
   product_id_col: productid
   label_col: prdtypecode
   return_quality_report: false
-
 split:
   val_size: 0.15
   test_size: 0.15

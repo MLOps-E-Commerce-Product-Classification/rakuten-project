@@ -33,6 +33,20 @@ def load_label_encoding(label_encoding_path: str | Path) -> dict:
         return json.load(f)
 
 
+def load_split_ids(split_path: str | Path) -> pd.Index:
+    split_path = Path(split_path)
+
+    if not split_path.exists():
+        raise FileNotFoundError(f"Split file not found: {split_path}")
+
+    split_df = pd.read_csv(split_path)
+
+    if "row_id" not in split_df.columns:
+        raise ValueError(f"Split file {split_path} must contain a 'row_id' column.")
+
+    return pd.Index(split_df["row_id"].astype(int).tolist())
+
+
 def validate_dataframe_columns(
     df: pd.DataFrame,
     required_columns: set[str],
@@ -63,9 +77,11 @@ def validate_labels_in_encoding(
 
 
 def run_image_evaluation(
-    eval_csv_path: str | Path,
+    x_data_csv_path: str | Path,
+    y_data_csv_path: str | Path,
     image_dir: str | Path,
-    train_config_path: str | Path = "configs/train_config.yaml",
+    split_ids_dir: str | Path,
+    train_config_path: str | Path = "configs/image_train_config.yaml",
     eval_config_path: str | Path = "configs/image_evaluate_config.yaml",
     preprocessing_config_path: str | Path = "configs/image_preprocessing_config.yaml",
     model_weights_path: str | Path = "models/best_image_model.pt",
@@ -73,14 +89,18 @@ def run_image_evaluation(
     results_output_path: str | Path = "results/evaluation_results.json",
 ) -> dict:
     """
-    Run end-to-end image evaluation using a predefined label encoding.
+    Run end-to-end image evaluation on the saved test split.
 
     Parameters
     ----------
-    eval_csv_path : str | Path
-        Path to evaluation CSV.
+    x_data_csv_path : str | Path
+        Path to X data CSV.
+    y_data_csv_path : str | Path
+        Path to Y data CSV.
     image_dir : str | Path
-        Directory containing evaluation images.
+        Directory containing images.
+    split_ids_dir : str | Path
+        Directory containing saved train/val/test split ids.
     train_config_path : str | Path
         Path to training YAML config.
     eval_config_path : str | Path
@@ -114,44 +134,76 @@ def run_image_evaluation(
     model_name = model_config.get("name", "efficientnet_b0")
     freeze_backbone = bool(model_config.get("freeze_backbone", False))
 
-    image_id_col = data_config.get("image_id_col", "image_id")
-    label_col = data_config.get("label_col", "label")
+    image_id_col = data_config.get("image_id_col", "imageid")
+    product_id_col = data_config.get("product_id_col", "productid")
+    label_col = data_config.get("label_col", "prdtypecode")
     return_quality_report = bool(data_config.get("return_quality_report", False))
 
     compute_per_class_f1 = bool(metrics_config.get("compute_per_class_f1", True))
     main_metric = metrics_config.get("main_metric", "macro_f1")
 
-    eval_csv_path = Path(eval_csv_path)
+    x_data_csv_path = Path(x_data_csv_path)
+    y_data_csv_path = Path(y_data_csv_path)
     image_dir = Path(image_dir)
+    split_ids_dir = Path(split_ids_dir)
     model_weights_path = Path(model_weights_path)
     results_output_path = Path(results_output_path)
     label_encoding_path = Path(label_encoding_path)
 
-    if not eval_csv_path.exists():
-        raise FileNotFoundError(f"Evaluation CSV not found: {eval_csv_path}")
+    if not x_data_csv_path.exists():
+        raise FileNotFoundError(f"X data CSV not found: {x_data_csv_path}")
+    if not y_data_csv_path.exists():
+        raise FileNotFoundError(f"Y data CSV not found: {y_data_csv_path}")
     if not image_dir.exists():
         raise FileNotFoundError(f"Image directory not found: {image_dir}")
     if not model_weights_path.exists():
         raise FileNotFoundError(f"Model weights not found: {model_weights_path}")
 
-    eval_df = pd.read_csv(eval_csv_path)
+    test_ids_path = split_ids_dir / "test_ids.csv"
+    test_ids = load_split_ids(test_ids_path)
 
-    required_columns = {image_id_col, label_col}
-    validate_dataframe_columns(eval_df, required_columns, "Evaluation CSV")
+    x_df = pd.read_csv(x_data_csv_path)
+    y_df = pd.read_csv(y_data_csv_path)
+
+    if len(x_df) != len(y_df):
+        raise ValueError(
+            f"X and Y CSVs must have the same number of rows, got {len(x_df)} and {len(y_df)}."
+        )
+
+    df = pd.concat([x_df, y_df], axis=1)
+    df = df.reset_index(drop=True)
+    df["row_id"] = df.index
+
+    required_columns = {image_id_col, product_id_col, label_col}
+    validate_dataframe_columns(df, required_columns, "Merged evaluation data")
 
     code_to_idx = label_encoding["code_to_idx"]
     validate_labels_in_encoding(
-        eval_df,
+        df,
         label_col=label_col,
         code_to_idx=code_to_idx,
-        df_name="Evaluation CSV",
+        df_name="Merged evaluation data",
     )
 
+    missing_test_ids = sorted(set(test_ids.tolist()) - set(df.index.tolist()))
+    if missing_test_ids:
+        raise ValueError(
+            f"Some saved test ids are not present in the merged dataframe: "
+            f"{missing_test_ids[:10]}"
+            + (" ..." if len(missing_test_ids) > 10 else "")
+        )
+
+    test_df = df.loc[test_ids].copy()
+
+    if len(test_df) == 0:
+        raise ValueError("Test split is empty. Cannot run evaluation.")
+
     eval_dataset = RakutenImageDataset(
-        dataframe=eval_df,
+        dataframe=test_df,
         image_dir=image_dir,
         config_path=preprocessing_config_path,
         image_id_col=image_id_col,
+        product_id_col=product_id_col,
         label_col=label_col,
         return_quality_report=return_quality_report,
         label_encoding_path=label_encoding_path,
@@ -200,8 +252,12 @@ def run_image_evaluation(
         "main_metric": main_metric,
         "model_weights_path": str(model_weights_path),
         "label_encoding_path": str(label_encoding_path),
-        "eval_csv_path": str(eval_csv_path),
+        "x_data_csv_path": str(x_data_csv_path),
+        "y_data_csv_path": str(y_data_csv_path),
+        "split_ids_dir": str(split_ids_dir),
+        "test_ids_path": str(test_ids_path),
         "image_dir": str(image_dir),
+        "test_size": int(len(test_df)),
     }
 
     save_evaluation_results(results, results_output_path)
@@ -211,9 +267,11 @@ def run_image_evaluation(
 
 if __name__ == "__main__":
     results = run_image_evaluation(
-        eval_csv_path="data/val_split.csv",
-        image_dir="data/images",
-        train_config_path="configs/train_config.yaml",
+        x_data_csv_path="data/X_train_update.csv",
+        y_data_csv_path="data/Y_train_CVw08PX.csv",
+        image_dir="data/images/image_train",
+        split_ids_dir="artifacts/splits",
+        train_config_path="configs/image_train_config.yaml",
         eval_config_path="configs/image_evaluate_config.yaml",
         preprocessing_config_path="configs/image_preprocessing_config.yaml",
         model_weights_path="models/best_image_model.pt",

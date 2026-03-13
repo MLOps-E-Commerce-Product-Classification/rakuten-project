@@ -143,7 +143,7 @@ def save_inference_results(
 
 def run_image_inference(
     image_input: str | Path | list[str | Path],
-    train_config_path: str | Path = "configs/train_config.yaml",
+    train_config_path: str | Path = "configs/image_train_config.yaml",
     preprocessing_config_path: str | Path = "configs/image_preprocessing_config.yaml",
     model_weights_path: str | Path = "models/best_image_model.pt",
     label_encoding_path: str | Path = "configs/label_encoding.json",
@@ -156,17 +156,16 @@ def run_image_inference(
     model_config = train_config.get("model", {})
 
     model_name = model_config.get("name", "efficientnet_b0")
-    pretrained = False
-    freeze_backbone = False
 
+    # For inference we rebuild the architecture and then load trained weights.
     num_classes = len(label_encoding["classes"])
     idx_to_code = label_encoding["idx_to_code"]
 
     model = build_image_model(
         model_name=model_name,
         num_classes=num_classes,
-        pretrained=pretrained,
-        freeze_backbone=freeze_backbone,
+        pretrained=False,
+        freeze_backbone=False,
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -207,10 +206,10 @@ def run_image_inference(
 if __name__ == "__main__":
     results = run_image_inference(
         image_input=[
-            "data/images/example_1.jpg",
-            "data/images/example_2.jpg",
+            "data/images/image_train/image_1263597046_product_3804725264.jpg",
+            "data/images/image_train/image_1008141237_product_436067568.jpg",
         ],
-        train_config_path="configs/train_config.yaml",
+        train_config_path="configs/image_train_config.yaml",
         preprocessing_config_path="configs/image_preprocessing_config.yaml",
         model_weights_path="models/best_image_model.pt",
         label_encoding_path="configs/label_encoding.json",
