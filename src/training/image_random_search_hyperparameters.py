@@ -261,6 +261,7 @@ def run_random_search(
                 preprocessing_config_path=preprocessing_config_path,
                 model_save_path=trial_model_path,
                 label_encoding_path=label_encoding_path,
+                use_best_config_if_available=False,
             )
 
             score = get_optimization_score(history, optimization_metric)
