@@ -1,0 +1,10 @@
+metrics:
+  compute_per_class_f1: true
+  compute_confusion_matrix: true
+  main_metric: macro_f1
+
+performance:
+  measure_latency: true
+  measure_throughput: true
+  latency_num_warmup_batches: 2
+  latency_num_measure_batches: 10

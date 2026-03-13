@@ -3,7 +3,7 @@ import argparse
 from src.training.run_text_training import run_text_training
 from src.evaluation.run_text_evaluation import run_text_evaluation
 from src.inference.run_text_inference import run_text_inference
-from src.training.text_random_search_hyperparameters import run_random_search
+from src.inference.text_random_search_hyperparameters import run_random_search
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -49,7 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--best_train_config_path",
         type=str,
-        default="configs/text_best_train_config.yaml",
+        default="configs/text_train_config.yaml",
         help="Path to best training config YAML.",
     )
     parser.add_argument(
@@ -87,7 +87,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--label_mapping_path",
         type=str,
-        default="configs/best_label_mapping.json",
+        default="artifacts/label_mapping.json",
         help="Path to label mapping JSON.",
     )
     parser.add_argument(
@@ -210,7 +210,7 @@ def run_inference_mode(args: argparse.Namespace) -> None:
     print(f"Results saved to: {args.inference_output_path}")
 
     if isinstance(results, dict):
-        print(f"Predicted class: {results['predicted_class']}")
+        print(f"Predicted label: {results['predicted_rakuten_code']}")
 
 
 def run_random_search_mode(args: argparse.Namespace) -> None:

@@ -1,3 +1,15 @@
+# MLflow Daten
+mlruns/
+mlartifacts/
+
+# Python Build Artefakte
+*.egg-info/
+build/
+dist/
+__pycache__/
+*.pyc
+*.pyo
+
 # data
 data/
 datasets/
@@ -14,15 +26,11 @@ results/
 # logs
 logs/
 
-# python
-__pycache__/
-*.pyc
-*.pyo
-
 # environments
 .venv/
 venv/
 env/
+*.egg-info/
 
 # system
 .DS_Store
