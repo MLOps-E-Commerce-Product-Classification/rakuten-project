@@ -1,0 +1,33 @@
+# Stage 1: Builder (optional – aber sehr empfehlenswert bei vielen Abhängigkeiten)
+FROM pytorch/pytorch:2.1.2-cuda12.1-cudnn8-devel AS builder
+
+WORKDIR /app
+
+# requirements zuerst kopieren → Docker Cache besser nutzen
+COPY requirements_image.txt .
+
+# --no-cache-dir spart Platz, --root-user-action=ignore vermeidet Warnungen
+RUN pip install --no-cache-dir -r requirements_image.txt \
+    && rm -rf /root/.cache/pip
+
+# Stage 2: Finales schlankes Image
+FROM pytorch/pytorch:2.1.2-cuda12.1-cudnn8-runtime
+WORKDIR /app
+
+# Nur die installierten Pakete + dein Code kommen ins finale Image
+COPY --from=builder /usr/local/lib/python3.10/site-packages/ /usr/local/lib/python3.10/site-packages/
+COPY --from=builder /usr/local/bin/ /usr/local/bin/
+
+# Dein Projektcode
+COPY . .
+
+# Optional: explizit PYTHONPATH setzen, falls src/ nicht automatisch gefunden wird
+ENV PYTHONPATH=/app:${PYTHONPATH}
+
+# Kein Root-User im Produktions-/Trainings-Image (Sicherheit)
+RUN useradd -m appuser
+USER appuser
+
+# Training als Default – aber flexibel lassen
+ENTRYPOINT ["python", "-m", "src.pipeline.image_pipeline"]
+CMD ["--mode", "train"]
