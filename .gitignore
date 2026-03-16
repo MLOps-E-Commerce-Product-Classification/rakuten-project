@@ -13,6 +13,7 @@ __pycache__/
 # data
 data/
 datasets/
+!src/data/
 
 # trained models
 models/
