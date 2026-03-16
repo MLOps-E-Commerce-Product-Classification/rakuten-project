@@ -43,22 +43,47 @@ def predict_single_image_all(
     preprocessing_config_path: str | Path,
     device: torch.device,
     idx_to_code: dict[str, int],
+    top_k: int = 5
 ) -> dict:
+
     image_path = Path(image_path)
     if not image_path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
 
     image_tensor = prepare_image_tensor(image_path, preprocessing_config_path).unsqueeze(0).to(device)
-    outputs = model(image_tensor)
-    probabilities = torch.softmax(outputs, dim=1).squeeze(0).cpu().tolist()
 
-    # Map all probabilities to Rakuten codes
-    code_prob = {int(idx_to_code[str(i)]): float(prob) for i, prob in enumerate(probabilities)}
+    outputs = model(image_tensor)
+    probabilities = torch.softmax(outputs, dim=1).squeeze(0).cpu()
+
+    probabilities = torch.nan_to_num(
+        probabilities,
+        nan=0.0,
+        posinf=1.0,
+        neginf=0.0
+    )
+
+    probabilities = probabilities / probabilities.sum()
+
+    # Map probabilities to Rakuten codes
+    code_prob = {
+        int(idx_to_code[str(i)]): float(probabilities[i])
+        for i in range(len(probabilities))
+    }
+
+    # Compute top_k
+    sorted_codes = sorted(code_prob.items(), key=lambda x: x[1], reverse=True)
+    top_k_predictions = [
+        {"rakuten_code": int(code), "probability": float(prob)}
+        for code, prob in sorted_codes[:top_k]
+    ]
+
+    predicted_rakuten_code = top_k_predictions[0]["rakuten_code"]
 
     return {
         "image_path": str(image_path),
-        "probabilities": code_prob,
-        "predicted_rakuten_code": max(code_prob, key=code_prob.get)
+        "predicted_rakuten_code": predicted_rakuten_code,
+        "top_k_predictions": top_k_predictions,
+        "probabilities": code_prob
     }
 
 
@@ -68,10 +93,18 @@ def predict_multiple_images_all(
     preprocessing_config_path: str | Path,
     device: torch.device,
     idx_to_code: dict[str, int],
+    top_k: int = 5
 ) -> list[dict]:
+
     return [
-        predict_single_image_all(model, image_path=path, preprocessing_config_path=preprocessing_config_path,
-                                 device=device, idx_to_code=idx_to_code)
+        predict_single_image_all(
+            model=model,
+            image_path=path,
+            preprocessing_config_path=preprocessing_config_path,
+            device=device,
+            idx_to_code=idx_to_code,
+            top_k=top_k
+        )
         for path in image_paths
     ]
 
@@ -90,6 +123,7 @@ def run_image_inference(
     model_weights_path: str | Path = "models/best_image_model.pt",
     label_encoding_path: str | Path = "configs/label_encoding.json",
     output_path: str | Path = "results/inference_results.json",
+    top_k: int = 5,
 ) -> dict | list[dict]:
     # Load configs and label encoding
     train_config = load_config(train_config_path)
@@ -112,9 +146,24 @@ def run_image_inference(
 
     # Run inference
     if isinstance(image_input, (str, Path)):
-        results = predict_single_image_all(model, image_input, preprocessing_config_path, device, idx_to_code)
+        results = predict_single_image_all(
+            model,
+            image_input,
+            preprocessing_config_path,
+            device,
+            idx_to_code,
+            top_k
+        )
     else:
-        results = predict_multiple_images_all(model, image_input, preprocessing_config_path, device, idx_to_code)
+        results = predict_multiple_images_all(
+            model,
+            image_input,
+            preprocessing_config_path,
+            device,
+            idx_to_code,
+            top_k
+        )
+        
 
     save_inference_results(results, output_path)
     return results
@@ -131,6 +180,7 @@ if __name__ == "__main__":
         model_weights_path="models/best_image_model.pt",
         label_encoding_path="configs/label_encoding.json",
         output_path="results/inference_results.json",
+        top_k=5
     )
 
     print("Inference finished. Results saved to: results/inference_results.json")

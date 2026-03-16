@@ -6,6 +6,7 @@ from typing import Any
 
 import torch
 import yaml
+import numpy as np
 
 from src.data.text_preprocessing import build_tokenizer, preprocess_text
 from src.models.text_classifier import build_text_model
@@ -17,35 +18,26 @@ RESULTS_PATH.mkdir(parents=True, exist_ok=True)
 
 def load_config(config_path: str | Path) -> dict:
     config_path = Path(config_path)
-
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
-
     with config_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
+
 def load_label_mapping(mapping_path: str | Path) -> dict[str, int]:
     mapping_path = Path(mapping_path)
-
     if not mapping_path.exists():
         raise FileNotFoundError(f"Label mapping file not found: {mapping_path}")
-
     with mapping_path.open("r", encoding="utf-8") as f:
         raw = json.load(f)
-
-    # Handle nested format: {"classes": [...], "code_to_idx": {"10": 0, ...}}
     if "code_to_idx" in raw:
         return {k: int(v) for k, v in raw["code_to_idx"].items()}
-
-    # Fallback: flat format {"label": int/list}
-    return {
-        k: (v[0] if isinstance(v, list) else int(v))
-        for k, v in raw.items()
-    }
+    return {k: (v[0] if isinstance(v, list) else int(v)) for k, v in raw.items()}
 
 
 def invert_label_mapping(label_encoding: dict[str, int]) -> dict[int, str]:
     return {v: k for k, v in label_encoding.items()}
+
 
 def prepare_text_encoding(
     text_input: str | dict[str, Any],
@@ -55,37 +47,24 @@ def prepare_text_encoding(
     if isinstance(text_input, dict):
         designation = text_input.get("designation", "")
         description = text_input.get("description", "")
-        processed = preprocess_text(
-            designation=designation,
-            description=description,
-            config_path=preprocessing_config_path,
-        )
+        processed = preprocess_text(designation=designation, description=description, config_path=preprocessing_config_path)
     else:
-        processed = preprocess_text(
-            designation=text_input,
-            description="",
-            config_path=preprocessing_config_path,
-        )
-
-    if isinstance(processed, tuple):
-        text, _ = processed
-    else:
-        text = processed
+        processed = preprocess_text(designation=text_input, description="", config_path=preprocessing_config_path)
+    text = processed[0] if isinstance(processed, tuple) else processed
 
     preprocessing_config = load_config(preprocessing_config_path)
-    max_length = int(
-        preprocessing_config.get("preprocessing", {}).get("max_length", 128)
-    )
+    max_length = int(preprocessing_config.get("preprocessing", {}).get("max_length", 128))
 
-    encoding = tokenizer(
-        text,
-        padding="max_length",
-        truncation=True,
-        max_length=max_length,
-        return_tensors="pt",
-    )
-
+    encoding = tokenizer(text, padding="max_length", truncation=True, max_length=max_length, return_tensors="pt")
     return encoding, text
+
+
+def sanitize_float(val: float) -> float:
+    """Konvertiert auf float und ersetzt NaN / Inf durch 0.0"""
+    val = float(val)
+    if not np.isfinite(val):
+        return 0.0
+    return val
 
 
 @torch.no_grad()
@@ -98,44 +77,51 @@ def predict_single_text(
     idx_to_label: dict[int, str],
     top_k: int = 5,
 ) -> dict:
-    encoding, processed_text = prepare_text_encoding(
-        text_input=text_input,
-        tokenizer=tokenizer,
-        preprocessing_config_path=preprocessing_config_path,
-    )
+    encoding, processed_text = prepare_text_encoding(text_input, tokenizer, preprocessing_config_path)
 
     input_ids = encoding["input_ids"].to(device)
     attention_mask = encoding["attention_mask"].to(device)
 
     outputs = model(input_ids=input_ids, attention_mask=attention_mask)
     logits = outputs.logits
-    probabilities = torch.softmax(logits, dim=1)
 
-    top_k = min(top_k, probabilities.shape[1])
+    # Softmax stabilisieren
+    logits = logits - logits.max(dim=1, keepdim=True).values
+    probabilities = torch.softmax(logits, dim=1).squeeze(0).cpu()
 
-    top_probs, top_indices = torch.topk(probabilities, k=top_k, dim=1)
-    top_probs = top_probs.squeeze(0).cpu().tolist()
-    top_indices = top_indices.squeeze(0).cpu().tolist()
+    # NaN/Inf entfernen und clampen
+    probabilities = torch.nan_to_num(probabilities, nan=0.0, posinf=1.0, neginf=0.0)
+    probabilities = torch.clamp(probabilities, 0.0, 1.0)
 
-    top_predictions = []
-    for class_idx, prob in zip(top_indices, top_probs):
-        top_predictions.append(
-            {
-                "encoded_label": int(class_idx),
-                "rakuten_code": idx_to_label[int(class_idx)],
-                "probability": float(prob),
-            }
-        )
+    # Optional extrem kleine Wahrscheinlichkeiten auf 0 setzen
+    probabilities = torch.where(probabilities < 1e-12, torch.tensor(0.0), probabilities)
+
+    top_k = min(top_k, probabilities.shape[0])
+    top_probs, top_indices = torch.topk(probabilities, k=top_k)
+
+    top_k_predictions = [
+        {
+            "encoded_label": int(idx),
+            "rakuten_code": idx_to_label[int(idx)],
+            "probability": sanitize_float(probabilities[idx])
+        }
+        for idx in top_indices.tolist()
+    ]
+
+    
 
     predicted_class_idx = int(top_indices[0])
     predicted_label = idx_to_label[predicted_class_idx]
+
+    probabilities_dict = {idx_to_label[i]: sanitize_float(probabilities[i]) for i in range(len(probabilities))}
 
     return {
         "input_text": text_input,
         "processed_text": processed_text,
         "predicted_encoded_label": predicted_class_idx,
         "predicted_rakuten_code": predicted_label,
-        "top_k_predictions": top_predictions,
+        "top_k_predictions": top_k_predictions,
+        "probabilities": probabilities_dict
     }
 
 
@@ -149,30 +135,12 @@ def predict_multiple_texts(
     idx_to_label: dict[int, str],
     top_k: int = 5,
 ) -> list[dict]:
-    results = []
-
-    for text_input in text_inputs:
-        result = predict_single_text(
-            model=model,
-            text_input=text_input,
-            tokenizer=tokenizer,
-            preprocessing_config_path=preprocessing_config_path,
-            device=device,
-            idx_to_label=idx_to_label,
-            top_k=top_k,
-        )
-        results.append(result)
-
-    return results
+    return [predict_single_text(model, text_input, tokenizer, preprocessing_config_path, device, idx_to_label, top_k) for text_input in text_inputs]
 
 
-def save_inference_results(
-    results: dict | list[dict],
-    output_path: str | Path = RESULTS_PATH / "text_inference_results.json",
-) -> None:
+def save_inference_results(results: dict | list[dict], output_path: str | Path = RESULTS_PATH / "text_inference_results.json") -> None:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
     with output_path.open("w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
 
@@ -186,6 +154,7 @@ def run_text_inference(
     output_path: str | Path = "results/text_inference_results.json",
     top_k: int = 5,
 ) -> dict | list[dict]:
+
     train_config = load_config(train_config_path)
     label_encoding = load_label_mapping(label_encoding_path)
     idx_to_label = invert_label_mapping(label_encoding)
@@ -193,16 +162,9 @@ def run_text_inference(
 
     model_config = train_config.get("model", {})
     model_name = model_config.get("name", "bert-base-multilingual-cased")
-
     num_classes = len(label_encoding)
 
-    model = build_text_model(
-        model_name=model_name,
-        num_classes=num_classes,
-        pretrained=False,
-        freeze_backbone=False,
-    )
-
+    model = build_text_model(model_name=model_name, num_classes=num_classes, pretrained=False, freeze_backbone=False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
@@ -215,47 +177,24 @@ def run_text_inference(
     model.eval()
 
     if isinstance(text_input, (str, dict)):
-        results = predict_single_text(
-            model=model,
-            text_input=text_input,
-            tokenizer=tokenizer,
-            preprocessing_config_path=preprocessing_config_path,
-            device=device,
-            idx_to_label=idx_to_label,
-            top_k=top_k,
-        )
+        results = predict_single_text(model, text_input, tokenizer, preprocessing_config_path, device, idx_to_label, top_k)
     else:
-        results = predict_multiple_texts(
-            model=model,
-            text_inputs=text_input,
-            tokenizer=tokenizer,
-            preprocessing_config_path=preprocessing_config_path,
-            device=device,
-            idx_to_label=idx_to_label,
-            top_k=top_k,
-        )
+        results = predict_multiple_texts(model, text_input, tokenizer, preprocessing_config_path, device, idx_to_label, top_k)
 
     save_inference_results(results, output_path)
-
     return results
 
 
 if __name__ == "__main__":
     results = run_text_inference(
         text_input=[
-            {
-                "designation": "T-shirt homme coton manches courtes",
-                "description": "T-shirt confortable pour usage quotidien.",
-            },
-            {
-                "designation": "Jeu vidéo action PS4",
-                "description": "Edition standard neuve.",
-            },
+            {"designation": "T-shirt homme coton manches courtes", "description": "T-shirt confortable pour usage quotidien."},
+            {"designation": "Jeu vidéo action PS4", "description": "Edition standard neuve."},
         ],
         train_config_path="configs/text_train_config.yaml",
         preprocessing_config_path="configs/text_preprocessing_config.yaml",
         model_weights_path="models/best_text_model.pt",
-        label_mapping_path="configs/label_encoding.json",
+        label_encoding_path="configs/label_encoding.json",
         output_path="results/text_inference_results.json",
         top_k=5,
     )
