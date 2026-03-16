@@ -89,36 +89,31 @@ def predict_single_text(
     logits = logits - logits.max(dim=1, keepdim=True).values
     probabilities = torch.softmax(logits, dim=1).squeeze(0).cpu()
 
-    # NaN/Inf entfernen und clampen
+    # NaN / Inf entfernen und clampen
     probabilities = torch.nan_to_num(probabilities, nan=0.0, posinf=1.0, neginf=0.0)
     probabilities = torch.clamp(probabilities, 0.0, 1.0)
 
-    # Optional extrem kleine Wahrscheinlichkeiten auf 0 setzen
-    probabilities = torch.where(probabilities < 1e-12, torch.tensor(0.0), probabilities)
-
+    # Top-K
     top_k = min(top_k, probabilities.shape[0])
     top_probs, top_indices = torch.topk(probabilities, k=top_k)
 
     top_k_predictions = [
         {
-            "encoded_label": int(idx),
-            "rakuten_code": idx_to_label[int(idx)],
-            "probability": sanitize_float(probabilities[idx])
+            "rakuten_code": int(idx_to_label[int(idx)]),  # jetzt als int
+            "probability": float(probabilities[idx].item())
         }
         for idx in top_indices.tolist()
     ]
 
-    
-
     predicted_class_idx = int(top_indices[0])
-    predicted_label = idx_to_label[predicted_class_idx]
+    predicted_label = int(idx_to_label[predicted_class_idx])  # als int
 
-    probabilities_dict = {idx_to_label[i]: sanitize_float(probabilities[i]) for i in range(len(probabilities))}
+    probabilities_dict = {
+        int(idx_to_label[i]): float(probabilities[i].item())
+        for i in range(len(probabilities))
+    }
 
     return {
-        "input_text": text_input,
-        "processed_text": processed_text,
-        "predicted_encoded_label": predicted_class_idx,
         "predicted_rakuten_code": predicted_label,
         "top_k_predictions": top_k_predictions,
         "probabilities": probabilities_dict
