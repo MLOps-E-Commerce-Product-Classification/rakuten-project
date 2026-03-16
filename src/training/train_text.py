@@ -6,7 +6,7 @@ import torch.nn as nn
 import yaml
 from sklearn.metrics import accuracy_score, f1_score
 from torch.utils.data import DataLoader
-from tqdm import tqdm  # Für Fortschrittsbalken
+from tqdm import tqdm
 
 
 LOG_PATH = Path("logs")
@@ -21,13 +21,11 @@ def setup_logger(name: str, log_file: str | Path) -> logging.Logger:
     logger.setLevel(logging.INFO)
 
     if not logger.handlers:
-        # File Handler
         file_handler = logging.FileHandler(log_file, encoding="utf-8")
         file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
 
-        # Console Handler (Neu: Gibt Logs auch im Terminal aus)
         console_handler = logging.StreamHandler()
         console_formatter = logging.Formatter("%(levelname)s: %(message)s")
         console_handler.setFormatter(console_formatter)
@@ -76,7 +74,6 @@ def train_one_epoch(
     running_loss, total = 0.0, 0
     all_labels, all_preds = [], []
 
-    # Fortschrittsbalken für Training
     pbar = tqdm(dataloader, desc="Training Batches", leave=False)
     for batch in pbar:
         input_ids = batch["input_ids"].to(device)
@@ -95,7 +92,6 @@ def train_one_epoch(
         all_labels.extend(labels.cpu().numpy().tolist())
         all_preds.extend(preds.cpu().numpy().tolist())
 
-        # Live-Update des aktuellen Loss im Balken
         pbar.set_postfix(loss=f"{loss.item():.4f}")
 
     metrics = compute_classification_metrics(all_labels, all_preds, num_classes)
@@ -115,7 +111,6 @@ def validate_one_epoch(
     running_loss, total = 0.0, 0
     all_labels, all_preds = [], []
 
-    # Fortschrittsbalken für Validation
     pbar = tqdm(dataloader, desc="Validation Batches", leave=False)
     for batch in pbar:
         input_ids = batch["input_ids"].to(device)

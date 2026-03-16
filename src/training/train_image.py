@@ -6,6 +6,7 @@ import torch.nn as nn
 import yaml
 from sklearn.metrics import accuracy_score, f1_score
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 
 LOG_PATH = Path("logs")
@@ -24,6 +25,10 @@ def setup_logger(name: str, log_file: str | Path) -> logging.Logger:
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+        logger.addHandler(console_handler)
 
     logger.propagate = False
     return logger
@@ -91,7 +96,8 @@ def train_one_epoch(
     all_labels = []
     all_preds = []
 
-    for batch in dataloader:
+    pbar = tqdm(dataloader, desc="Training Batches", leave=False)
+    for batch in pbar:
         images = batch["image"].to(device)
         labels = batch["label"].to(device)
 
@@ -110,6 +116,8 @@ def train_one_epoch(
 
         all_labels.extend(labels.detach().cpu().numpy().tolist())
         all_preds.extend(preds.detach().cpu().numpy().tolist())
+
+        pbar.set_postfix(loss=f"{loss.item():.4f}")
 
     if total == 0:
         raise ValueError("Dataloader is empty. Cannot compute training metrics.")
@@ -143,7 +151,8 @@ def validate_one_epoch(
     all_labels = []
     all_preds = []
 
-    for batch in dataloader:
+    pbar = tqdm(dataloader, desc="Validation Batches", leave=False)
+    for batch in pbar:
         images = batch["image"].to(device)
         labels = batch["label"].to(device)
 

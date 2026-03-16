@@ -40,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--image_dir",
         type=str,
-        default="data/images/image_train",
+        default="data/raw/images/image_train",
         help="Directory containing images.",
     )
 
