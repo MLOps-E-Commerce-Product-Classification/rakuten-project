@@ -28,13 +28,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--x_data_csv_path",
         type=str,
-        default="data/X_train_update.csv",
+        default="data/raw/X_train_update.csv",
         help="Path to X data CSV.",
     )
     parser.add_argument(
         "--y_data_csv_path",
         type=str,
-        default="data/Y_train_CVw08PX.csv",
+        default="data/raw/Y_train_CVw08PX.csv",
         help="Path to Y data CSV.",
     )
     parser.add_argument(

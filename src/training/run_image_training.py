@@ -421,9 +421,9 @@ def run_image_training(
 
 if __name__ == "__main__":
     trained_model, history, label_encoding = run_image_training(
-        x_data_csv_path="data/X_train_update.csv",
-        y_data_csv_path="data/Y_train_CVw08PX.csv",
-        image_dir="data/images/image_train",
+        x_data_csv_path="data/raw/X_train_update.csv",
+        y_data_csv_path="data/raw/Y_train_CVw08PX.csv",
+        image_dir="data/raw/images/image_train",
         split_ids_dir="artifacts/splits",
         force_new_split=False,
         train_config_path="configs/image_train_config.yaml",
