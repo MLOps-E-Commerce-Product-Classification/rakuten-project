@@ -212,7 +212,7 @@ python -m src.pipeline.image_pipeline --mode evaluate
 ### 5. Inference
 
 ``` bash
-python -m src.pipeline.image_pipeline --mode inference --image_path data/images/image_train/image_1263597046_product_3804725264.jpg
+python -m src.pipeline.image_pipeline --mode inference --image_path data/raw/images/image_train/image_1263597046_product_3804725264.jpg
 ```
 
 ------------------------------------------------------------------------
