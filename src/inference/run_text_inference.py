@@ -24,7 +24,6 @@ def load_config(config_path: str | Path) -> dict:
     with config_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
-
 def load_label_mapping(mapping_path: str | Path) -> dict[str, int]:
     mapping_path = Path(mapping_path)
 
@@ -32,12 +31,21 @@ def load_label_mapping(mapping_path: str | Path) -> dict[str, int]:
         raise FileNotFoundError(f"Label mapping file not found: {mapping_path}")
 
     with mapping_path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+        raw = json.load(f)
+
+    # Handle nested format: {"classes": [...], "code_to_idx": {"10": 0, ...}}
+    if "code_to_idx" in raw:
+        return {k: int(v) for k, v in raw["code_to_idx"].items()}
+
+    # Fallback: flat format {"label": int/list}
+    return {
+        k: (v[0] if isinstance(v, list) else int(v))
+        for k, v in raw.items()
+    }
 
 
-def invert_label_mapping(label_mapping: dict[str, int]) -> dict[int, str]:
-    return {int(encoded): original for original, encoded in label_mapping.items()}
-
+def invert_label_mapping(label_encoding: dict[str, int]) -> dict[int, str]:
+    return {v: k for k, v in label_encoding.items()}
 
 def prepare_text_encoding(
     text_input: str | dict[str, Any],
@@ -174,19 +182,19 @@ def run_text_inference(
     train_config_path: str | Path = "configs/text_train_config.yaml",
     preprocessing_config_path: str | Path = "configs/text_preprocessing_config.yaml",
     model_weights_path: str | Path = "models/best_text_model.pt",
-    label_mapping_path: str | Path = "artifacts/label_mapping.json",
+    label_encoding_path: str | Path = "configs/label_encoding.json",
     output_path: str | Path = "results/text_inference_results.json",
     top_k: int = 5,
 ) -> dict | list[dict]:
     train_config = load_config(train_config_path)
-    label_mapping = load_label_mapping(label_mapping_path)
-    idx_to_label = invert_label_mapping(label_mapping)
+    label_encoding = load_label_mapping(label_encoding_path)
+    idx_to_label = invert_label_mapping(label_encoding)
     tokenizer = build_tokenizer(preprocessing_config_path)
 
     model_config = train_config.get("model", {})
     model_name = model_config.get("name", "bert-base-multilingual-cased")
 
-    num_classes = len(label_mapping)
+    num_classes = len(label_encoding)
 
     model = build_text_model(
         model_name=model_name,
@@ -247,7 +255,7 @@ if __name__ == "__main__":
         train_config_path="configs/text_train_config.yaml",
         preprocessing_config_path="configs/text_preprocessing_config.yaml",
         model_weights_path="models/best_text_model.pt",
-        label_mapping_path="artifacts/label_mapping.json",
+        label_mapping_path="configs/label_encoding.json",
         output_path="results/text_inference_results.json",
         top_k=5,
     )
