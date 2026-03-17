@@ -85,15 +85,12 @@ def predict_single_text(
     outputs = model(input_ids=input_ids, attention_mask=attention_mask)
     logits = outputs.logits
 
-    # Softmax stabilisieren
     logits = logits - logits.max(dim=1, keepdim=True).values
     probabilities = torch.softmax(logits, dim=1).squeeze(0).cpu()
 
-    # NaN / Inf entfernen und clampen
     probabilities = torch.nan_to_num(probabilities, nan=0.0, posinf=1.0, neginf=0.0)
     probabilities = torch.clamp(probabilities, 0.0, 1.0)
 
-    # Top-K
     top_k = min(top_k, probabilities.shape[0])
     top_probs, top_indices = torch.topk(probabilities, k=top_k)
 
@@ -167,7 +164,7 @@ def run_text_inference(
     if not model_weights_path.exists():
         raise FileNotFoundError(f"Model weights not found: {model_weights_path}")
 
-    state_dict = torch.load(model_weights_path, map_location=device)
+    state_dict = torch.load(model_weights_path, map_location=device, weights_only=True)
     model.load_state_dict(state_dict)
     model.eval()
 
