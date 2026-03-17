@@ -1,0 +1,31 @@
+# ---- Base Image ----
+FROM python:3.11-slim
+
+# ---- System deps ----
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---- uv installieren ----
+RUN pip install --no-cache-dir uv
+
+# ---- Arbeitsverzeichnis ----
+WORKDIR /app
+
+# ---- Dependency files ----
+COPY pyproject.toml uv.lock ./
+
+# ---- Dependencies installieren (legt .venv an) ----
+RUN uv sync --frozen --no-dev
+
+# ---- Code ----
+COPY src ./src
+
+# ---- Optional, aber hilfreich ----
+ENV PYTHONPATH=/app
+
+# ---- Port ----
+EXPOSE 8000
+
+# ---- Start über uv run (WICHTIG) ----
+CMD ["uv", "run", "uvicorn", "src.serving.api:api", "--host", "0.0.0.0", "--port", "8000"]

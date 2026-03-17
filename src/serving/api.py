@@ -1,14 +1,37 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 import pandas as pd
 import os
 import math
 import numpy as np
-
+from pathlib import Path
+import logging
 
 from src.inference.run_image_inference import run_image_inference
 from src.inference.run_text_inference import run_text_inference  
+
+# ---- Logging ----
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ---- Base paths (robust für Docker) ----
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+CSV_PATH = BASE_DIR / "data/raw/X_test_update.csv"
+IMAGE_DIR = BASE_DIR / "data/raw/images/image_test"
+
+# ---- Lazy load dataframe ----
+df = None
+
+def get_df():
+    global df
+    if df is None:
+        if not CSV_PATH.exists():
+            raise FileNotFoundError(f"{CSV_PATH} not found")
+        logger.info(f"Loading CSV from {CSV_PATH}")
+        df = pd.read_csv(CSV_PATH, index_col=0)
+    return df
 
 
 def make_json_safe(obj):
@@ -23,8 +46,7 @@ def make_json_safe(obj):
     elif isinstance(obj, (int, str)):
         return obj
     else:
-        return str(obj)  # fallback
-
+        return str(obj)
 
 
 def combine_probabilities(image_probs: dict, text_probs: dict, top_k: int):
@@ -42,78 +64,88 @@ def combine_probabilities(image_probs: dict, text_probs: dict, top_k: int):
         for code, prob in top
     ]
 
+
 api = FastAPI(
     title="Rakuten Inference API",
     description="API to generate Rakuten label based on image and/or text using test CSV and images"
 )
 
-# Pfade
-CSV_PATH = "data/raw/X_test_update.csv"
-IMAGE_DIR = "data/raw/images/image_test"
-df = pd.read_csv(CSV_PATH, index_col=0)
-
 
 class InferenceRequest(BaseModel):
-    ids: List[int]           # IDs between 84916 and 98727
+    ids: List[int]
     mode: str = "both"       # "text", "image", "both"
     top_k: int = 27
 
+
 @api.get('/')
-def get_api():
-    """Check whether API is running"""
-    return {'Rakuten Inference API is up and running'}
+async def get_api():
+    return {'message': 'Rakuten Inference API is up and running'}
+
 
 @api.post("/inference")
-def get_label(request: InferenceRequest):
-    # load CSV
-    if not os.path.exists(CSV_PATH):
-        raise HTTPException(status_code=404, detail=f"{CSV_PATH} not found")
+async def get_label(request: InferenceRequest):
+    try:
+        df = get_df()
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     results = []
 
     for id_ in request.ids:
-        row = df.loc[id_]
-        print(row)
+        if id_ < 84916:
+            id_ += 84916
+
         if id_ not in df.index:
             results.append({"id": id_, "error": "ID not found in CSV"})
             continue
 
-        text_input = {"designation": row.get("designation", ""),
-                "description": row.get("description", "")
+        row = df.loc[id_]
+        logger.info(f"Processing ID {id_}")
+
+        text_input = {
+            "designation": row.get("designation", ""),
+            "description": row.get("description", "")
         }
-            
+
         productid = row["productid"]
         imageid = row["imageid"]
         image_filename = f"image_{imageid}_product_{productid}.jpg"
-        image_path = os.path.join(IMAGE_DIR, image_filename)
+        image_path = IMAGE_DIR / image_filename
 
         entry_result = {"id": id_}
 
+        # ---- Text inference ----
         if request.mode in ["text", "both"]:
-            text_res = run_text_inference(text_input=text_input, top_k=request.top_k)
+            text_res = run_text_inference(
+                text_input=text_input,
+                top_k=request.top_k
+            )
             entry_result["text"] = make_json_safe(text_res)
 
+        # ---- Image inference ----
         if request.mode in ["image", "both"]:
-            if not os.path.exists(image_path):
-                entry_result["image"] = {"error": f"Image not found: {image_path}"}
+            if not image_path.exists():
+                entry_result["image"] = {
+                    "error": f"Image not found: {image_path}"
+                }
             else:
-                image_res = run_image_inference(image_input=image_path, top_k=request.top_k)
+                image_res = run_image_inference(
+                    image_input=str(image_path),
+                    top_k=request.top_k
+                )
                 entry_result["image"] = make_json_safe(image_res)
-                
 
-        # Optional: combine text + image prediction
+        # ---- Combine ----
         if "text" in entry_result and "image" in entry_result:
             entry_result["combined"] = combine_probabilities(
-                entry_result["image"]["probabilities"],
-                entry_result["text"]["probabilities"],
+                entry_result["image"].get("probabilities", {}),
+                entry_result["text"].get("probabilities", {}),
                 request.top_k
             )
 
         if "combined" in entry_result:
             entry_result["combined"] = make_json_safe(entry_result["combined"])
-        
+
         results.append(entry_result)
 
     return results
-
-
