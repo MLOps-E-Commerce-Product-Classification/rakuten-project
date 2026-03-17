@@ -164,7 +164,38 @@ cd rakuten-project
 ### 2. Create the environment
 
 ``` bash
-uv sync
+uv lock
+
+```
+
+API only (no PyTorch)
+``` bash
+uv sync --extra api
+
+```
+
+Text pipeline
+``` bash
+uv sync --extra text
+
+```
+
+Image pipeline
+``` bash
+uv sync --extra image
+
+```
+
+Training (Image + Text)
+``` bash
+uv sync --extra training
+
+```
+
+Everything (Image + Text + API)
+``` bash
+uv sync --all-extras
+
 ```
 
 ### 3. Activate the environment
