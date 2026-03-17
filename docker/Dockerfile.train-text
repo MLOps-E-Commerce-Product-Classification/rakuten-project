@@ -1,0 +1,14 @@
+FROM python:3.11-slim
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock ./
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --extra text
+
+COPY . .
+
+CMD ["uv", "run", "python", "-m", "src.pipeline.text_pipeline", "--mode", "train"]
