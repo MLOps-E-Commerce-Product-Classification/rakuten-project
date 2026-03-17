@@ -35,8 +35,11 @@ text = [
   "tqdm>=4.66.0",
 ]
 
-# API only (intentionally NO torch here)
+# API
 api = [
+  "torch", # TODO: remove torch (isolate api)
+  "torchvision", # TODO: remove torchvision (isolate api)
+  "transformers>=4.35.0", # TODO: remove transformers (isolate api)
   "fastapi>=0.135.1",
   "uvicorn>=0.42.0",
   "pillow==10.4.0",
@@ -78,15 +81,11 @@ explicit = true
 
 [tool.uv.sources]
 torch = [
-  # CUDA wheels for Linux/Windows when using training extras
-  { index = "pytorch-cu121", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and (extra == 'image' or extra == 'text' or extra == 'training' or extra == 'all')" },
-  # CPU wheels for macOS when using training extras
-  { index = "pytorch-cpu", marker = "(sys_platform == 'darwin') and (extra == 'image' or extra == 'text' or extra == 'training' or extra == 'all')" },
+  { index = "pytorch-cu121", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and (extra == 'image' or extra == 'text' or extra == 'training' or extra == 'all' or extra == 'api')" },
+  { index = "pytorch-cpu", marker = "(sys_platform == 'darwin') and (extra == 'image' or extra == 'text' or extra == 'training' or extra == 'all' or extra == 'api')" },
 ]
 
 torchvision = [
-  # CUDA wheels for Linux/Windows when using training extras
-  { index = "pytorch-cu121", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and (extra == 'image' or extra == 'text' or extra == 'training' or extra == 'all')" },
-  # CPU wheels for macOS when using training extras
-  { index = "pytorch-cpu", marker = "(sys_platform == 'darwin') and (extra == 'image' or extra == 'text' or extra == 'training' or extra == 'all')" },
+  { index = "pytorch-cu121", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and (extra == 'image' or extra == 'text' or extra == 'training' or extra == 'all' or extra == 'api')" },
+  { index = "pytorch-cpu", marker = "(sys_platform == 'darwin') and (extra == 'image' or extra == 'text' or extra == 'training' or extra == 'all' or extra == 'api')" },
 ]
