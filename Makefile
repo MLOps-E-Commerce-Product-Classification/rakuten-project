@@ -23,7 +23,11 @@ train-text-run:
 	docker compose up train-text
 
 .PHONY: train-text
-train-text: train-text-build train-text-run
+train-text:
+	git add configs/
+	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
+	$(MAKE) train-text-build
+	$(MAKE) train-text-run
 
 .PHONY: train-text-stop
 train-text-stop:
