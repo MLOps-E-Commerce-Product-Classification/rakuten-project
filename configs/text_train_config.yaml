@@ -7,7 +7,7 @@ training:
   seed: 42
 
 model:
-  name: camembert-base
+  name: bert-base-multilingual-cased
   pretrained: true
   freeze_backbone: true
 
