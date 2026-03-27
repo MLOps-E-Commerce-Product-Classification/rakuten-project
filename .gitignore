@@ -15,8 +15,7 @@ datasets/
 !src/data/
 
 # trained models
-models/*
-!models/*.dvc
+models/
 trained_models/
 search/
 hyperparameter_search/
