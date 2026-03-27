@@ -1,17 +1,22 @@
 from pathlib import Path
 import json
 import random
+import subprocess
 
+import mlflow
 import numpy as np
 import pandas as pd
 import torch
 import yaml
+from dotenv import load_dotenv
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 from src.data.text_dataset import RakutenTextDataset
 from src.models.text_classifier import build_text_model
 from src.training.train_text import train_model
+
+load_dotenv()
 
 
 def load_config(config_path: str | Path) -> dict:
@@ -174,6 +179,21 @@ def load_or_create_splits(
     return train_df, val_df, test_df
 
 
+def _get_git_info() -> dict:
+    """Holt Git-Commit und Branch für MLflow Traceability."""
+    try:
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True
+        ).strip()
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
+        ).strip()
+    except Exception:
+        commit = "unknown"
+        branch = "unknown"
+    return {"git_commit": commit, "git_branch": branch}
+
+
 def run_text_training(
     x_data_csv_path: str | Path,
     y_data_csv_path: str | Path,
@@ -196,6 +216,9 @@ def run_text_training(
     num_workers = int(training_config.get("num_workers", 0))
     seed = int(training_config.get("seed", 42))
     subset = int(training_config.get("subset", 0))
+    lr = float(training_config.get("learning_rate", 2e-5))
+    epochs = int(training_config.get("num_epochs", 5))
+    wd = float(training_config.get("weight_decay", 0.01))
 
     model_name = model_config.get("name", "bert-base-multilingual-cased")
     pretrained = bool(model_config.get("pretrained", True))
@@ -205,7 +228,7 @@ def run_text_training(
     designation_col = data_config.get("designation_col", "designation")
     description_col = data_config.get("description_col", "description")
     return_quality_report = bool(data_config.get("return_quality_report", False))
-    
+
     val_size = float(split_config.get("val_size", 0.1))
     test_size = float(split_config.get("test_size", 0.1))
 
@@ -233,7 +256,7 @@ def run_text_training(
 
     required_columns = {designation_col, label_col}
     validate_dataframe_columns(df, required_columns, "Merged training data")
-    
+
     code_to_idx = label_encoding["code_to_idx"]
     validate_labels_in_mapping(
         df,
@@ -254,7 +277,7 @@ def run_text_training(
 
     if subset > 0:
         train_df = train_df[:subset]
-        val_df = val_df[:int(subset*0.2)]
+        val_df = val_df[:int(subset * 0.2)]
 
     if len(train_df) == 0 or len(val_df) == 0 or len(test_df) == 0:
         raise ValueError("At least one split is empty. Please check split sizes.")
@@ -299,14 +322,59 @@ def run_text_training(
         freeze_backbone=freeze_backbone,
     )
 
-    trained_model, history = train_model(
-        model=model,
-        train_dataloader=train_dataloader,
-        val_dataloader=val_dataloader,
-        config_path=train_config_path,
-        num_classes=num_classes,
-        model_save_path=model_save_path,
-    )
+    git_info = _get_git_info()
+
+    with mlflow.start_run(run_name="text-classifier-training"):
+
+        mlflow.log_params(git_info)
+
+        mlflow.log_params({
+            "x_data_path": str(x_data_csv_path),
+            "y_data_path": str(y_data_csv_path),
+            "train_size": len(train_df),
+            "val_size": len(val_df),
+            "test_size": len(test_df),
+            "num_classes": num_classes,
+            "force_new_split": force_new_split,
+            "val_split_ratio": val_size,
+            "test_split_ratio": test_size,
+        })
+
+        mlflow.log_params({
+            "model_name": model_name,
+            "pretrained": pretrained,
+            "freeze_backbone": freeze_backbone,
+        })
+
+        mlflow.log_params({
+            "learning_rate": lr,
+            "num_epochs": epochs,
+            "weight_decay": wd,
+            "batch_size": batch_size,
+            "seed": seed,
+            "subset": subset if subset > 0 else "full",
+            "optimizer": "AdamW",
+        })
+
+        mlflow.log_param("model_output_path", str(model_save_path))
+
+        mlflow.log_artifact(str(train_config_path), artifact_path="configs")
+        mlflow.log_artifact(str(preprocessing_config_path), artifact_path="configs")
+
+        trained_model, history = train_model(
+            model=model,
+            train_dataloader=train_dataloader,
+            val_dataloader=val_dataloader,
+            config_path=train_config_path,
+            num_classes=num_classes,
+            model_save_path=model_save_path,
+        )
+
+        mlflow.log_metrics({
+            "final_best_val_macro_f1": max(history["val_macro_f1"]),
+            "final_best_val_accuracy": max(history["val_accuracy"]),
+            "final_best_val_loss": min(history["val_loss"]),
+        })
 
     history["split_sizes"] = {
         "train": int(len(train_df)),

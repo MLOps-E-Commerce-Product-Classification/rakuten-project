@@ -1,6 +1,7 @@
 from pathlib import Path
 import logging
 
+import mlflow
 import torch
 import torch.nn as nn
 import yaml
@@ -162,9 +163,11 @@ def train_model(
     model_save_path = Path(model_save_path)
     TRAIN_LOGGER.info(f"Text training started on {device}")
 
+    mlflow.log_param("device", str(device))
+
     for epoch in range(epochs):
         TRAIN_LOGGER.info(f"Starting epoch {epoch+1}/{epochs}")
-        
+
         train_m = train_one_epoch(model, train_dataloader, optimizer, device, num_classes)
         val_m = validate_one_epoch(model, val_dataloader, device, num_classes, compute_per_f1)
 
@@ -181,12 +184,25 @@ def train_model(
             f"val_f1={val_m['macro_f1']:.4f}"
         )
 
+        mlflow.log_metrics(
+            {
+                "train_loss": train_m["loss"],
+                "train_accuracy": train_m["accuracy"],
+                "train_macro_f1": train_m["macro_f1"],
+                "val_loss": val_m["loss"],
+                "val_accuracy": val_m["accuracy"],
+                "val_macro_f1": val_m["macro_f1"],
+            },
+            step=epoch,
+        )
+
         curr_score = val_m[main_metric]
         is_better = curr_score < best_score if main_metric == "loss" else curr_score > best_score
         if is_better:
             best_score = curr_score
             torch.save(model.state_dict(), model_save_path)
             TRAIN_LOGGER.info(f"Saved best model with {main_metric}={best_score:.4f}")
+            mlflow.log_metric("best_" + main_metric, best_score)
 
     TRAIN_LOGGER.info("Text training finished")
     return model, history
