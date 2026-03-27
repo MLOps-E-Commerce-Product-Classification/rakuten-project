@@ -20,10 +20,12 @@ train-text-build:
 
 .PHONY: train-text-run
 train-text-run:
-	docker compose up train-text
+	git add configs/
+	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
+	GIT_COMMIT=$(GIT_COMMIT) GIT_BRANCH=$(GIT_BRANCH) docker compose up train-text
 
-.PHONY: train-text
-train-text:
+.PHONY: train-text-rebuild
+train-text-rebuild:
 	git add configs/
 	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
 	$(MAKE) train-text-build
@@ -57,11 +59,12 @@ help:
 	@echo ""
 	@echo "Usage: make <target>"
 	@echo ""
-	@echo "  train-text-build   Build the training image"
-	@echo "  train-text-run     Run the training container"
-	@echo "  train-text         Build + Run (shortcut)"
-	@echo "  train-text-stop    Stop the training container"
-	@echo "  train-text-down    Stop + remove container"
-	@echo "  train-text-clean   Stop + remove container + image + volumes"
-	@echo "  train-text-logs    Follow training logs"
+	@echo "  train-text-build    Build the training image"
+	@echo "  train-text-run      Run the training container"
+	@echo "  train-text          Commit + Run without rebuild"
+	@echo "  train-text-rebuild  Commit + Build + Run"
+	@echo "  train-text-stop     Stop the training container"
+	@echo "  train-text-down     Stop + remove container"
+	@echo "  train-text-clean    Stop + remove container + image + volumes"
+	@echo "  train-text-logs     Follow training logs"
 	@echo ""
