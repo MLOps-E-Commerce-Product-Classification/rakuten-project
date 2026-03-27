@@ -1,6 +1,14 @@
 FROM python:3.11-slim
 
-# Git wird von DVC benötigt
+# Build-Args for Git info
+ARG GIT_COMMIT=unknown
+ARG GIT_BRANCH=unknown
+
+# Make Git info available at runtime
+ENV GIT_COMMIT=$GIT_COMMIT
+ENV GIT_BRANCH=$GIT_BRANCH
+
+# Git is required by DVC
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv

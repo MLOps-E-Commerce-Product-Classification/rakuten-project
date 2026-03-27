@@ -180,17 +180,27 @@ def load_or_create_splits(
 
 
 def _get_git_info() -> dict:
-    """Holt Git-Commit und Branch für MLflow Traceability."""
-    try:
-        commit = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True
-        ).strip()
-        branch = subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
-        ).strip()
-    except Exception:
-        commit = "unknown"
-        branch = "unknown"
+    # In Docker: read from ENV variables (passed via build-arg)
+    commit = os.environ.get("GIT_COMMIT")
+    branch = os.environ.get("GIT_BRANCH")
+
+    # Locally: read live via git command
+    if not commit or commit == "unknown":
+        try:
+            commit = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                text=True,
+                stderr=subprocess.DEVNULL
+            ).strip()
+            branch = subprocess.check_output(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                text=True,
+                stderr=subprocess.DEVNULL
+            ).strip()
+        except Exception:
+            commit = "unknown"
+            branch = "unknown"
+
     return {"git_commit": commit, "git_branch": branch}
 
 
