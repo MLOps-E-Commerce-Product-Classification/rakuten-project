@@ -30,6 +30,7 @@ logs/
 .venv/
 venv/
 env/
+.env
 *.egg-info/
 
 # system
