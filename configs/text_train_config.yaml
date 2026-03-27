@@ -7,7 +7,7 @@ training:
   seed: 42
 
 model:
-  name: huawei-noah/TinyBERT_General_4L_312D 
+  name: camembert-base
   pretrained: true
   freeze_backbone: true
 
