@@ -1,11 +1,27 @@
-.venv/
-__pycache__/
-*.pyc
-.git/
-.dvc/
-data/
-models/
-artifacts/
-results/
-logs/
-mlruns/
+# Verzeichnisse (Wichtig: Sternchen am Ende für den Inhalt)
+data/**
+models/**
+artifacts/**
+mlruns/**
+logs/**
+results/**
+
+# Virtuelle Umgebungen und Git
+.venv/**
+venv/**
+.git/**
+.dvc/**
+
+# Python Cache
+**/__pycache__/**
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Versteckte Systemdateien
+.pytest_cache/**
+.ipynb_checkpoints/**
+.DS_Store
+
+# Lokale Konfigurationen
+.env

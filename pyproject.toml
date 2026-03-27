@@ -11,7 +11,7 @@ dependencies = [
     "pandas==3.0.1",
     "numpy==2.4.3",
     "scikit-learn==1.8.0",
-    "pillow==12.1.1",
+    "pillow==10.4.0",
     "pyyaml==6.0.3",
     "tqdm>=4.66.0",
     "accelerate>=0.23.0",
@@ -33,6 +33,45 @@ dependencies = [
     "fastapi>=0.135.1",
     "httptools>=0.7.1",
 ]
+
+[project.optional-dependencies]
+# Image training + inference
+image = [
+  "torch",
+  "torchvision",
+  "pillow==10.4.0",
+  "scikit-learn>=1.5.2",
+  "tqdm==4.67.0",
+]
+
+# Text training + inference
+text = [
+  "torch",
+  "transformers>=4.35.0",
+  "accelerate>=0.23.0",
+  "scikit-learn>=1.5.2",
+  "tqdm>=4.66.0",
+]
+
+# API
+api = [
+  "torch", # TODO: remove torch (isolate api)
+  "torchvision", # TODO: remove torchvision (isolate api)
+  "transformers>=4.35.0", # TODO: remove transformers (isolate api)
+  "fastapi>=0.135.1",
+  "uvicorn>=0.42.0",
+  "pillow==10.4.0",
+]
+
+# Data versioning + experiment tracking
+data = [
+  "dvc[s3]>=3.0.0",
+  "dagshub>=0.3.0",
+]
+
+# Convenience meta-extras
+training = ["rakuten-multimodal-classifier[image,text]"]
+all = ["rakuten-multimodal-classifier[image,text,api,data]"]
 
 [dependency-groups]
 dev = [
