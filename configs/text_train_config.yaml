@@ -1,7 +1,7 @@
 training:
   learning_rate: 0.00002
   num_epochs: 8
-  batch_size: 64
+  batch_size: 32
   weight_decay: 0.01
   num_workers: 2
   seed: 42
