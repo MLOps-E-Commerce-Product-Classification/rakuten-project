@@ -3,7 +3,7 @@ training:
   num_epochs: 5
   batch_size: 32
   weight_decay: 0.01
-  num_workers: 0
+  num_workers: 4
   seed: 42
 
 model:
