@@ -1,16 +1,17 @@
-services:
-  api:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.api
-    container_name: rakuten-api
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./data:/app/data
-      - ./models:/app/models
-      - ./configs:/app/configs
-      - ./results:/app/results
-    environment:
-      - PYTHONUNBUFFERED=1
-    restart: unless-stopped
+# services:
+#   api:
+#     build:
+#       context: .
+#       dockerfile: docker/Dockerfile.api
+#     container_name: rakuten-api
+#     ports:
+#       - "8000:8000"
+#     volumes:
+#       - ./data:/app/data
+#       - ./models:/app/models
+#       - ./configs:/app/configs
+#       - ./results:/app/results
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#     restart: unless-stopped
+#
