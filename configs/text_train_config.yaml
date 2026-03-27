@@ -1,9 +1,9 @@
 training:
-  learning_rate: 0.00002
-  num_epochs: 5
+  learning_rate: 0.002
+  num_epochs: 1
   batch_size: 32
   weight_decay: 0.01
-  num_workers: 4
+  num_workers: 3
   seed: 42
 
 model:
