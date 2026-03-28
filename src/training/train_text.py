@@ -1,12 +1,12 @@
 from pathlib import Path
 import logging
 
+import mlflow
 import torch
 import torch.nn as nn
 import yaml
 from sklearn.metrics import accuracy_score, f1_score
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 
 
 LOG_PATH = Path("logs")
@@ -69,13 +69,14 @@ def train_one_epoch(
     optimizer: torch.optim.Optimizer,
     device: torch.device,
     num_classes: int | None = None,
+    log_interval: int = 50,  # alle 50 Batches loggen
 ) -> dict:
     model.train()
     running_loss, total = 0.0, 0
     all_labels, all_preds = [], []
+    num_batches = len(dataloader)
 
-    pbar = tqdm(dataloader, desc="Training Batches", leave=False)
-    for batch in pbar:
+    for i, batch in enumerate(dataloader):
         input_ids = batch["input_ids"].to(device)
         attention_mask = batch["attention_mask"].to(device)
         labels = batch["label"].to(device)
@@ -92,7 +93,9 @@ def train_one_epoch(
         all_labels.extend(labels.cpu().numpy().tolist())
         all_preds.extend(preds.cpu().numpy().tolist())
 
-        pbar.set_postfix(loss=f"{loss.item():.4f}")
+        if (i + 1) % log_interval == 0 or (i + 1) == num_batches:
+            pct = (i + 1) / num_batches * 100
+            TRAIN_LOGGER.info(f"  Batch {i+1}/{num_batches} ({pct:.1f}%) | loss={loss.item():.4f}")
 
     metrics = compute_classification_metrics(all_labels, all_preds, num_classes)
     metrics["loss"] = running_loss / total
@@ -106,13 +109,14 @@ def validate_one_epoch(
     device: torch.device,
     num_classes: int | None = None,
     compute_per_class_f1: bool = False,
+    log_interval: int = 50,
 ) -> dict:
     model.eval()
     running_loss, total = 0.0, 0
     all_labels, all_preds = [], []
+    num_batches = len(dataloader)
 
-    pbar = tqdm(dataloader, desc="Validation Batches", leave=False)
-    for batch in pbar:
+    for i, batch in enumerate(dataloader):
         input_ids = batch["input_ids"].to(device)
         attention_mask = batch["attention_mask"].to(device)
         labels = batch["label"].to(device)
@@ -123,6 +127,10 @@ def validate_one_epoch(
         preds = torch.argmax(outputs.logits, dim=1)
         all_labels.extend(labels.cpu().numpy().tolist())
         all_preds.extend(preds.cpu().numpy().tolist())
+
+        if (i + 1) % log_interval == 0 or (i + 1) == num_batches:
+            pct = (i + 1) / num_batches * 100
+            TRAIN_LOGGER.info(f"  Val Batch {i+1}/{num_batches} ({pct:.1f}%)")
 
     metrics = compute_classification_metrics(all_labels, all_preds, num_classes, compute_per_class_f1)
     metrics["loss"] = running_loss / total
@@ -144,6 +152,7 @@ def train_model(
     lr = float(training_config.get("learning_rate", 2e-5))
     epochs = int(training_config.get("num_epochs", 5))
     wd = float(training_config.get("weight_decay", 0.01))
+    patience = int(training_config.get("early_stopping_patience", 3))
     compute_per_f1 = metrics_config.get("compute_per_class_f1", False)
     main_metric = metrics_config.get("main_metric", "macro_f1")
 
@@ -159,12 +168,18 @@ def train_model(
         history["val_per_class_f1"] = []
 
     best_score = float("inf") if main_metric == "loss" else -1.0
+    epochs_no_improve = 0
     model_save_path = Path(model_save_path)
+
     TRAIN_LOGGER.info(f"Text training started on {device}")
+    TRAIN_LOGGER.info(f"Early stopping patience: {patience}")
+
+    mlflow.log_param("device", str(device))
+    mlflow.log_param("early_stopping_patience", patience)
 
     for epoch in range(epochs):
         TRAIN_LOGGER.info(f"Starting epoch {epoch+1}/{epochs}")
-        
+
         train_m = train_one_epoch(model, train_dataloader, optimizer, device, num_classes)
         val_m = validate_one_epoch(model, val_dataloader, device, num_classes, compute_per_f1)
 
@@ -181,12 +196,37 @@ def train_model(
             f"val_f1={val_m['macro_f1']:.4f}"
         )
 
+        mlflow.log_metrics(
+            {
+                "train_loss": train_m["loss"],
+                "train_accuracy": train_m["accuracy"],
+                "train_macro_f1": train_m["macro_f1"],
+                "val_loss": val_m["loss"],
+                "val_accuracy": val_m["accuracy"],
+                "val_macro_f1": val_m["macro_f1"],
+            },
+            step=epoch,
+        )
+
         curr_score = val_m[main_metric]
         is_better = curr_score < best_score if main_metric == "loss" else curr_score > best_score
+
         if is_better:
             best_score = curr_score
+            epochs_no_improve = 0
             torch.save(model.state_dict(), model_save_path)
             TRAIN_LOGGER.info(f"Saved best model with {main_metric}={best_score:.4f}")
+            mlflow.log_metric("best_" + main_metric, best_score)
+        else:
+            epochs_no_improve += 1
+            TRAIN_LOGGER.info(f"No improvement for {epochs_no_improve}/{patience} epochs")
+            if epochs_no_improve >= patience:
+                TRAIN_LOGGER.info(
+                    f"Early stopping triggered at epoch {epoch+1}. "
+                    f"Best {main_metric}={best_score:.4f}"
+                )
+                mlflow.log_param("early_stopped_at_epoch", epoch + 1)
+                break
 
     TRAIN_LOGGER.info("Text training finished")
     return model, history

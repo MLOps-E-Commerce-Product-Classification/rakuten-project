@@ -291,3 +291,132 @@ logs/text_training.log
 ## Limitations
 
 -   tbd
+
+## MLOps Rakuten — Training Infrastructure
+
+## Prerequisites
+
+#### 1. NVIDIA Driver (Host)
+CUDA runs on the **host machine**, not inside Docker. Docker only needs the NVIDIA Container Toolkit.
+
+Check if your driver is installed:
+
+nvidia-smi
+
+If not installed:
+
+## Ubuntu/Debian
+sudo apt-get install -y nvidia-driver-535
+sudo reboot
+
+#### 2. NVIDIA Container Toolkit
+Allows Docker to access the GPU on the host.
+
+## Add NVIDIA package repository
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
+  sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+## Install
+sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+
+## Restart Docker
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+
+Verify GPU is accessible inside Docker:
+
+docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
+
+### Environment Setup
+
+Create a `.env` file in the project root:
+
+DAGSHUB_USER_TOKEN=your_token_here
+MLFLOW_TRACKING_URI=https://dagshub.com/<USERNAME>/<REPO>.mlflow
+MLFLOW_TRACKING_USERNAME=your_dagshub_username
+MLFLOW_TRACKING_PASSWORD=your_dagshub_token
+
+> ⚠️ Never commit `.env` to Git. It is already listed in `.gitignore`.
+
+### Makefile Commands
+
+#### Text Model Training
+
+- `make train-text-run`: Commit configs + run training (no rebuild)
+- `make train-text-rebuild`: Commit configs + build image + run training
+- `make train-text-build`: Build Docker image only
+- `make train-text-stop`: Stop the running container
+- `make train-text-down`: Stop + remove the container
+- `make train-text-clean`: Stop + remove container + image + volumes
+- `make train-text-logs`: Follow live training logs
+
+#### When to use which command?
+
+- **Config changed** (e.g. learning rate, batch size):
+
+  make train-text-run
+
+  → No rebuild needed. Config is mounted as a volume.
+
+- **Code changed** (e.g. `src/pipeline/text_pipeline.py`):
+
+  make train-text-rebuild
+
+  → Rebuilds the Docker image with the latest code.
+
+> `make train-text-run` automatically commits changes in `configs/` before starting
+> the container, ensuring the Git commit logged in MLflow matches the actual config used.
+
+## DVC — Data & Model Versioning
+
+Data and models are **not stored in Git**. They are tracked via DVC and stored in DagsHub Storage.
+
+#### Pull data and models
+
+uv run dvc pull
+
+#### After training: version a new model
+
+## 1. Register the new model with DVC
+uv run dvc add models/best_text_model.pt
+
+## 2. Push model to DagsHub Storage
+uv run dvc push
+
+## 3. Commit the DVC pointer + config to Git
+git add best_text_model.pt.dvc configs/
+git commit -m "feat: text classifier v2 - macro-f1=0.88"
+git push
+
+### MLflow — Experiment Tracking
+
+Experiments are tracked automatically during training and pushed to DagsHub.
+
+View experiments at:
+
+https://dagshub.com/<USERNAME>/<REPO>/experiments
+
+Each run logs:
+- Parameters (learning rate, batch size, epochs, …)
+- Metrics (accuracy, macro-f1, loss, …)
+- Git commit hash + branch
+- Config file as artifact
+
+### Reproducibility
+
+Every training run is fully reproducible via three anchors:
+
+- **Code**: Git commit hash (logged in MLflow)
+- **Config**: `configs/` committed before each run + logged as MLflow artifact
+- **Data & Model**: DVC pointer files (`data.dvc`, `best_text_model.pt.dvc`)
+
+To reproduce a specific run:
+
+git checkout <commit-hash>
+uv run dvc pull
+make train-text-run
+
