@@ -54,6 +54,30 @@ train-text-clean:
 	docker image rm train-text 2>/dev/null || true
 
 # ============================================================
+# Inference
+# ============================================================
+
+# Standard text for fast testing
+TEXT ?= "Jeu vidéo action PS4"
+
+.PHONY: inference-build
+inference-build:
+	docker compose build inference
+
+.PHONY: inference-run
+inference-run:
+	docker compose run --rm inference --text $(TEXT)
+
+.PHONY: inference-batch
+inference-batch:
+	docker compose run --rm inference --texts "T-shirt" "Console" "Livre"
+
+.PHONY: inference-rebuild
+inference-rebuild:
+	$(MAKE) inference-build
+	$(MAKE) inference-run
+
+# ============================================================
 # Logs
 # ============================================================
 
