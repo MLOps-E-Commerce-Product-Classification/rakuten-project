@@ -77,6 +77,10 @@ inference-rebuild:
 	$(MAKE) inference-build
 	$(MAKE) inference-run
 
+.PHONY: inference-clean
+inference-clean:
+	docker image rm mlops-rakuten-inference 2>/dev/null || true
+
 # ============================================================
 # Logs
 # ============================================================
@@ -101,4 +105,10 @@ help:
 	@echo "  train-text-down     Stop + remove container"
 	@echo "  train-text-clean    Remove container + image (safe)"
 	@echo "  train-text-logs     Follow logs"
+	@echo ""
+	@echo "  inference-build     Build the inference image"
+	@echo "  inference-run       Run inference (TEXT='...' optional)"
+	@echo "  inference-batch     Run inference for multiple texts"
+	@echo "  inference-rebuild   Build + run inference"
+	@echo "  inference-clean     Remove inference image"
 	@echo ""
