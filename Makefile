@@ -2,32 +2,41 @@
 # Variables
 # ============================================================
 
+DEVICE ?= cpu  # override via: make train-text-build DEVICE=cu121
+
 GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 
 export GIT_COMMIT
 export GIT_BRANCH
+export DEVICE
 
 # ============================================================
 # Text Training
 # ============================================================
+
 .PHONY: train-text-build
 train-text-build:
 	docker compose build \
-		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
-		--build-arg GIT_BRANCH=$(GIT_BRANCH) \
+		--build-arg DEVICE=$(DEVICE) \
+		--build-arg GIT_COMMIT=$$(git rev-parse HEAD) \
+		--build-arg GIT_BRANCH=$$(git rev-parse --abbrev-ref HEAD) \
 		train-text
 
 .PHONY: train-text-run
 train-text-run:
-	git add configs/
-	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
-	GIT_COMMIT=$(GIT_COMMIT) GIT_BRANCH=$(GIT_BRANCH) docker compose up train-text
+	# Commit config changes only if there are any
+	git diff --quiet configs/ || \
+	(git add configs/ && git commit -m "exp: config update - $(shell date '+%Y-%m-%d %H:%M')")
+
+	# Re-evaluate commit AFTER potential commit
+	GIT_COMMIT=$$(git rev-parse HEAD) \
+	GIT_BRANCH=$$(git rev-parse --abbrev-ref HEAD) \
+	DEVICE=$(DEVICE) \
+	docker compose run --rm train-text
 
 .PHONY: train-text-rebuild
 train-text-rebuild:
-	git add configs/
-	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
 	$(MAKE) train-text-build
 	$(MAKE) train-text-run
 
@@ -37,16 +46,17 @@ train-text-stop:
 
 .PHONY: train-text-down
 train-text-down:
-	docker compose down --remove-orphans train-text
+	docker compose down --remove-orphans
 
 .PHONY: train-text-clean
 train-text-clean:
-	docker compose down --rmi local --volumes --remove-orphans
+	docker compose down --remove-orphans
 	docker image rm train-text 2>/dev/null || true
 
 # ============================================================
 # Logs
 # ============================================================
+
 .PHONY: train-text-logs
 train-text-logs:
 	docker compose logs -f train-text
@@ -54,17 +64,17 @@ train-text-logs:
 # ============================================================
 # Help
 # ============================================================
+
 .PHONY: help
 help:
 	@echo ""
 	@echo "Usage: make <target>"
 	@echo ""
 	@echo "  train-text-build    Build the training image"
-	@echo "  train-text-run      Run the training container"
-	@echo "  train-text          Commit + Run without rebuild"
-	@echo "  train-text-rebuild  Commit + Build + Run"
-	@echo "  train-text-stop     Stop the training container"
+	@echo "  train-text-run      Commit (if needed) + run training (ephemeral)"
+	@echo "  train-text-rebuild  Build + run training"
+	@echo "  train-text-stop     Stop the container"
 	@echo "  train-text-down     Stop + remove container"
-	@echo "  train-text-clean    Stop + remove container + image + volumes"
-	@echo "  train-text-logs     Follow training logs"
+	@echo "  train-text-clean    Remove container + image (safe)"
+	@echo "  train-text-logs     Follow logs"
 	@echo ""

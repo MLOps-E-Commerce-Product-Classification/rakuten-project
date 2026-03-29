@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.train-text
       args:
+        DEVICE: ${DEVICE:-cpu}
         GIT_COMMIT: ${GIT_COMMIT:-unknown}
         GIT_BRANCH: ${GIT_BRANCH:-unknown}
     env_file:
