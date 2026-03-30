@@ -9,7 +9,8 @@ anyio==4.12.1
 appnope==0.1.4 ; sys_platform == 'darwin'
     # via ipykernel
 asttokens==3.0.1
-    # via stack-data
+    # via stack-dat
+bentoml==1.4.26a
 certifi==2026.2.25
     # via
     #   httpcore
@@ -307,3 +308,5 @@ tzdata==2025.3
     #   rakuten-multimodal-classifier
 wcwidth==0.6.0
     # via prompt-toolkit
+
+PyJWT==2.10.1

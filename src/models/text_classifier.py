@@ -1,7 +1,8 @@
 from __future__ import annotations
+from pathlib import Path
 
 import torch.nn as nn
-from transformers import AutoModelForSequenceClassification
+from transformers import AutoConfig, AutoModelForSequenceClassification
 
 
 SUPPORTED_MODELS = {
@@ -31,11 +32,13 @@ def build_text_model(
             model_name,
             num_labels=num_classes,
             ignore_mismatched_sizes=True,
+            local_files_only=Path(model_name).exists(),
         )
     else:
         from transformers import AutoConfig
         config = AutoConfig.from_pretrained(model_name, num_labels=num_classes)
         model = AutoModelForSequenceClassification.from_config(config)
+        model.config.local_files_only = Path(model_name).exists()
 
     if freeze_backbone:
         for name, param in model.named_parameters():

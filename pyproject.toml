@@ -12,7 +12,9 @@ dependencies = [
   "pyyaml==6.0.3",
   "python-dateutil==2.9.0.post0",
   "typing-extensions>=4.10.0",
-  "tzdata>=2025.0",
+  "tzdata>=2025.0"
+  "bentoml>=1.4.0,<2.0.0",
+  "PyJWT>=2.10.1",,
 ]
 
 [project.optional-dependencies]
@@ -38,15 +40,12 @@ text = [
   "accelerate>=0.23.0",
 ]
 
-# API (kept lean – torch/transformers only while TODO is still open)
+# API / serving
 api = [
-  "fastapi>=0.135.1",
-  "uvicorn[standard]>=0.42.0",
-  "pillow==10.4.0",
-  # TODO: remove once inference is fully isolated from the API:
   "torch",
-  "torchvision",
   "transformers>=4.35.0",
+  "bentoml>=1.4.0,<2.0.0",
+  "pillow==10.4.0",
 ]
 
 # Data versioning + experiment tracking (was lost in V2 during the merge)
