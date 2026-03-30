@@ -11,13 +11,15 @@ __pycache__/
 *.pyo
 
 # data
-datasets/
-!src/data/
+data/raw/*
+!data/raw/.gitignore
+
+data/processed/*
+!data/processed/.gitignore
 
 # trained models
-models/
-trained_models/
-search/
+models/*
+!models/.gitignore
 hyperparameter_search/
 
 # results
@@ -35,4 +37,3 @@ env/
 
 # system
 .DS_Store
-/data

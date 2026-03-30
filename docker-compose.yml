@@ -1,5 +1,6 @@
 services:
   train-text:
+    image: my-project/train-text:${DEVICE:-cpu}
     build:
       context: .
       dockerfile: docker/Dockerfile.train-text

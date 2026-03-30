@@ -54,6 +54,56 @@ train-text-clean:
 	docker image rm train-text 2>/dev/null || true
 
 # ============================================================
+# DVC
+# ============================================================
+
+.PHONY: dvc-init
+dvc-init:
+	uv run dvc init
+	git add .dvc .dvcignore
+	git commit -m "chore: initialize DVC"
+
+.PHONY: dvc-add-data
+dvc-add-data:
+	uv run dvc add data/raw/
+	git add data/raw/*.dvc data/raw/.gitignore
+	git commit -m "chore: track raw data with DVC"
+
+.PHONY: dvc-repro
+dvc-repro:
+	# Commit config changes only if there are any (wie in train-text-run)
+	git diff --quiet configs/ || \
+	(git add configs/ && git commit -m "exp: config update - $(shell date '+%Y-%m-%d %H:%M')")
+
+	# DVC prüft ob sich deps geändert haben und führt ggf. docker compose run aus
+	GIT_COMMIT=$$(git rev-parse HEAD) \
+	GIT_BRANCH=$$(git rev-parse --abbrev-ref HEAD) \
+	DEVICE=$(DEVICE) \
+	uv run dvc repro train-text
+
+	# Ergebnisse committen
+	git add dvc.lock
+	git commit -m "exp: $(GIT_BRANCH) - $$(date '+%Y-%m-%d %H:%M') [$(DEVICE)]" || true
+
+.PHONY: dvc-push
+dvc-push:
+	uv run dvc push
+	git push
+
+.PHONY: dvc-pull
+dvc-pull:
+	git pull
+	uv run dvc pull
+
+.PHONY: dvc-metrics
+dvc-metrics:
+	dvc metrics show
+	dvc metrics diff HEAD~1
+
+.PHONY: dvc-run
+dvc-run: dvc-repro dvc-push
+
+# ============================================================
 # Inference
 # ============================================================
 
