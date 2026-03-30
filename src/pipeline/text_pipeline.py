@@ -154,6 +154,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=5,
         help="Top-k predictions for inference.",
     )
+    parser.add_argument(
+        "--mlflow_run_id",
+        type=str,
+        default=None,
+        help="If provided, log evaluation results to this existing MLflow run ID.",
+    )
 
     # ----------------------------------------------------
     # Misc
@@ -201,6 +207,7 @@ def run_evaluate_mode(args: argparse.Namespace) -> None:
         model_weights_path=args.model_weights_path,
         label_encoding_path=args.label_encoding_path,
         results_output_path=args.results_output_path,
+        mlflow_run_id=args.mlflow_run_id,  # ← NEU
     )
 
     print("Evaluation finished.")
