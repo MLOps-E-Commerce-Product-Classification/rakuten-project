@@ -7,7 +7,7 @@ from typing import Any
 import bentoml
 import jwt
 import torch
-from bentoml.exceptions import NotFound
+from bentoml.exceptions import InvalidArgument, NotFound
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
@@ -16,6 +16,7 @@ from src.serving.schemas import (
     BatchTextPredictionRequest,
     Credentials,
     HealthResponse,
+    LoginResponse,
     TextPredictionRequest,
     TextPredictionResponse,
 )
@@ -24,7 +25,7 @@ from src.serving.schemas import (
 BASE_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_MODEL_TAG = "rakuten_text_classifier:latest"
 DEFAULT_PREPROCESSING_CONFIG_PATH = BASE_DIR / "configs/text_preprocessing_config.yaml"
-JWT_SECRET_KEY = "your_jwt_secret_key_here"
+JWT_SECRET_KEY = "rakuten_text_service_secret_key_2026"
 JWT_ALGORITHM = "HS256"
 USERS = {
     "user123": "password123",
@@ -124,11 +125,12 @@ class TextBentoService:
         )
 
     @bentoml.api(route="/login")
-    def login(self, credentials: Credentials) -> dict[str, str] | JSONResponse:
-        if USERS.get(credentials.username) == credentials.password:
-            token = create_jwt_token(credentials.username)
+    def login(self, credentials: Credentials) -> LoginResponse:
+        if USERS.get(credentials.username) != credentials.password:
+            raise InvalidArgument("Invalid credentials")
             return {"token": token}
-        return JSONResponse(status_code=401, content={"detail": "Invalid credentials"})
+        token = create_jwt_token(credentials.username)
+        return LoginResponse(token=token)
 
     @bentoml.api(route="/predict")
     def predict(self, input_data: TextPredictionRequest) -> TextPredictionResponse:

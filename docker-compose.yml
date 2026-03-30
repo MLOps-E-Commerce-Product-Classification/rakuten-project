@@ -27,3 +27,5 @@ services:
     image: rakuten_text_service:latest
     ports:
       - "3000:3000"
+    environment:
+      TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD: "1"

@@ -70,7 +70,7 @@ check-bento-text-model:
 
 .PHONY: serve-bento-text
 serve-bento-text: check-bento-text-model
-	uv run bentoml serve $(BENTO_SERVICE) --port $(PORT)
+	TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 uv run bentoml serve $(BENTO_SERVICE) --port $(PORT)
 
 .PHONY: token-bento-text
 token-bento-text:

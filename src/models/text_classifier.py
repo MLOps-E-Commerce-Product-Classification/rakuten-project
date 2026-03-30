@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from pathlib import Path
 
 import torch.nn as nn
@@ -12,6 +13,16 @@ SUPPORTED_MODELS = {
 }
 
 
+def _validate_model_name(model_name: str) -> None:
+    if model_name in SUPPORTED_MODELS:
+        return
+    if Path(model_name).exists():
+        return
+    raise ValueError(
+        f"Unsupported model '{model_name}'. Supported: {SUPPORTED_MODELS} or a local Hugging Face model directory"
+    )
+
+
 def build_text_model(
     model_name: str,
     num_classes: int,
@@ -21,11 +32,7 @@ def build_text_model(
     """
     Build a text classification model with a classification head.
     """
-    if model_name not in SUPPORTED_MODELS:
-        raise ValueError(
-            f"Unsupported model '{model_name}'. "
-            f"Supported: {SUPPORTED_MODELS}"
-        )
+    _validate_model_name(model_name)
 
     if pretrained:
         model = AutoModelForSequenceClassification.from_pretrained(
@@ -35,10 +42,12 @@ def build_text_model(
             local_files_only=Path(model_name).exists(),
         )
     else:
-        from transformers import AutoConfig
-        config = AutoConfig.from_pretrained(model_name, num_labels=num_classes)
+        config = AutoConfig.from_pretrained(
+            model_name,
+            num_labels=num_classes,
+            local_files_only=Path(model_name).exists(),
+        )
         model = AutoModelForSequenceClassification.from_config(config)
-        model.config.local_files_only = Path(model_name).exists()
 
     if freeze_backbone:
         for name, param in model.named_parameters():

@@ -226,7 +226,10 @@ def build_tokenizer(
         if local_model_dir is not None:
             local_model_dir = Path(local_model_dir)
             if local_model_dir.exists():
-                return AutoTokenizer.from_pretrained(str(local_model_dir), local_files_only=True)
+                return AutoTokenizer.from_pretrained(
+                    str(local_model_dir),
+                    local_files_only=True,
+                )
         return AutoTokenizer.from_pretrained(tokenizer_model)
     except Exception:
         PREPROCESSING_LOGGER.exception(

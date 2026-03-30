@@ -8,6 +8,10 @@ class Credentials(BaseModel):
     password: str
 
 
+class LoginResponse(BaseModel):
+    token: str
+
+
 class HealthResponse(BaseModel):
     status: str
     model_ready: bool
