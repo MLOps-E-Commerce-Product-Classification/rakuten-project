@@ -59,13 +59,13 @@ train-text-clean:
 
 .PHONY: dvc-init
 dvc-init:
-	dvc init
+	uv run dvc init
 	git add .dvc .dvcignore
 	git commit -m "chore: initialize DVC"
 
 .PHONY: dvc-add-data
 dvc-add-data:
-	dvc add data/raw/X_train_update.csv data/raw/Y_train_CVw08PX.csv
+	uv run dvc add data/raw/
 	git add data/raw/*.dvc data/raw/.gitignore
 	git commit -m "chore: track raw data with DVC"
 
@@ -79,7 +79,7 @@ dvc-repro:
 	GIT_COMMIT=$$(git rev-parse HEAD) \
 	GIT_BRANCH=$$(git rev-parse --abbrev-ref HEAD) \
 	DEVICE=$(DEVICE) \
-	dvc repro train-text
+	uv run dvc repro train-text
 
 	# Ergebnisse committen
 	git add dvc.lock
@@ -87,13 +87,13 @@ dvc-repro:
 
 .PHONY: dvc-push
 dvc-push:
-	dvc push
+	uv run dvc push
 	git push
 
 .PHONY: dvc-pull
 dvc-pull:
 	git pull
-	dvc pull
+	uv run dvc pull
 
 .PHONY: dvc-metrics
 dvc-metrics:
