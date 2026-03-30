@@ -1,0 +1,21 @@
+service: "src.serving.bento_service:TextBentoService"
+description: "JWT-protected BentoML text service for Rakuten category prediction"
+labels:
+  owner: "MLOps-E-Commerce-Product-Classification"
+  project: "rakuten-text-serving"
+include:
+  - "src/"
+  - "configs/text_preprocessing_config.yaml"
+models:
+  - "rakuten_text_classifier:latest"
+python:
+  packages:
+    - "bentoml>=1.4.0,<2.0.0"
+    - "torch"
+    - "transformers>=4.35.0"
+    - "accelerate>=0.23.0"
+    - "pydantic>=2.11.0"
+    - "pyyaml>=6.0.0"
+    - "numpy>=2.0.0"
+    - "huggingface_hub>=0.23.0"
+    - "PyJWT>=2.10.1"
