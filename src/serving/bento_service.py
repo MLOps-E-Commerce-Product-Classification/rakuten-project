@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -7,7 +8,7 @@ from typing import Any
 import bentoml
 import jwt
 import torch
-from bentoml.exceptions import InvalidArgument, NotFound
+from bentoml.exceptions import NotFound
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
@@ -16,11 +17,9 @@ from src.serving.schemas import (
     BatchTextPredictionRequest,
     Credentials,
     HealthResponse,
-    LoginResponse,
     TextPredictionRequest,
     TextPredictionResponse,
 )
-
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_MODEL_TAG = "rakuten_text_classifier:latest"
@@ -53,11 +52,49 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-
 def create_jwt_token(user_id: str, expires_in_hours: int = 1) -> str:
     expiration = datetime.now(timezone.utc) + timedelta(hours=expires_in_hours)
     payload = {"sub": user_id, "exp": expiration}
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def _check_model_ready() -> bool:
+    if not DEFAULT_PREPROCESSING_CONFIG_PATH.exists():
+        return False
+    try:
+        bentoml.models.get(DEFAULT_MODEL_TAG)
+    except NotFound:
+        return False
+    return True
+
+
+def _load_registered_pytorch_model(model_ref: bentoml.Model, device: torch.device):
+    previous_env = os.environ.get("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD")
+    os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
+
+    try:
+        bert_cls = None
+        try:
+            from transformers.models.bert.modeling_bert import BertForSequenceClassification
+
+            bert_cls = BertForSequenceClassification
+        except (ImportError, AttributeError, ModuleNotFoundError):
+            bert_cls = None
+
+        if bert_cls is not None and hasattr(torch.serialization, "safe_globals"):
+            with torch.serialization.safe_globals([bert_cls]):
+                model = bentoml.pytorch.load_model(model_ref)
+        else:
+            model = bentoml.pytorch.load_model(model_ref)
+    finally:
+        if previous_env is None:
+            os.environ.pop("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", None)
+        else:
+            os.environ["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = previous_env
+
+    model = model.to(device)
+    model.eval()
+    return model
 
 
 @bentoml.service(name="rakuten_text_model_service")
@@ -72,23 +109,15 @@ class TextModelService:
             return
 
         self.model_ref = bentoml.models.get(DEFAULT_MODEL_TAG)
-        self.model = bentoml.pytorch.load_model(self.model_ref, device_id=str(self.device))
-        self.model = self.model.to(self.device)
-        self.model.eval()
+        self.model = _load_registered_pytorch_model(self.model_ref, self.device)
 
-        custom_objects = self.model_ref.custom_objects
+        custom_objects = dict(self.model_ref.custom_objects or {})
         self.tokenizer = custom_objects["tokenizer"]
         self.idx_to_label = custom_objects["idx_to_label"]
         self._loaded = True
 
     def is_ready(self) -> bool:
-        if not self.preprocessing_config_path.exists():
-            return False
-        try:
-            bentoml.models.get(DEFAULT_MODEL_TAG)
-        except NotFound:
-            return False
-        return True
+        return _check_model_ready()
 
     @bentoml.api
     def predict_text(self, input_data: TextPredictionRequest) -> dict[str, Any]:
@@ -117,7 +146,8 @@ class TextBentoService:
 
     @bentoml.api(route="/health")
     def health(self) -> HealthResponse:
-        ready = self.model_service.is_ready()
+        ready_value = self.model_service.is_ready()
+        ready = ready_value if isinstance(ready_value, bool) else _check_model_ready()
         return HealthResponse(
             status="ok" if ready else "degraded",
             model_ready=ready,
@@ -125,12 +155,11 @@ class TextBentoService:
         )
 
     @bentoml.api(route="/login")
-    def login(self, credentials: Credentials) -> LoginResponse:
-        if USERS.get(credentials.username) != credentials.password:
-            raise InvalidArgument("Invalid credentials")
+    def login(self, credentials: Credentials) -> dict[str, str]:
+        if USERS.get(credentials.username) == credentials.password:
+            token = create_jwt_token(credentials.username)
             return {"token": token}
-        token = create_jwt_token(credentials.username)
-        return LoginResponse(token=token)
+        return JSONResponse(status_code=401, content={"detail": "Invalid credentials"})
 
     @bentoml.api(route="/predict")
     def predict(self, input_data: TextPredictionRequest) -> TextPredictionResponse:
