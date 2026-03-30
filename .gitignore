@@ -17,6 +17,9 @@ data/raw/*
 data/processed/*
 !data/processed/.gitignore
 
+artifacts/*
+!artifacts/.gitignore
+
 # trained models
 models/*
 !models/.gitignore

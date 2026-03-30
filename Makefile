@@ -103,6 +103,44 @@ dvc-metrics:
 .PHONY: dvc-run
 dvc-run: dvc-repro dvc-push
 
+
+# ============================================================
+# Evaluation
+# ============================================================
+#
+# Check if a variable is defined; otherwise, exit with an error
+# Usage: $(call check_defined, VARNAME)
+check_defined = \
+    $(strip $(foreach 1,$1, \
+        $(if $(value $1),, $(error Variable $(1) is required. Example: make evaluate-run $(1)=your_run_id))))
+
+X_DATA    ?= data/processed/val.csv
+Y_DATA    ?= data/processed/val.csv
+WEIGHTS   ?= models/best_text_model.pt
+ENCODING  ?= configs/label_encoding.json
+
+.PHONY: evaluate-build
+evaluate-build:
+	docker compose build \
+		--build-arg DEVICE=$(DEVICE) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg GIT_BRANCH=$(GIT_BRANCH) \
+		evaluate-text
+
+.PHONY: evaluate-run
+evaluate-run:
+	$(call check_defined, MLFLOW_ID)
+	# Inject environment variables for docker-compose interpolation
+	DEVICE=$(DEVICE) \
+	GIT_COMMIT=$(GIT_COMMIT) \
+	GIT_BRANCH=$(GIT_BRANCH) \
+	docker compose run --rm evaluate-text \
+		--mlflow_run_id $(MLFLOW_ID) \
+		--x_data_csv_path $(X_DATA) \
+		--y_data_csv_path $(Y_DATA) \
+		--model_weights_path $(WEIGHTS) \
+		--label_encoding_path $(ENCODING)
+
 # ============================================================
 # Inference
 # ============================================================
