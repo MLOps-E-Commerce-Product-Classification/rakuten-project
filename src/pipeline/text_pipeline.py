@@ -1,10 +1,5 @@
 import argparse
 
-from src.training.run_text_training import run_text_training
-from src.evaluation.run_text_evaluation import run_text_evaluation
-from src.inference.run_text_inference import run_text_inference
-from src.training.text_random_search_hyperparameters import run_random_search
-
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -159,6 +154,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=5,
         help="Top-k predictions for inference.",
     )
+    parser.add_argument(
+        "--mlflow_run_id",
+        type=str,
+        default=None,
+        help="If provided, log evaluation results to this existing MLflow run ID.",
+    )
 
     # ----------------------------------------------------
     # Misc
@@ -174,6 +175,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run_train_mode(args: argparse.Namespace) -> None:
+    from src.training.run_text_training import run_text_training
     trained_model, history, label_encoding = run_text_training(
         x_data_csv_path=args.x_data_csv_path,
         y_data_csv_path=args.y_data_csv_path,
@@ -194,6 +196,7 @@ def run_train_mode(args: argparse.Namespace) -> None:
 
 
 def run_evaluate_mode(args: argparse.Namespace) -> None:
+    from src.evaluation.run_text_evaluation import run_text_evaluation
     results = run_text_evaluation(
         x_data_csv_path=args.x_data_csv_path,
         y_data_csv_path=args.y_data_csv_path,
@@ -204,6 +207,7 @@ def run_evaluate_mode(args: argparse.Namespace) -> None:
         model_weights_path=args.model_weights_path,
         label_encoding_path=args.label_encoding_path,
         results_output_path=args.results_output_path,
+        mlflow_run_id=args.mlflow_run_id,  # ← NEU
     )
 
     print("Evaluation finished.")
@@ -215,6 +219,7 @@ def run_evaluate_mode(args: argparse.Namespace) -> None:
 
 
 def run_inference_mode(args: argparse.Namespace) -> None:
+    from src.inference.run_text_inference import run_text_inference
     if args.text is None and not args.texts:
         raise ValueError(
             "For inference mode, provide either --text or --texts."
@@ -240,6 +245,7 @@ def run_inference_mode(args: argparse.Namespace) -> None:
 
 
 def run_random_search_mode(args: argparse.Namespace) -> None:
+    from src.training.text_random_search_hyperparameters import run_random_search
     summary = run_random_search(
         x_data_csv_path=args.x_data_csv_path,
         y_data_csv_path=args.y_data_csv_path,

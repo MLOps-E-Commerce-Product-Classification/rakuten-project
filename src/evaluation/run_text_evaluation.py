@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import argparse
+import os
 from pathlib import Path
 import json
 
+import matplotlib
+matplotlib.use("Agg")  # non-interactive backend for Docker
+import matplotlib.pyplot as plt
+import mlflow
+import numpy as np
 import pandas as pd
 import torch
 import yaml
@@ -24,6 +31,21 @@ def load_config(config_path: str | Path) -> dict:
 
 
 def load_label_mapping(mapping_path: str | Path) -> dict[str, int]:
+    mapping_path = Path(mapping_path)
+
+    if not mapping_path.exists():
+        raise FileNotFoundError(f"Label mapping file not found: {mapping_path}")
+
+    with mapping_path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Support both flat dict and nested format with code_to_idx
+    if "code_to_idx" in data:
+        return data["code_to_idx"]
+    return data
+
+
+def load_full_label_encoding(mapping_path: str | Path) -> dict:
     mapping_path = Path(mapping_path)
 
     if not mapping_path.exists():
@@ -68,6 +90,128 @@ def apply_label_mapping(
     return df
 
 
+def generate_evaluation_plots(results: dict, output_dir: Path) -> None:
+    """
+    Generate and save evaluation plots (confusion matrix, per-class F1, classification report)
+    from the results dict into output_dir.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    cm = results.get("confusion_matrix")
+    per_class_f1 = results.get("per_class_f1", {})
+
+    # --- 1. Confusion Matrix (row-normalized) ---
+    if cm:
+        cm_array = np.array(cm)
+        cm_norm = cm_array.astype(float) / cm_array.sum(axis=1, keepdims=True).clip(min=1)
+        n = cm_norm.shape[0]
+        fig, ax = plt.subplots(figsize=(max(10, n * 0.5), max(8, n * 0.45)))
+        im = ax.imshow(cm_norm, interpolation="nearest", cmap="Blues", vmin=0, vmax=1)
+        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        ax.set_title("Confusion Matrix (row-normalized)", fontsize=14, pad=12)
+        ax.set_xlabel("Predicted Label", fontsize=11)
+        ax.set_ylabel("True Label", fontsize=11)
+        ticks = list(range(n))
+        ax.set_xticks(ticks)
+        ax.set_yticks(ticks)
+        ax.set_xticklabels(ticks, rotation=90, fontsize=7)
+        ax.set_yticklabels(ticks, fontsize=7)
+        plt.tight_layout()
+        fig.savefig(output_dir / "confusion_matrix.png", dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"[Plots] Saved confusion_matrix.png")
+
+    # --- 2. Per-Class F1 Bar Chart ---
+    if per_class_f1:
+        classes = list(per_class_f1.keys())
+        scores = list(per_class_f1.values())
+        fig, ax = plt.subplots(figsize=(max(10, len(classes) * 0.5), 5))
+        colors = ["#d9534f" if s < 0.6 else "#f0ad4e" if s < 0.8 else "#5cb85c" for s in scores]
+        ax.bar(classes, scores, color=colors, edgecolor="white", linewidth=0.5)
+        ax.axhline(y=float(np.mean(scores)), color="steelblue", linestyle="--", linewidth=1.5,
+                   label=f"Mean F1: {np.mean(scores):.3f}")
+        ax.set_ylim(0, 1.05)
+        ax.set_title("Per-Class F1 Score", fontsize=14)
+        ax.set_xlabel("Class", fontsize=11)
+        ax.set_ylabel("F1 Score", fontsize=11)
+        ax.set_xticks(range(len(classes)))
+        ax.set_xticklabels(classes, rotation=90, fontsize=8)
+        ax.legend(fontsize=10)
+        plt.tight_layout()
+        fig.savefig(output_dir / "per_class_f1.png", dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"[Plots] Saved per_class_f1.png")
+
+    # --- 3. Classification Report Table ---
+    if per_class_f1:
+        macro_f1 = results.get("macro_f1", float(np.mean(list(per_class_f1.values()))))
+        accuracy = results.get("accuracy", None)
+        rows = [[cls, f"{score:.4f}"] for cls, score in per_class_f1.items()]
+        rows.append(["— macro avg —", f"{macro_f1:.4f}"])
+        if accuracy is not None:
+            rows.append(["— accuracy —", f"{accuracy:.4f}"])
+        col_labels = ["Class", "F1 Score"]
+        fig, ax = plt.subplots(figsize=(4, max(4, len(rows) * 0.28 + 1)))
+        ax.axis("off")
+        table = ax.table(
+            cellText=rows,
+            colLabels=col_labels,
+            cellLoc="center",
+            loc="center",
+        )
+        table.auto_set_font_size(False)
+        table.set_fontsize(8)
+        table.scale(1.2, 1.1)
+        ax.set_title("Classification Report", fontsize=13, pad=10)
+        plt.tight_layout()
+        fig.savefig(output_dir / "classification_report.png", dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"[Plots] Saved classification_report.png")
+
+
+def log_evaluation_to_mlflow(
+    results: dict,
+    results_output_path: Path,
+    mlflow_run_id: str,
+) -> None:
+    """
+    Log evaluation metrics and result plots to an existing MLflow run.
+    Metrics are logged as scalars; plots are uploaded as artifacts.
+    """
+    plots_dir = results_output_path.parent
+
+    with mlflow.start_run(run_id=mlflow_run_id):
+        # --- Scalar metrics ---
+        metrics = results.get("metrics", {})
+        scalar_keys = ["macro_f1", "weighted_f1", "accuracy", "loss"]
+        for key in scalar_keys:
+            if key in metrics:
+                mlflow.log_metric(f"eval_{key}", float(metrics[key]))
+
+        # Per-class F1 scores
+        per_class_f1 = metrics.get("per_class_f1", {})
+        for cls, score in per_class_f1.items():
+            mlflow.log_metric(f"eval_f1_class_{cls}", float(score))
+
+        # --- Plot artifacts ---
+        plot_files = [
+            "confusion_matrix.png",
+            "per_class_f1.png",
+            "classification_report.png",
+        ]
+        for plot_file in plot_files:
+            plot_path = plots_dir / plot_file
+            if plot_path.exists():
+                mlflow.log_artifact(str(plot_path), artifact_path="evaluation_plots")
+            else:
+                print(f"[MLflow] Plot not found, skipping: {plot_path}")
+
+        # --- Full results JSON ---
+        if results_output_path.exists():
+            mlflow.log_artifact(str(results_output_path), artifact_path="evaluation_plots")
+
+    print(f"[MLflow] Evaluation results logged to run: {mlflow_run_id}")
+
+
 def run_text_evaluation(
     x_data_csv_path: str | Path,
     y_data_csv_path: str | Path,
@@ -78,18 +222,20 @@ def run_text_evaluation(
     model_weights_path: str | Path = "models/best_text_model.pt",
     label_encoding_path: str | Path = "artifacts/label_mapping.json",
     results_output_path: str | Path = "results/text_evaluation_results.json",
+    mlflow_run_id: str | None = None,
 ) -> dict:
     """
     Run end-to-end text evaluation using separate X and Y data paths.
+    If mlflow_run_id is provided, metrics and plots are logged to that MLflow run.
     """
-    # 1. Pfade vorbereiten
+    # 1. Prepare paths
     x_data_csv_path = Path(x_data_csv_path)
     y_data_csv_path = Path(y_data_csv_path)
     model_weights_path = Path(model_weights_path)
     label_encoding_path = Path(label_encoding_path)
     results_output_path = Path(results_output_path)
 
-    # 2. Validierung
+    # 2. Validate inputs
     if not x_data_csv_path.exists():
         raise FileNotFoundError(f"X data CSV not found: {x_data_csv_path}")
     if not y_data_csv_path.exists():
@@ -97,50 +243,71 @@ def run_text_evaluation(
     if not model_weights_path.exists():
         raise FileNotFoundError(f"Model weights not found: {model_weights_path}")
 
-    # 3. Configs und Mapping laden
+    # 3. Load configs and label mapping
     train_config = load_config(train_config_path)
     eval_config = load_config(eval_config_path)
-    label_mapping = load_label_mapping(label_encoding_path) # Nutzt jetzt label_encoding_path
+    label_mapping = load_label_mapping(label_encoding_path)       # code_to_idx only → for num_classes, apply_label_mapping
+    label_encoding = load_full_label_encoding(label_encoding_path)  # full dict → for RakutenTextDataset
 
     training_config = train_config.get("training", {})
     model_config = train_config.get("model", {})
     data_config = train_config.get("data", {})
     metrics_config = eval_config.get("metrics", {})
 
-    # 4. Daten laden und zusammenführen (X und Y)
-    x_df = pd.read_csv(x_data_csv_path)
-    y_df = pd.read_csv(y_data_csv_path)
-    
-    # Annahme: X und Y können über den Index oder eine ID gemerged werden
-    # Falls sie einfach nur die gleiche Zeilenanzahl haben:
-    eval_df = pd.concat([x_df, y_df], axis=1)
+    # 4. Load data and combine (X and Y)
+    if x_data_csv_path == y_data_csv_path:
+        # If both paths are the same, we assume it's a single pre-merged file (like val.csv)
+        eval_df = pd.read_csv(x_data_csv_path)
+    else:
+        # Otherwise, load separately and concatenate (original behavior)
+        x_df = pd.read_csv(x_data_csv_path)
+        y_df = pd.read_csv(y_data_csv_path)
+        eval_df = pd.concat([x_df, y_df], axis=1)
 
-    # 5. Spalten-Konfiguration
+    # 5. Column configuration
     designation_col = data_config.get("designation_col", "designation")
     description_col = data_config.get("description_col", "description")
     label_col = data_config.get("label_col", "prdtypecode")
     encoded_label_col = data_config.get("encoded_label_col", "label")
     return_quality_report = bool(data_config.get("return_quality_report", False))
 
-    # 6. Validierung der Spalten im zusammengeführten DF
-    required_columns = {designation_col, label_col}
+    # 6. Validate required columns in the merged dataframe
+    required_columns = {designation_col}
+
+    # Only require label_col if encoded_label_col doesn't already exist
+    if encoded_label_col not in eval_df.columns:
+        required_columns.add(label_col)
+
     validate_dataframe_columns(eval_df, required_columns, "Merged Evaluation Data")
 
     if description_col not in eval_df.columns:
         eval_df[description_col] = ""
 
-    # 7. Label Mapping anwenden
-    eval_df = apply_label_mapping(
-        eval_df,
-        label_col=label_col,
-        mapping=label_mapping,
-        encoded_label_col=encoded_label_col,
-    )
+    # 7. Apply label mapping
+    if encoded_label_col in eval_df.columns and pd.api.types.is_integer_dtype(eval_df[encoded_label_col]):
+        print(f"Column '{encoded_label_col}' already exists and is numeric. Using existing labels.")
+    else:
+        # Otherwise, we need to map from the original label_col (e.g., 'prdtypecode')
+        eval_df = apply_label_mapping(
+            eval_df,
+            label_col=label_col,
+            mapping=label_mapping,
+            encoded_label_col=encoded_label_col,
+        )
 
-    # 8. Dataset und DataLoader
+    # 8. Build dataset and dataloader
+    model_name = model_config.get("name", "bert-base-multilingual-cased")
+    num_classes = len(label_mapping)
+
+    # Labels are already encoded (0..num_classes-1), pass identity mapping
+    identity_encoding = {
+        "code_to_idx": {str(i): i for i in range(num_classes)},
+    }
+
     eval_dataset = RakutenTextDataset(
         dataframe=eval_df,
         config_path=preprocessing_config_path,
+        label_encoding=identity_encoding,
         designation_col=designation_col,
         description_col=description_col,
         label_col=encoded_label_col,
@@ -159,10 +326,7 @@ def run_text_evaluation(
         pin_memory=pin_memory,
     )
 
-    # 9. Modell bauen und Gewichte laden
-    model_name = model_config.get("name", "bert-base-multilingual-cased")
-    num_classes = len(label_mapping)
-
+    # 9. Build model and load weights
     model = build_text_model(
         model_name=model_name,
         num_classes=num_classes,
@@ -175,7 +339,7 @@ def run_text_evaluation(
     model.load_state_dict(state_dict)
     model.to(device)
 
-    # 10. Evaluation ausführen
+    # 10. Run evaluation
     criterion = torch.nn.CrossEntropyLoss()
     results = evaluate_model(
         model=model,
@@ -186,7 +350,7 @@ def run_text_evaluation(
         num_classes=num_classes,
     )
 
-    # 11. Metadaten speichern
+    # 11. Save metadata
     results["metadata"] = {
         "model_name": model_name,
         "num_classes": num_classes,
@@ -198,19 +362,53 @@ def run_text_evaluation(
 
     save_evaluation_results(results, results_output_path)
 
+    # 12. Generate evaluation plots
+    plots_dir = results_output_path.parent
+    generate_evaluation_plots(results["metrics"], plots_dir)
+
+    # 13. Log to MLflow (optional)
+    if mlflow_run_id:
+        log_evaluation_to_mlflow(
+            results=results,
+            results_output_path=results_output_path,
+            mlflow_run_id=mlflow_run_id,
+        )
+
     return results
 
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run text model evaluation.")
+    parser.add_argument("--x_data_csv_path", default="data/raw/X_val.csv")
+    parser.add_argument("--y_data_csv_path", default="data/raw/Y_val.csv")
+    parser.add_argument("--split_ids_dir", default="artifacts/splits")
+    parser.add_argument("--train_config_path", default="configs/text_train_config.yaml")
+    parser.add_argument("--eval_config_path", default="configs/text_evaluate_config.yaml")
+    parser.add_argument("--preprocessing_config_path", default="configs/text_preprocessing_config.yaml")
+    parser.add_argument("--model_weights_path", default="models/best_text_model.pt")
+    parser.add_argument("--label_encoding_path", default="artifacts/label_mapping.json")
+    parser.add_argument("--results_output_path", default="results/text_evaluation_results.json")
+    parser.add_argument("--mlflow_run_id", default=None, help="Existing MLflow run ID to log results to.")
+    args = parser.parse_args()
+
+    # Allow passing mlflow_run_id via environment variable as fallback
+    mlflow_run_id = args.mlflow_run_id or os.environ.get("MLFLOW_RUN_ID")
+
     results = run_text_evaluation(
-        eval_csv_path="data/val_split.csv",
-        train_config_path="configs/text_train_config.yaml",
-        eval_config_path="configs/text_evaluate_config.yaml",
-        preprocessing_config_path="configs/text_preprocessing_config.yaml",
-        model_weights_path="models/best_text_model.pt",
-        label_mapping_path="artifacts/label_mapping.json",
-        results_output_path="results/text_evaluation_results.json",
+        x_data_csv_path=args.x_data_csv_path,
+        y_data_csv_path=args.y_data_csv_path,
+        split_ids_dir=args.split_ids_dir,
+        train_config_path=args.train_config_path,
+        eval_config_path=args.eval_config_path,
+        preprocessing_config_path=args.preprocessing_config_path,
+        model_weights_path=args.model_weights_path,
+        label_encoding_path=args.label_encoding_path,
+        results_output_path=args.results_output_path,
+        mlflow_run_id=mlflow_run_id,
     )
 
     print("Evaluation finished.")
-    print(f"Main metric: {results['main_metric']} = {results['main_metric_value']:.4f}")
+    print(
+        f"Main metric: {results['main_metric']} = {results['main_metric_value']:.4f}"
+    )
     print("Results saved to: results/text_evaluation_results.json")

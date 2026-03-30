@@ -12,7 +12,9 @@ ARG GIT_BRANCH=unknown
 ENV GIT_COMMIT=${GIT_COMMIT} \
     GIT_BRANCH=${GIT_BRANCH} \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    VIRTUAL_ENV=/app/.venv \
+    PATH="/app/.venv/bin:$PATH"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 python3-pip git \
@@ -20,21 +22,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Create user early so venv is owned correctly from the start
+# Create user early so venv/cache permissions are correct
 RUN useradd --create-home --no-log-init appuser
 
 WORKDIR /app
 RUN chown appuser:appuser /app
-
 USER appuser
 
-COPY --chown=appuser:appuser pyproject.toml uv.lock ./
+COPY --chown=appuser:appuser pyproject.toml uv.lock README.md ./
 
+# Evaluation needs text + (very likely) data extras for pandas/sklearn
 RUN --mount=type=cache,target=/home/appuser/.cache/uv,uid=1000 \
-    uv sync --frozen --no-dev --extra text --extra data
+    uv sync --frozen --no-dev --no-editable --extra text --extra data
 
 COPY --chown=appuser:appuser src/ ./src/
 COPY --chown=appuser:appuser configs/ ./configs/
-COPY --chown=appuser:appuser results/ ./results/
 
-CMD ["uv", "run", "python", "-m", "src.pipeline.text_pipeline", "--mode", "train"]
+# Ensure runtime output dirs exist (useful if you don't mount them)
+RUN mkdir -p /app/results /app/logs
+
+ENTRYPOINT ["python", "-m", "src.pipeline.text_pipeline", "--mode", "evaluate"]

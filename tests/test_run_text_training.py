@@ -335,6 +335,7 @@ def test_run_text_training_orchestrates_pipeline_and_returns_expected_outputs(
     monkeypatch.setattr(rtt, "load_label_encoding", lambda _: label_encoding)
     monkeypatch.setattr(rtt, "set_seed", lambda seed: captured.setdefault("seed", seed))
     monkeypatch.setattr(rtt.torch.cuda, "is_available", lambda: False)
+    monkeypatch.setattr(rtt, "mlflow", __import__("unittest.mock", fromlist=["MagicMock"]).MagicMock())
 
     def fake_load_or_create_splits(
         df: pd.DataFrame,
@@ -437,7 +438,11 @@ def test_run_text_training_orchestrates_pipeline_and_returns_expected_outputs(
             "num_classes": num_classes,
             "model_save_path": Path(model_save_path),
         }
-        return model, {"val_macro_f1": [0.75]}
+        return model, {
+            "val_macro_f1": [0.75],
+            "val_accuracy": [0.80],
+            "val_loss": [0.42],
+        }
 
     monkeypatch.setattr(rtt, "train_model", fake_train_model)
 
@@ -455,6 +460,8 @@ def test_run_text_training_orchestrates_pipeline_and_returns_expected_outputs(
     assert trained_model == "dummy-model"
     assert returned_label_encoding == label_encoding
     assert history["val_macro_f1"] == [0.75]
+    assert history["val_accuracy"] == [0.80]
+    assert history["val_loss"] == [0.42]
     assert history["split_sizes"] == {"train": 2, "val": 1, "test": 1}
 
     assert captured["seed"] == 123
