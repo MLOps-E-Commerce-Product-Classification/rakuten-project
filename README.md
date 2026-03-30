@@ -18,7 +18,7 @@ Image inputs are linked via:
 -   `productid`
 
 > **Note**\
-> This repository is currently under active development. Some production-oriented components (e.g. Docker, serving, monitoring, CI/tests) are not yet fully implemented.
+> This repository is currently under active development. Monitoring and CI coverage are still evolving, while the text serving layer is now implemented with BentoML.
 
 ------------------------------------------------------------------------
 
@@ -196,6 +196,12 @@ Everything (Image + Text + API)
 ``` bash
 uv sync --all-extras
 
+```
+
+For BentoML packaging, vendor the Hugging Face text backbone locally before building the Bento:
+
+``` bash
+make prepare-bento-text-assets
 ```
 
 ### 3. Activate the environment
@@ -420,3 +426,84 @@ git checkout <commit-hash>
 uv run dvc pull
 make train-text-run
 
+
+------------------------------------------------------------------------
+
+## BentoML Serving
+
+FastAPI is no longer the primary serving layer in this repository. The supported serving path follows the BentoML workflow from the course material more closely:
+
+1. prepare lightweight tokenizer/config assets
+2. register the trained PyTorch model in the BentoML Model Store
+3. serve a JWT-protected BentoML API
+4. build and containerize the Bento artifact
+
+Prepare assets and register the model in the BentoML Model Store:
+
+``` bash
+make prepare-bento-text-assets
+make register-bento-text-model
+```
+
+This step requires a local `models/best_text_model.pt`. If the weight file is tracked via DVC, pull it before registration.
+
+Run the local BentoML service:
+
+``` bash
+make serve-bento-text
+```
+
+`make serve-bento-text` now performs a preflight check and stops early with a clear error if `rakuten_text_classifier:latest` has not been registered in the local BentoML Model Store yet.
+
+Available endpoints:
+
+- `GET /health`
+- `POST /login`
+- `POST /predict`
+- `POST /predict_batch`
+- `GET /metrics` (enabled by BentoML by default)
+
+Get a JWT and call the protected prediction endpoint:
+
+``` bash
+make token-bento-text
+make predict-bento-text
+```
+
+Example request shapes:
+
+``` json
+{
+  "credentials": {
+    "username": "user123",
+    "password": "password123"
+  }
+}
+```
+
+``` json
+{
+  "input_data": {
+    "designation": "robe femme",
+    "description": "bleu",
+    "top_k": 3
+  }
+}
+```
+
+Build and package the Bento through the supported Makefile path:
+
+``` bash
+make build-bento-text
+make containerize-bento-text
+```
+
+Start the packaged Bento container through Docker Compose:
+
+``` bash
+make docker-bento-up
+```
+
+`make build-bento-text` first prepares the local Hugging Face tokenizer assets, then registers `rakuten_text_classifier:latest` in the BentoML Model Store, and finally builds the Bento. The Bento itself references the registered model via the `models:` section in `bentofile.yaml` instead of bundling the raw `.pt` file directly.
+
+Dependency note: `pyproject.toml` and `bentofile.yaml` are the authoritative sources for BentoML serving and packaging. `requirements.txt` is a broader exported development snapshot and is not used by the Bento build itself.
