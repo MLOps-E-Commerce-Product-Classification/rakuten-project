@@ -30,7 +30,7 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _wait_for_health(url: str, timeout: float = 30.0) -> None:
+def _wait_for_ready(url: str, timeout: float = 30.0) -> None:
     deadline = time.time() + timeout
     last_error = None
     while time.time() < deadline:
@@ -41,7 +41,7 @@ def _wait_for_health(url: str, timeout: float = 30.0) -> None:
         except (URLError, ConnectionError, HTTPError) as exc:
             last_error = exc
             time.sleep(0.5)
-    raise AssertionError(f"Bento health endpoint did not become ready: {last_error}")
+    raise AssertionError(f"Bento readiness endpoint did not become ready: {last_error}")
 
 
 def _login_token(port: int) -> str:
@@ -75,9 +75,17 @@ def test_bento_http_health_endpoint():
     )
 
     try:
-        _wait_for_health(f"http://127.0.0.1:{port}/health")
-        with urlopen(f"http://127.0.0.1:{port}/health", timeout=10) as response:
+        _wait_for_ready(f"http://127.0.0.1:{port}/readyz")
+
+        request = Request(
+            url=f"http://127.0.0.1:{port}/health",
+            data=b"{}",
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urlopen(request, timeout=10) as response:
             body = json.loads(response.read().decode("utf-8"))
+
         assert response.status == 200
         assert body["status"] in {"ok", "degraded"}
         assert body["model_tag"] == "rakuten_text_classifier:latest"
@@ -114,7 +122,7 @@ def test_bento_http_predict_endpoint_when_model_available():
     )
 
     try:
-        _wait_for_health(f"http://127.0.0.1:{port}/health")
+        _wait_for_ready(f"http://127.0.0.1:{port}/readyz")
         token = _login_token(port)
         request = Request(
             url=f"http://127.0.0.1:{port}/predict",
@@ -162,7 +170,7 @@ def test_bento_http_predict_batch_endpoint_when_model_available():
     )
 
     try:
-        _wait_for_health(f"http://127.0.0.1:{port}/health")
+        _wait_for_ready(f"http://127.0.0.1:{port}/readyz")
         token = _login_token(port)
         request = Request(
             url=f"http://127.0.0.1:{port}/predict_batch",
