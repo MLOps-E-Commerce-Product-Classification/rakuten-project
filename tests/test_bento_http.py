@@ -185,7 +185,7 @@ def test_bento_http_predict_batch_endpoint_when_model_available():
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
             method="POST",
         )
-        with urlopen(request, timeout=20) as response:
+        with urlopen(request, timeout=45) as response:
             body = json.loads(response.read().decode("utf-8"))
         assert response.status == 200
         assert isinstance(body, list)

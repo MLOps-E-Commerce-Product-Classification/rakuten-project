@@ -119,8 +119,7 @@ class TextModelService:
     def is_ready(self) -> bool:
         return _check_model_ready()
 
-    @bentoml.api
-    def predict_text(self, input_data: TextPredictionRequest) -> dict[str, Any]:
+    def _predict_one(self, input_data: TextPredictionRequest) -> dict[str, Any]:
         self._load()
         return predict_single_text(
             model=self.model,
@@ -136,8 +135,13 @@ class TextModelService:
         )
 
     @bentoml.api
+    def predict_text(self, input_data: TextPredictionRequest) -> dict[str, Any]:
+        return self._predict_one(input_data)
+
+    @bentoml.api
     def predict_texts(self, items: list[TextPredictionRequest]) -> list[dict[str, Any]]:
-        return [self.predict_text(item) for item in items]
+        self._load()
+        return [self._predict_one(item) for item in items]
 
 
 @bentoml.service(name="rakuten_text_service")
