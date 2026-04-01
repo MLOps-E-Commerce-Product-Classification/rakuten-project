@@ -339,6 +339,17 @@ def test_run_text_training_orchestrates_pipeline_and_returns_expected_outputs(
         rtt, "mlflow", __import__("unittest.mock", fromlist=["MagicMock"]).MagicMock()
     )
 
+    def fake_register_text_model_in_mlflow(**kwargs):
+        captured["register_text_model_in_mlflow"] = kwargs
+        return {
+            "mlflow_model_name": "rakuten_text_classifier",
+            "mlflow_version": "12",
+            "mlflow_run_id": "run-123",
+            "validation_status": "pending",
+        }
+
+    monkeypatch.setattr(rtt, "register_text_model_in_mlflow", fake_register_text_model_in_mlflow)
+
     def fake_load_or_create_splits(
         df: pd.DataFrame,
         label_col: str,
@@ -465,6 +476,12 @@ def test_run_text_training_orchestrates_pipeline_and_returns_expected_outputs(
     assert history["val_accuracy"] == [0.80]
     assert history["val_loss"] == [0.42]
     assert history["split_sizes"] == {"train": 2, "val": 1, "test": 1}
+    assert history["mlflow_model"] == {
+        "mlflow_model_name": "rakuten_text_classifier",
+        "mlflow_version": "12",
+        "mlflow_run_id": "run-123",
+        "validation_status": "pending",
+    }
 
     assert captured["seed"] == 123
     assert captured["split_call"]["label_col"] == "prdtypecode"
@@ -513,3 +530,8 @@ def test_run_text_training_orchestrates_pipeline_and_returns_expected_outputs(
     assert captured["train_model_call"]["config_path"] == "ignored_train_config.yaml"
     assert captured["train_model_call"]["num_classes"] == 2
     assert captured["train_model_call"]["model_save_path"] == model_save_path
+
+    assert captured["register_text_model_in_mlflow"]["model_weights_path"] == model_save_path
+    assert captured["register_text_model_in_mlflow"]["train_config_path"] == "ignored_train_config.yaml"
+    assert captured["register_text_model_in_mlflow"]["preprocessing_config_path"] == "prep_config.yaml"
+    assert captured["register_text_model_in_mlflow"]["label_encoding_path"] == "ignored_label_encoding.json"

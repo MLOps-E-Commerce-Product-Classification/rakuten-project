@@ -8,6 +8,8 @@ def test_bentofile_targets_text_bento_service():
     assert bentofile["service"] == "src.serving.bento_service:TextBentoService"
     assert bentofile["models"] == ["rakuten_text_classifier:latest"]
     assert "configs/text_preprocessing_config.yaml" in bentofile["include"]
+    assert "artifacts/deployment_manifest.json" in bentofile["include"]
+    assert "mlflow>=2.22.1" in bentofile["python"]["packages"]
 
 
 def test_compose_uses_bento_image_runtime():
@@ -21,12 +23,12 @@ def test_obsolete_source_serving_dockerfile_removed():
     assert not Path("docker/Dockerfile.api").exists()
 
 
-def test_makefile_registers_model_before_building_bento():
+def test_makefile_syncs_model_before_building_bento():
     makefile = Path("Makefile").read_text()
-    assert "register-bento-text-model: prepare-bento-text-assets" in makefile
-    assert "serve-bento-text: check-bento-text-model" in makefile
-    assert "build-bento-text: register-bento-text-model" in makefile
-    assert "containerize-bento-text: build-bento-text" in makefile
+    assert "register-bento-text-model: sync-bento-text-model" in makefile
+    assert "build-bento-text: sync-bento-text-model" in makefile
+    assert "promote-mlflow-text-model:" in makefile
+    assert "sync-bento-text-model:" in makefile
 
 
 def test_backbone_vendoring_is_restricted_to_lightweight_assets():
