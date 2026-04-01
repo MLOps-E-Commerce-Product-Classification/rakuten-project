@@ -400,6 +400,14 @@ def run_text_training(
         "test": int(len(test_df)),
     }
 
+    metrics_path = Path("results/dvc_metrics.json")
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    metrics_path.write_text(json.dumps({
+        "val_macro_f1": max(history["val_macro_f1"]),
+        "val_accuracy": max(history["val_accuracy"]),
+        "val_loss": min(history["val_loss"]),
+    }, indent=2))
+
     return history, label_encoding
 
 
