@@ -44,10 +44,6 @@ stages:
       md5: 38308f015517a8ea55b750c7fb2b9bb8.dir
       size: 498407
       nfiles: 3
-    - path: models/best_text_model.pt
-      hash: md5
-      md5: b37608b1d63ddb1ddfcecd799a3e6264
-      size: 711580040
     - path: results/dvc_metrics.json
       hash: md5
       md5: c6438b97701b94ca5a00c01b9a004066
