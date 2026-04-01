@@ -2,6 +2,7 @@
 # Variables
 # ============================================================
 
+# override via: make train-text-build DEVICE=cu121
 DEVICE ?= cpu
 
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
@@ -9,6 +10,10 @@ GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unkno
 PORT ?= 3000
 BENTO_SERVICE ?= src.serving.bento_service:TextBentoService
 BASE_URL ?= http://127.0.0.1:$(PORT)
+MLFLOW_MODEL_NAME ?= rakuten_text_classifier
+MLFLOW_ALIAS ?= champion
+PROMOTION_METRIC ?= eval_macro_f1
+PROMOTION_MARGIN ?= 0.0
 
 export DEVICE
 export GIT_BRANCH
@@ -145,17 +150,19 @@ inference-clean:
 prepare-bento-text-assets:
 	uv run python -m src.serving.prepare_bento_assets
 
-.PHONY: register-bento-text-model
-register-bento-text-model: prepare-bento-text-assets
-	uv run python -m src.serving.register_model
+.PHONY: promote-mlflow-text-model
+promote-mlflow-text-model:
+	uv run python -m src.serving.promote_mlflow_model \
+		--model-name $(MLFLOW_MODEL_NAME) \
+		--alias $(MLFLOW_ALIAS) \
+		--metric-name $(PROMOTION_METRIC) \
+		--min-improvement $(PROMOTION_MARGIN)
 
-.PHONY: check-bento-text-model
-check-bento-text-model:
-	@uv run bentoml models get rakuten_text_classifier:latest >/dev/null 2>&1 || (echo "BentoML model rakuten_text_classifier:latest is not registered. Run 'make register-bento-text-model' first."; exit 1)
-
-.PHONY: serve-bento-text
-serve-bento-text: check-bento-text-model
-	TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 uv run bentoml serve $(BENTO_SERVICE) --port $(PORT)
+.PHONY: sync-bento-text-model
+sync-bento-text-model:
+	uv run python -m src.serving.sync_mlflow_to_bento \
+		--model-name $(MLFLOW_MODEL_NAME) \
+		--alias $(MLFLOW_ALIAS)
 
 .PHONY: token-bento-text
 token-bento-text:
@@ -175,7 +182,7 @@ predict-bento-text:
 		-d '{"input_data":{"designation":"robe femme","description":"bleu","top_k":3}}'
 
 .PHONY: build-bento-text
-build-bento-text: register-bento-text-model
+build-bento-text: sync-bento-text-model
 	uv run bentoml build
 
 .PHONY: containerize-bento-text
@@ -244,6 +251,19 @@ help:
 	@echo "  inference-batch      Test with multiple hardcoded samples"
 	@echo "  inference-rebuild    Rebuild and run inference immediately"
 	@echo "  inference-clean      Remove the inference Docker image"
+	@echo "─────────────────────────── Inference Bento ─────────────────────────"
+	@echo "  prepare-bento-text-assets   Cache lightweight Hugging Face assets locally"
+	@echo "  promote-mlflow-text-model   Compare candidate vs champion and set alias"
+	@echo "  sync-bento-text-model       Import MLflow @champion into BentoML + manifest"
+	@echo "  register-bento-text-model   Compatibility alias for sync-bento-text-model"
+	@echo "  serve-bento-text            Run the BentoML text service locally"
+	@echo "  token-bento-text            Get a JWT token from /login"
+	@echo "  predict-bento-text          Call the protected /predict endpoint"
+	@echo "  build-bento-text            Sync champion + build a Bento artifact"
+	@echo "  containerize-bento-text     Build and containerize the latest Bento"
+	@echo "  docker-bento-up             Start Bento service in Docker Compose"
+	@echo "  docker-bento-down           Stop Bento service in Docker Compose"
+	@echo "  bento-text-logs             Follow Bento service logs"
 	@echo ""
 	@echo "────────────────────── BentoML Serving/Deployment ───────────────"
 	@echo "  prepare-bento-assets Download tokenizer/configs for registration"
@@ -262,6 +282,6 @@ help:
 	@echo "  MLFLOW_ID  Required ID for 'evaluate-run'"
 	@echo "  TEXT       Custom input string for 'inference-run'"
 	@echo ""
-	@echo "Example: make dvc-run DEVICE=cu121"
-	@echo "         make evaluate-run MLFLOW_ID=abc-123"
+	@echo "  Example:  make train-text-build DEVICE=cu121"
+	@echo "            make evaluate-run MLFLOW_ID=abc123"
 	@echo ""
