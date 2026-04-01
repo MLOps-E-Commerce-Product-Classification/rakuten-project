@@ -23,8 +23,8 @@ export DEVICE
 train-text-build:
 	docker compose build \
 		--build-arg DEVICE=$(DEVICE) \
-		--build-arg GIT_COMMIT=$$(git rev-parse HEAD) \
-		--build-arg GIT_BRANCH=$$(git rev-parse --abbrev-ref HEAD) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg GIT_BRANCH=$(GIT_BRANCH) \
 		train-text
 
 .PHONY: train-text-run
@@ -54,9 +54,7 @@ train-text-clean:
 	docker image rm train-text 2>/dev/null || true
 
 # ============================================================
-<<<<<<< HEAD
 # Bento serving / packaging
-=======
 # DVC
 # ============================================================
 
@@ -84,7 +82,7 @@ dvc-repro:
 	DEVICE=$(DEVICE) \
 	uv run dvc repro train-text
 
-	# Ergebnisse committen
+	# commit results
 	git add dvc.lock
 	git commit -m "exp: $(GIT_BRANCH) - $$(date '+%Y-%m-%d %H:%M') [$(DEVICE)]" || true
 
@@ -146,8 +144,36 @@ evaluate-run:
 
 # ============================================================
 # Inference
->>>>>>> main
 # ============================================================
+
+# Standard text for fast testing
+TEXT ?= "Jeu vidéo action PS4"
+
+.PHONY: inference-build
+inference-build:
+	docker compose build inference
+
+.PHONY: inference-run
+inference-run:
+	docker compose run --rm inference --text $(TEXT)
+
+.PHONY: inference-batch
+inference-batch:
+	docker compose run --rm inference --texts "T-shirt" "Console" "Livre"
+
+.PHONY: inference-rebuild
+inference-rebuild:
+	$(MAKE) inference-build
+	$(MAKE) inference-run
+
+.PHONY: inference-clean
+inference-clean:
+	docker image rm mlops-rakuten-inference 2>/dev/null || true
+
+# ============================================================
+# Bento serving / packaging
+# ============================================================
+
 .PHONY: prepare-bento-text-assets
 prepare-bento-text-assets:
 	uv run python -m src.serving.prepare_bento_assets
@@ -174,12 +200,12 @@ token-bento-text:
 predict-bento-text:
 	@token=$$(curl -s -X POST "$(BASE_URL)/login" \
 		-H "Content-Type: application/json" \
-		-d '{"credentials":{"username":"user123","password":"password123"}}' | python -c 'import sys,json; print(json.load(sys.stdin)["token"])'); \
+		-d '{"credentials":{"username":"user123","password":"password123"}}' \
+		| python -c 'import sys,json; print(json.load(sys.stdin)["token"])'); \
 	curl -s -X POST "$(BASE_URL)/predict" \
 		-H "Content-Type: application/json" \
 		-H "Authorization: Bearer $$token" \
-		-d '{"input_data":{"designation":"robe femme","description":"bleu","top_k":3}}'; \
-	echo
+		-d '{"input_data":{"designation":"robe femme","description":"bleu","top_k":3}}'
 
 .PHONY: build-bento-text
 build-bento-text: register-bento-text-model
@@ -218,59 +244,57 @@ bento-text-logs:
 help:
 	@echo ""
 	@echo "╔══════════════════════════════════════════════════════════════╗"
-	@echo "║              MLOps Rakuten — Makefile Reference              ║"
+	@echo "║           MLOps Rakuten — Makefile Reference              ║"
 	@echo "╚══════════════════════════════════════════════════════════════╝"
 	@echo ""
-	@echo "Usage:  make <target> [DEVICE=cpu|cu121]"
+	@echo "Usage:  make <target> [DEVICE=cpu|cu121] [MLFLOW_ID=...]"
 	@echo ""
-<<<<<<< HEAD
-	@echo "  prepare-bento-text-assets     Download tokenizer/config assets for Bento registration"
-	@echo "  register-bento-text-model     Save the trained text model in the BentoML Model Store"
-	@echo "  serve-bento-text              Run the BentoML text service locally"
-	@echo "  token-bento-text              Get a JWT token from /login"
-	@echo "  predict-bento-text            Call the protected /predict endpoint"
-	@echo "  build-bento-text              Register model + build a Bento artifact"
-	@echo "  containerize-bento-text       Build and containerize the latest Bento"
-	@echo "  docker-bento-up               Start Bento service in Docker Compose"
-	@echo "  docker-bento-down             Stop Bento service in Docker Compose"
-	@echo "  bento-text-logs               Follow Bento service logs"
-=======
-	@echo "────────────────────────── Training ───────────────────────────"
-	@echo "  train-text-build    Build the training Docker image"
-	@echo "  train-text-run      Auto-commit configs (if changed) + run training"
-	@echo "  train-text-rebuild  Build + run training in one step"
-	@echo "  train-text-stop     Stop the running training container"
-	@echo "  train-text-down     Stop + remove container (keep image)"
-	@echo "  train-text-clean    Remove container + image"
-	@echo "  train-text-logs     Follow live training logs"
+	@echo "────────────────────────── Data & DVC ──────────────────────────"
+	@echo "  dvc-init             Initialize DVC & Git tracking"
+	@echo "  dvc-add-data         Track raw data directory with DVC"
+	@echo "  dvc-repro            Reproduce pipeline & auto-commit lockfile"
+	@echo "  dvc-run              Full flow: dvc-repro + dvc-push"
+	@echo "  dvc-push/pull        Sync data/models with remote storage"
+	@echo "  dvc-metrics          Show performance metrics & diff vs HEAD~1"
 	@echo ""
-	@echo "──────────────────────────── DVC ──────────────────────────────"
-	@echo "  dvc-init            Initialize DVC in the repository"
-	@echo "  dvc-add-data        Track raw data directory with DVC"
-	@echo "  dvc-repro           Reproduce pipeline + auto-commit results"
-	@echo "  dvc-push            Push data & models to remote + git push"
-	@echo "  dvc-pull            git pull + dvc pull"
-	@echo "  dvc-metrics         Show metrics + diff against HEAD~1"
-	@echo "  dvc-run             dvc-repro + dvc-push (full experiment run)"
+	@echo "─────────────────────────── Training ───────────────────────────"
+	@echo "  train-text-build     Build the training Docker image"
+	@echo "  train-text-run       Auto-commit configs + start training run"
+	@echo "  train-text-rebuild   Rebuild image and start training"
+	@echo "  train-text-stop      Stop the training container"
+	@echo "  train-text-down      Stop & remove containers + networks"
+	@echo "  train-text-clean     Remove containers AND Docker images"
+	@echo "  train-text-logs      Follow live training logs"
 	@echo ""
-	@echo "─────────────────────────── Evaluation ────────────────────────"
-	@echo "  evaluate-build      Build the evaluation Docker image"
-	@echo "  evaluate-run        Run evaluation  (requires MLFLOW_ID=<id>)"
-	@echo "                        Optional: X_DATA= Y_DATA= WEIGHTS= ENCODING="
+	@echo "────────────────────────── Evaluation ──────────────────────────"
+	@echo "  evaluate-build       Build the evaluation Docker image"
+	@echo "  evaluate-run         Run evaluation (requires MLFLOW_ID=<id>)"
+	@echo "                       Options: X_DATA=, Y_DATA=, WEIGHTS="
 	@echo ""
-	@echo "─────────────────────────── Inference ─────────────────────────"
-	@echo "  inference-build     Build the inference Docker image"
-	@echo "  inference-run       Run inference  (TEXT='...' optional)"
-	@echo "  inference-batch     Run inference for multiple hardcoded texts"
-	@echo "  inference-rebuild   Build + run inference in one step"
-	@echo "  inference-clean     Remove the inference Docker image"
+	@echo "─────────────────────────── Inference ──────────────────────────"
+	@echo "  inference-build      Build the inference Docker image"
+	@echo "  inference-run        Single test run (default or TEXT='...')"
+	@echo "  inference-batch      Test with multiple hardcoded samples"
+	@echo "  inference-rebuild    Rebuild and run inference immediately"
+	@echo "  inference-clean      Remove the inference Docker image"
 	@echo ""
-	@echo "────────────────────────── Variables ──────────────────────────"
-	@echo "  DEVICE              Target device: cpu (default) | cu121"
-	@echo "  TEXT                Input text for inference (default: sample)"
-	@echo "  MLFLOW_ID           MLflow run ID (required for evaluate-run)"
+	@echo "────────────────────── BentoML Serving/Deployment ───────────────"
+	@echo "  prepare-bento-assets Download tokenizer/configs for registration"
+	@echo "  register-bento-model Save the trained model to BentoML store"
+	@echo "  serve-bento-text     Run BentoML service locally (Port 3000)"
+	@echo "  predict-bento-text   Test request against running service"
+	@echo "  token-bento-text     Generate JWT token via /login"
+	@echo "  build-bento-text     Build the Bento artifact"
+	@echo "  containerize-bento   Package the Bento into a Docker image"
+	@echo "  docker-bento-up/down Start/Stop Bento service via Docker Compose"
+	@echo "  bento-text-logs      Follow Bento service logs"
 	@echo ""
-	@echo "  Example:  make train-text-build DEVICE=cu121"
-	@echo "            make evaluate-run MLFLOW_ID=abc123"
->>>>>>> main
+	@echo "─────────────────────────── Variables ──────────────────────────"
+	@echo "  DEVICE     Target device: cpu (default) | cu121"
+	@echo "  PORT       Local port for Bento service (default: 3000)"
+	@echo "  MLFLOW_ID  Required ID for 'evaluate-run'"
+	@echo "  TEXT       Custom input string for 'inference-run'"
+	@echo ""
+	@echo "Example: make dvc-run DEVICE=cu121"
+	@echo "         make evaluate-run MLFLOW_ID=abc-123"
 	@echo ""
