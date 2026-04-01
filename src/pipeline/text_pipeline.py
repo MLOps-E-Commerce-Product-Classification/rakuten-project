@@ -176,7 +176,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def run_train_mode(args: argparse.Namespace) -> None:
     from src.training.run_text_training import run_text_training
-    trained_model, history, label_encoding = run_text_training(
+    history, label_encoding = run_text_training(
         x_data_csv_path=args.x_data_csv_path,
         y_data_csv_path=args.y_data_csv_path,
         split_ids_dir=args.split_ids_dir,

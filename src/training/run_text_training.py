@@ -5,6 +5,7 @@ import random
 import subprocess
 
 import mlflow
+import mlflow.pytorch
 import numpy as np
 import pandas as pd
 import torch
@@ -387,6 +388,12 @@ def run_text_training(
             "final_best_val_loss": min(history["val_loss"]),
         })
 
+        mlflow.pytorch.log_model(  
+            pytorch_model=trained_model,  
+            artifact_path="model",  
+            registered_model_name="text-classifier",
+        )
+
     history["split_sizes"] = {
         "train": int(len(train_df)),
         "val": int(len(val_df)),
@@ -401,7 +408,7 @@ def run_text_training(
         "val_loss": min(history["val_loss"]),
     }, indent=2))
 
-    return trained_model, history, label_encoding
+    return history, label_encoding
 
 
 if __name__ == "__main__":
