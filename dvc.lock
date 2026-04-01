@@ -9,7 +9,7 @@ stages:
       size: 215
     - path: configs/text_train_config.yaml
       hash: md5
-      md5: 47da6e969a0229b09159118c29f7ed49
+      md5: 2c1ff5f1e647a9b3c35be7e1cf3cf19c
       size: 450
     - path: data/raw/X_train_update.csv
       hash: md5
@@ -21,9 +21,9 @@ stages:
       size: 906705
     - path: src/
       hash: md5
-      md5: d819be75a59b953796e3bb71cfb67219.dir
-      size: 612237
-      nfiles: 103
+      md5: fa57df7d9a40912d0c57301533b298ea.dir
+      size: 638667
+      nfiles: 108
     params:
       configs/text_train_config.yaml:
         model:
@@ -31,9 +31,9 @@ stages:
           pretrained: true
           freeze_backbone: false
         training:
-          learning_rate: 1e-05
+          learning_rate: 2e-05
           early_stopping_patience: 2
-          num_epochs: 6
+          num_epochs: 1
           batch_size: 32
           weight_decay: 0.05
           num_workers: 2
@@ -46,9 +46,9 @@ stages:
       nfiles: 3
     - path: models/best_text_model.pt
       hash: md5
-      md5: c71a7d2aab6dc70c7d959529dd73d45c
+      md5: b37608b1d63ddb1ddfcecd799a3e6264
       size: 711580040
     - path: results/dvc_metrics.json
       hash: md5
-      md5: 5ff27cee0cc0d04bc488c7c4210175bc
+      md5: c6438b97701b94ca5a00c01b9a004066
       size: 112
