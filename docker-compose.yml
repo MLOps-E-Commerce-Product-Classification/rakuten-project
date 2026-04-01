@@ -1,5 +1,6 @@
 services:
   train-text:
+    image: my-project/train-text:${DEVICE:-cpu}
     build:
       context: .
       dockerfile: docker/Dockerfile.train-text
@@ -16,6 +17,8 @@ services:
       - ./data:/app/data
       - ./models:/app/models
       - ./configs:/app/configs
+      - ./artifacts:/app/artifacts
+      - ./results:/app/results
     deploy:
       resources:
         reservations:

@@ -297,134 +297,328 @@ logs/text_training.log
 ## Limitations
 
 -   tbd
-
 ## MLOps Rakuten — Training Infrastructure
 
 ## Prerequisites
 
-#### 1. NVIDIA Driver (Host)
-CUDA runs on the **host machine**, not inside Docker. Docker only needs the NVIDIA Container Toolkit.
+#### 1. Docker & Docker Compose
 
-Check if your driver is installed:
+The project runs inside Docker containers. Make sure Docker and Docker Compose are installed on your host system.
 
+Check installation:
+
+```bash
+docker --version
+docker compose version
+```
+
+#### 2. NVIDIA Driver (only for GPU training)
+
+If you want to run with GPU support, the NVIDIA driver must be installed on the **host machine**. CUDA itself is now provided through the Docker image when `DEVICE=cu121` is used.
+
+Check if your driver is available:
+
+```bash
 nvidia-smi
+```
 
 If not installed:
 
-## Ubuntu/Debian
+##### Ubuntu/Debian
+
+```bash
 sudo apt-get install -y nvidia-driver-535
 sudo reboot
+```
 
-#### 2. NVIDIA Container Toolkit
+#### 3. NVIDIA Container Toolkit (only for GPU training)
+
 Allows Docker to access the GPU on the host.
 
-## Add NVIDIA package repository
-curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
-  sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+##### Add NVIDIA package repository
 
-curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+```bash
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey |   sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
 
-## Install
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list |   sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' |   sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+```
+
+##### Install
+
+```bash
 sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+```
 
-## Restart Docker
+##### Restart Docker
+
+```bash
 sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
+```
 
 Verify GPU is accessible inside Docker:
 
+```bash
 docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
+```
+
+### Device Selection
+
+The Makefile supports different execution targets via `DEVICE`:
+
+```bash
+make train-text-build DEVICE=cpu
+make train-text-build DEVICE=cu121
+```
+
+- `DEVICE=cpu`: builds and runs the CPU image
+- `DEVICE=cu121`: builds and runs the CUDA 12.1 image inside Docker
+
+> CUDA is no longer expected to be installed manually on the host. For GPU runs, only the NVIDIA driver and NVIDIA Container Toolkit are required on the host system.
 
 ### Environment Setup
 
 Create a `.env` file in the project root:
 
+```env
 DAGSHUB_USER_TOKEN=your_token_here
 MLFLOW_TRACKING_URI=https://dagshub.com/<USERNAME>/<REPO>.mlflow
 MLFLOW_TRACKING_USERNAME=your_dagshub_username
 MLFLOW_TRACKING_PASSWORD=your_dagshub_token
+```
 
 > ⚠️ Never commit `.env` to Git. It is already listed in `.gitignore`.
 
 ### Makefile Commands
 
-#### Text Model Training
+#### Text Training
 
-- `make train-text-run`: Commit configs + run training (no rebuild)
-- `make train-text-rebuild`: Commit configs + build image + run training
-- `make train-text-build`: Build Docker image only
-- `make train-text-stop`: Stop the running container
-- `make train-text-down`: Stop + remove the container
-- `make train-text-clean`: Stop + remove container + image + volumes
+- `make train-text-build [DEVICE=cpu|cu121]`: Build the training image
+- `make train-text-run [DEVICE=cpu|cu121]`: Commit config changes if needed and run training
+- `make train-text-rebuild [DEVICE=cpu|cu121]`: Build image and run training
+- `make train-text-stop`: Stop the training container
+- `make train-text-down`: Stop and remove containers
+- `make train-text-clean`: Stop containers and remove the training image
 - `make train-text-logs`: Follow live training logs
 
 #### When to use which command?
 
 - **Config changed** (e.g. learning rate, batch size):
 
-  make train-text-run
+```bash
+make train-text-run DEVICE=cpu
+```
 
-  → No rebuild needed. Config is mounted as a volume.
+or for GPU:
 
-- **Code changed** (e.g. `src/pipeline/text_pipeline.py`):
+```bash
+make train-text-run DEVICE=cu121
+```
 
-  make train-text-rebuild
+→ No rebuild needed. Config changes are committed automatically before the run.
 
-  → Rebuilds the Docker image with the latest code.
+- **Code changed** (e.g. training pipeline, Docker dependencies, source files):
 
-> `make train-text-run` automatically commits changes in `configs/` before starting
-> the container, ensuring the Git commit logged in MLflow matches the actual config used.
+```bash
+make train-text-rebuild DEVICE=cpu
+```
+
+or:
+
+```bash
+make train-text-rebuild DEVICE=cu121
+```
+
+→ Rebuilds the image and then starts training.
+
+> `make train-text-run` automatically commits changes in `configs/` before starting the run if there are uncommitted config changes.
+
+> `GIT_COMMIT`, `GIT_BRANCH`, and `DEVICE` are injected into the container runtime so experiment metadata stays aligned with the executed run.
 
 ## DVC — Data & Model Versioning
 
-Data and models are **not stored in Git**. They are tracked via DVC and stored in DagsHub Storage.
+Data, models, and pipeline outputs are tracked with DVC.
 
-#### Pull data and models
+#### Initialize DVC
 
-uv run dvc pull
+```bash
+make dvc-init
+```
 
-#### After training: version a new model
+#### Track raw data
 
-## 1. Register the new model with DVC
-uv run dvc add models/best_text_model.pt
+```bash
+make dvc-add-data
+```
 
-## 2. Push model to DagsHub Storage
-uv run dvc push
+#### Pull data and artifacts
 
-## 3. Commit the DVC pointer + config to Git
-git add best_text_model.pt.dvc configs/
-git commit -m "feat: text classifier v2 - macro-f1=0.88"
-git push
+```bash
+make dvc-pull
+```
+
+This will:
+- run `git pull`
+- run `uv run dvc pull`
+
+#### Reproduce the training pipeline with DVC
+
+```bash
+make dvc-repro DEVICE=cpu
+```
+
+or:
+
+```bash
+make dvc-repro DEVICE=cu121
+```
+
+What happens during `dvc-repro`:
+- config changes in `configs/` are committed automatically if needed
+- DVC checks whether dependencies changed
+- DVC executes the `train-text` stage if required
+- `dvc.lock` is updated and committed
+
+#### Push DVC artifacts
+
+```bash
+make dvc-push
+```
+
+This will:
+- push DVC artifacts to remote storage
+- push Git commits
+
+#### Full DVC run
+
+```bash
+make dvc-run DEVICE=cu121
+```
+
+This is equivalent to:
+- `make dvc-repro`
+- `make dvc-push`
+
+#### Compare metrics
+
+```bash
+make dvc-metrics
+```
+
+Shows current metrics and the difference to `HEAD~1`.
 
 ### MLflow — Experiment Tracking
 
-Experiments are tracked automatically during training and pushed to DagsHub.
+Experiments are tracked automatically during training and pushed to DagsHub / MLflow.
 
 View experiments at:
 
+```text
 https://dagshub.com/<USERNAME>/<REPO>/experiments
+```
 
-Each run logs:
-- Parameters (learning rate, batch size, epochs, …)
-- Metrics (accuracy, macro-f1, loss, …)
-- Git commit hash + branch
-- Config file as artifact
+Each run can log:
+- parameters (learning rate, batch size, epochs, ...)
+- metrics (accuracy, macro-f1, loss, ...)
+- Git commit hash and branch
+- config files and artifacts
+- runtime device information
 
-### Reproducibility
+## Evaluation
 
-Every training run is fully reproducible via three anchors:
+Evaluation is now supported via dedicated Make targets.
 
-- **Code**: Git commit hash (logged in MLflow)
-- **Config**: `configs/` committed before each run + logged as MLflow artifact
-- **Data & Model**: DVC pointer files (`data.dvc`, `best_text_model.pt.dvc`)
+Default paths:
+- `X_DATA=data/processed/val.csv`
+- `Y_DATA=data/processed/val.csv`
+- `WEIGHTS=models/best_text_model.pt`
+- `ENCODING=configs/label_encoding.json`
 
-To reproduce a specific run:
+#### Build evaluation image
 
+```bash
+make evaluate-build DEVICE=cpu
+```
+
+or:
+
+```bash
+make evaluate-build DEVICE=cu121
+```
+
+#### Run evaluation
+
+```bash
+make evaluate-run MLFLOW_ID=<your_run_id> DEVICE=cpu
+```
+
+Example with custom paths:
+
+```bash
+make evaluate-run   MLFLOW_ID=<your_run_id>   DEVICE=cu121   X_DATA=data/processed/val_features.csv   Y_DATA=data/processed/val_labels.csv   WEIGHTS=models/best_text_model.pt   ENCODING=configs/label_encoding.json
+```
+
+`MLFLOW_ID` is required. The Makefile will stop with an error if it is missing.
+
+## Inference
+
+Inference is available through separate targets.
+
+#### Build inference image
+
+```bash
+make inference-build
+```
+
+#### Run single-text inference
+
+```bash
+make inference-run TEXT="Jeu vidéo action PS4"
+```
+
+#### Run batch inference
+
+```bash
+make inference-batch
+```
+
+#### Rebuild and run inference
+
+```bash
+make inference-rebuild
+```
+
+#### Clean inference image
+
+```bash
+make inference-clean
+```
+
+## Reproducibility
+
+Every training run is reproducible via the following anchors:
+
+- **Code**: Git commit hash (`GIT_COMMIT`)
+- **Branch**: Git branch (`GIT_BRANCH`)
+- **Config**: committed `configs/` state
+- **Device**: exported via `DEVICE`
+- **Data & Artifacts**: tracked through DVC
+
+To reproduce a run:
+
+```bash
 git checkout <commit-hash>
-uv run dvc pull
-make train-text-run
+make dvc-pull
+make train-text-run DEVICE=cpu
+```
+
+or for GPU:
+
+```bash
+git checkout <commit-hash>
+make dvc-pull
+make train-text-run DEVICE=cu121
+```
 
 
 ------------------------------------------------------------------------

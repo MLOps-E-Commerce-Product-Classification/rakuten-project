@@ -71,31 +71,29 @@ dev = [
 ]
 
 # -----------------------------------------------------------------------------
-# uv: Plattformspezifische PyTorch-Wheels (CPU vs CUDA) via alternate indexes
+# uv: Platform-specific PyTorch wheels via alternate indexes
 #
-# - macOS:         CPU/MPS-Wheels (kein CUDA)
-# - Linux/Windows: CUDA 12.1 Wheels
-#
-# WICHTIG: ml-core, image, text, api, training und all sind alle aufgeführt,
-#          da torch in mehreren Extras vorkommt.
+# - macOS:         CPU wheels
+# - Linux/Windows: CUDA 12.1 wheels
 # -----------------------------------------------------------------------------
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
-url  = "https://download.pytorch.org/whl/cpu"
+url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [[tool.uv.index]]
 name = "pytorch-cu121"
-url  = "https://download.pytorch.org/whl/cu121"
+url = "https://download.pytorch.org/whl/cu121"
 explicit = true
 
 [tool.uv.sources]
 torch = [
-  { index = "pytorch-cu121", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and (extra == 'ml-core' or extra == 'image' or extra == 'text' or extra == 'api' or extra == 'training' or extra == 'all')" },
-  { index = "pytorch-cpu",   marker = "sys_platform == 'darwin' and (extra == 'ml-core' or extra == 'image' or extra == 'text' or extra == 'api' or extra == 'training' or extra == 'all')" },
+  { index = "pytorch-cu121", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+  { index = "pytorch-cpu", marker = "sys_platform == 'darwin'" },
 ]
+
 torchvision = [
-  { index = "pytorch-cu121", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and (extra == 'image' or extra == 'api' or extra == 'training' or extra == 'all')" },
-  { index = "pytorch-cpu",   marker = "sys_platform == 'darwin' and (extra == 'image' or extra == 'api' or extra == 'training' or extra == 'all')" },
+  { index = "pytorch-cu121", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+  { index = "pytorch-cpu", marker = "sys_platform == 'darwin'" },
 ]

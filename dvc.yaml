@@ -1,0 +1,19 @@
+stages:
+  train-text:
+    cmd: docker compose run --rm train-text
+    deps:
+      - data/raw/X_train_update.csv
+      - data/raw/Y_train_CVw08PX.csv
+      - configs/text_train_config.yaml
+      - configs/text_preprocessing_config.yaml
+      - src/
+    params:
+      - configs/text_train_config.yaml:
+          - training
+          - model
+    outs:
+      - models/best_text_model.pt
+      - artifacts/splits/
+    metrics:
+      - results/dvc_metrics.json:
+          cache: false
