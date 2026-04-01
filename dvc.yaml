@@ -12,7 +12,6 @@ stages:
           - training
           - model
     outs:
-      - models/best_text_model.pt
       - artifacts/splits/
     metrics:
       - results/dvc_metrics.json:

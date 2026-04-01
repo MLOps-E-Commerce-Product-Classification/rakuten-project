@@ -76,7 +76,7 @@ dvc-repro:
 	git diff --quiet configs/ || \
 	(git add configs/ && git commit -m "exp: config update - $(shell date '+%Y-%m-%d %H:%M')")
 
-	# DVC prüft ob sich deps geändert haben und führt ggf. docker compose run aus
+	# DVC checks if deployments have changed and, if so, initiates the Docker Compose Run.
 	GIT_COMMIT=$$(git rev-parse HEAD) \
 	GIT_BRANCH=$$(git rev-parse --abbrev-ref HEAD) \
 	DEVICE=$(DEVICE) \
