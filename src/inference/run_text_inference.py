@@ -106,7 +106,7 @@ def predict_single_text(
     predicted_label = int(idx_to_label[predicted_class_idx])  # als int
 
     probabilities_dict = {
-        int(idx_to_label[i]): float(probabilities[i].item())
+        str(int(idx_to_label[i])): float(probabilities[i].item())
         for i in range(len(probabilities))
     }
 

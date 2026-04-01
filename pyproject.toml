@@ -13,6 +13,11 @@ dependencies = [
   "python-dateutil==2.9.0.post0",
   "typing-extensions>=4.10.0",
   "tzdata>=2025.0",
+  "bentoml>=1.4.0,<2.0.0",
+  "PyJWT>=2.10.1",
+  "huggingface-hub>=0.23.0",
+  "transformers>=5.3.0",
+  "torch>=2.5.1",
 ]
 
 [project.optional-dependencies]
@@ -38,15 +43,12 @@ text = [
   "accelerate>=0.23.0",
 ]
 
-# API (kept lean – torch/transformers only while TODO is still open)
+# API / serving
 api = [
-  "fastapi>=0.135.1",
-  "uvicorn[standard]>=0.42.0",
-  "pillow==10.4.0",
-  # TODO: remove once inference is fully isolated from the API:
   "torch",
-  "torchvision",
   "transformers>=4.35.0",
+  "bentoml>=1.4.0,<2.0.0",
+  "pillow==10.4.0",
 ]
 
 # Data versioning + experiment tracking (was lost in V2 during the merge)
@@ -69,31 +71,29 @@ dev = [
 ]
 
 # -----------------------------------------------------------------------------
-# uv: Plattformspezifische PyTorch-Wheels (CPU vs CUDA) via alternate indexes
+# uv: Platform-specific PyTorch wheels via alternate indexes
 #
-# - macOS:         CPU/MPS-Wheels (kein CUDA)
-# - Linux/Windows: CUDA 12.1 Wheels
-#
-# WICHTIG: ml-core, image, text, api, training und all sind alle aufgeführt,
-#          da torch in mehreren Extras vorkommt.
+# - macOS:         CPU wheels
+# - Linux/Windows: CUDA 12.1 wheels
 # -----------------------------------------------------------------------------
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
-url  = "https://download.pytorch.org/whl/cpu"
+url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [[tool.uv.index]]
 name = "pytorch-cu121"
-url  = "https://download.pytorch.org/whl/cu121"
+url = "https://download.pytorch.org/whl/cu121"
 explicit = true
 
 [tool.uv.sources]
 torch = [
-  { index = "pytorch-cu121", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and (extra == 'ml-core' or extra == 'image' or extra == 'text' or extra == 'api' or extra == 'training' or extra == 'all')" },
-  { index = "pytorch-cpu",   marker = "sys_platform == 'darwin' and (extra == 'ml-core' or extra == 'image' or extra == 'text' or extra == 'api' or extra == 'training' or extra == 'all')" },
+  { index = "pytorch-cu121", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+  { index = "pytorch-cpu", marker = "sys_platform == 'darwin'" },
 ]
+
 torchvision = [
-  { index = "pytorch-cu121", marker = "(sys_platform == 'linux' or sys_platform == 'win32') and (extra == 'image' or extra == 'api' or extra == 'training' or extra == 'all')" },
-  { index = "pytorch-cpu",   marker = "sys_platform == 'darwin' and (extra == 'image' or extra == 'api' or extra == 'training' or extra == 'all')" },
+  { index = "pytorch-cu121", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+  { index = "pytorch-cpu", marker = "sys_platform == 'darwin'" },
 ]
