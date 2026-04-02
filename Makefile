@@ -54,7 +54,6 @@ train-text-clean:
 	docker image rm train-text 2>/dev/null || true
 
 # ============================================================
-# Bento serving / packaging
 # DVC
 # ============================================================
 
@@ -63,28 +62,6 @@ dvc-init:
 	uv run dvc init
 	git add .dvc .dvcignore
 	git commit -m "chore: initialize DVC"
-
-.PHONY: dvc-add-data
-dvc-add-data:
-	uv run dvc add data/raw/
-	git add data/raw/*.dvc data/raw/.gitignore
-	git commit -m "chore: track raw data with DVC"
-
-.PHONY: dvc-repro
-dvc-repro:
-	# Commit config changes only if there are any (wie in train-text-run)
-	git diff --quiet configs/ || \
-	(git add configs/ && git commit -m "exp: config update - $(shell date '+%Y-%m-%d %H:%M')")
-
-	# DVC checks if deployments have changed and, if so, initiates the Docker Compose Run.
-	GIT_COMMIT=$$(git rev-parse HEAD) \
-	GIT_BRANCH=$$(git rev-parse --abbrev-ref HEAD) \
-	DEVICE=$(DEVICE) \
-	uv run dvc repro train-text
-
-	# commit results
-	git add dvc.lock
-	git commit -m "exp: $(GIT_BRANCH) - $$(date '+%Y-%m-%d %H:%M') [$(DEVICE)]" || true
 
 .PHONY: dvc-push
 dvc-push:
@@ -100,9 +77,6 @@ dvc-pull:
 dvc-metrics:
 	dvc metrics show
 	dvc metrics diff HEAD~1
-
-.PHONY: dvc-run
-dvc-run: dvc-repro dvc-push
 
 
 # ============================================================

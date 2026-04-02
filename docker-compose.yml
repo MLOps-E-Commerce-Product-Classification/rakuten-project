@@ -16,6 +16,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./models:/app/models
+      - ./src:/app/src
       - ./configs:/app/configs
       - ./artifacts:/app/artifacts
       - ./results:/app/results
