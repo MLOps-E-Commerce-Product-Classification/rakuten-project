@@ -13,7 +13,7 @@ stages:
           - model
     outs:
       - artifacts/splits/
-      - data/preprocessed/
+      - data/processed/
     metrics:
       - results/dvc_metrics.json:
           cache: false

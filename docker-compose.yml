@@ -21,6 +21,8 @@ services:
       - ./results:/app/results
       - ./.dvc:/app/.dvc
       - ./.git:/app/.git
+      - ./dvc.yaml:/app/dvc.yaml
+      - ./.dvcignore:/app/.dvcignore
       - dvc-cache:/home/appuser/.cache/dvc
     deploy:
       resources:
