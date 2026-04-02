@@ -4,7 +4,7 @@ preprocessing:
   remove_html: true
   lowercase: false
   combine_fields: true
-  separator: " Description: "
+  separator: " [SEP] "
 
 quality:
   compute_quality_report: false

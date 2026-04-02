@@ -60,6 +60,8 @@ data = [
 
 # Convenience meta-extras
 training = ["rakuten-multimodal-classifier[image,text,data]"]
+training-text = ["rakuten-multimodal-classifier[text,data]"]
+training-image = ["rakuten-multimodal-classifier[image,data]"]
 all     = ["rakuten-multimodal-classifier[image,text,api,data]"]
 
 # -----------------------------------------------------------------------------

@@ -3177,6 +3177,32 @@ training = [
     { name = "tqdm" },
     { name = "transformers" },
 ]
+training-image = [
+    { name = "dagshub" },
+    { name = "dvc", extra = ["s3"] },
+    { name = "mlflow" },
+    { name = "pillow" },
+    { name = "scikit-learn" },
+    { name = "torch", version = "2.5.1+cu121", source = { registry = "https://download.pytorch.org/whl/cu121" }, marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
+    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "torchvision", version = "0.20.1+cu121", source = { registry = "https://download.pytorch.org/whl/cu121" }, marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "torchvision", version = "0.26.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
+    { name = "torchvision", version = "0.26.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "tqdm" },
+]
+training-text = [
+    { name = "accelerate" },
+    { name = "dagshub" },
+    { name = "dvc", extra = ["s3"] },
+    { name = "mlflow" },
+    { name = "scikit-learn" },
+    { name = "torch", version = "2.5.1+cu121", source = { registry = "https://download.pytorch.org/whl/cu121" }, marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { name = "torch", version = "2.11.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
+    { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "tqdm" },
+    { name = "transformers" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -3201,10 +3227,12 @@ requires-dist = [
     { name = "pyjwt", specifier = ">=2.10.1" },
     { name = "python-dateutil", specifier = "==2.9.0.post0" },
     { name = "pyyaml", specifier = "==6.0.3" },
+    { name = "rakuten-multimodal-classifier", extras = ["image", "data"], marker = "extra == 'training-image'" },
     { name = "rakuten-multimodal-classifier", extras = ["image", "text", "api", "data"], marker = "extra == 'all'" },
     { name = "rakuten-multimodal-classifier", extras = ["image", "text", "data"], marker = "extra == 'training'" },
     { name = "rakuten-multimodal-classifier", extras = ["ml-core"], marker = "extra == 'image'" },
     { name = "rakuten-multimodal-classifier", extras = ["ml-core"], marker = "extra == 'text'" },
+    { name = "rakuten-multimodal-classifier", extras = ["text", "data"], marker = "extra == 'training-text'" },
     { name = "scikit-learn", marker = "extra == 'ml-core'", specifier = ">=1.5.2" },
     { name = "torch", marker = "sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32'", specifier = ">=2.5.1" },
     { name = "torch", marker = "sys_platform == 'darwin'", specifier = ">=2.5.1", index = "https://download.pytorch.org/whl/cpu" },
@@ -3225,7 +3253,7 @@ requires-dist = [
     { name = "typing-extensions", specifier = ">=4.10.0" },
     { name = "tzdata", specifier = ">=2025.0" },
 ]
-provides-extras = ["ml-core", "image", "text", "api", "data", "training", "all"]
+provides-extras = ["ml-core", "image", "text", "api", "data", "training", "training-text", "training-image", "all"]
 
 [package.metadata.requires-dev]
 dev = [

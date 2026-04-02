@@ -1,9 +1,21 @@
 stages:
-  train-text:
-    cmd: docker compose run --rm train-text
+  preprocess-text:
+    cmd: uv run python -m src.pipeline.preprocess_text_pipeline
     deps:
       - data/raw/X_train_update.csv
       - data/raw/Y_train_CVw08PX.csv
+      - configs/text_preprocessing_config.yaml
+      - configs/text_train_config.yaml
+      - configs/label_encoding.json
+      - src/
+    outs:
+      - data/processed/
+      - artifacts/splits/
+
+  train-text:
+    cmd: uv run python -m src.pipeline.text_pipeline --mode train
+    deps:
+      - data/processed/
       - configs/text_train_config.yaml
       - configs/text_preprocessing_config.yaml
       - src/
@@ -12,7 +24,7 @@ stages:
           - training
           - model
     outs:
-      - artifacts/splits/
+      - models/best_text_model.pt
     metrics:
       - results/dvc_metrics.json:
           cache: false

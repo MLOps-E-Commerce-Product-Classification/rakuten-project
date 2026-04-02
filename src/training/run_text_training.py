@@ -1,17 +1,14 @@
 from pathlib import Path
 import json
 import os
-import random
 import subprocess
 
 import mlflow
 import mlflow.pytorch
-import numpy as np
 import pandas as pd
 import torch
 import yaml
 from dotenv import load_dotenv
-from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 from src.data.text_dataset import RakutenTextDataset
@@ -38,6 +35,8 @@ def load_label_encoding(label_encoding_path: str | Path) -> dict:
 
 
 def set_seed(seed: int) -> None:
+    import random
+    import numpy as np
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -98,6 +97,8 @@ def load_or_create_splits(
     val_size: float,
     test_size: float,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    from sklearn.model_selection import train_test_split
+
     split_ids_dir = Path(split_ids_dir)
     split_ids_dir.mkdir(parents=True, exist_ok=True)
 
@@ -114,31 +115,11 @@ def load_or_create_splits(
         train_ids = load_split_ids(train_ids_path)
         val_ids = load_split_ids(val_ids_path)
         test_ids = load_split_ids(test_ids_path)
-        train_df = df.loc[train_ids].copy()
-        val_df = df.loc[val_ids].copy()
-        test_df = df.loc[test_ids].copy()
-        return train_df, val_df, test_df
-
-    if not 0 < val_size < 1:
-        raise ValueError("val_size must be between 0 and 1.")
-    if not 0 < test_size < 1:
-        raise ValueError("test_size must be between 0 and 1.")
-    if val_size + test_size >= 1:
-        raise ValueError("val_size + test_size must be < 1.")
+        return df.loc[train_ids].copy(), df.loc[val_ids].copy(), df.loc[test_ids].copy()
 
     labels = df[label_col].astype(str)
     use_stratify_first, small_classes_first = _can_use_stratify(labels, min_count=2)
-
-    if use_stratify_first:
-        stratify_labels_first = labels
-        print("Using stratified split for train vs. temp split.")
-    else:
-        stratify_labels_first = None
-        print(
-            "Warning: Falling back to non-stratified split for train vs. temp split "
-            "because some classes have fewer than 2 samples: "
-            f"{small_classes_first}"
-        )
+    stratify_labels_first = labels if use_stratify_first else None
 
     train_ids, temp_ids = train_test_split(
         df.index,
@@ -150,18 +131,8 @@ def load_or_create_splits(
     temp_df = df.loc[temp_ids].copy()
     temp_labels = temp_df[label_col].astype(str)
     relative_test_size = test_size / (val_size + test_size)
-    use_stratify_second, small_classes_second = _can_use_stratify(temp_labels, min_count=2)
-
-    if use_stratify_second:
-        stratify_labels_second = temp_labels
-        print("Using stratified split for val vs. test split.")
-    else:
-        stratify_labels_second = None
-        print(
-            "Warning: Falling back to non-stratified split for val vs. test split "
-            "because some classes have fewer than 2 samples in the temporary split: "
-            f"{small_classes_second}"
-        )
+    use_stratify_second, _ = _can_use_stratify(temp_labels, min_count=2)
+    stratify_labels_second = temp_labels if use_stratify_second else None
 
     val_ids, test_ids = train_test_split(
         temp_df.index,
@@ -173,31 +144,21 @@ def load_or_create_splits(
     save_split_ids(pd.Index(train_ids), train_ids_path)
     save_split_ids(pd.Index(val_ids), val_ids_path)
     save_split_ids(pd.Index(test_ids), test_ids_path)
-    print(f"Saved train/val/test split ids to {split_ids_dir}")
 
-    train_df = df.loc[train_ids].copy()
-    val_df = df.loc[val_ids].copy()
-    test_df = df.loc[test_ids].copy()
-    return train_df, val_df, test_df
+    return df.loc[train_ids].copy(), df.loc[val_ids].copy(), df.loc[test_ids].copy()
 
 
 def _get_git_info() -> dict:
-    # In Docker: read from ENV variables (passed via build-arg)
     commit = os.environ.get("GIT_COMMIT")
     branch = os.environ.get("GIT_BRANCH")
 
-    # Locally: read live via git command
     if not commit or commit == "unknown":
         try:
             commit = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"],
-                text=True,
-                stderr=subprocess.DEVNULL
+                ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
             ).strip()
             branch = subprocess.check_output(
-                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                text=True,
-                stderr=subprocess.DEVNULL
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True, stderr=subprocess.DEVNULL
             ).strip()
         except Exception:
             commit = "unknown"
@@ -207,22 +168,28 @@ def _get_git_info() -> dict:
 
 
 def run_text_training(
-    x_data_csv_path: str | Path,
-    y_data_csv_path: str | Path,
-    split_ids_dir: str | Path,
-    force_new_split: bool = False,
+    processed_data_dir: str | Path = "data/processed",
     train_config_path: str | Path = "configs/text_train_config.yaml",
     preprocessing_config_path: str | Path = "configs/text_preprocessing_config.yaml",
     model_save_path: str | Path = "models/best_text_model.pt",
     label_encoding_path: str | Path = "configs/label_encoding.json",
-) -> tuple[torch.nn.Module, dict, dict]:
+) -> tuple[dict, dict]:
+    processed_data_dir = Path(processed_data_dir)
+
+    train_csv = processed_data_dir / "train.csv"
+    val_csv = processed_data_dir / "val.csv"
+
+    if not train_csv.exists():
+        raise FileNotFoundError(f"Processed train data not found: {train_csv}. Run preprocess-text first.")
+    if not val_csv.exists():
+        raise FileNotFoundError(f"Processed val data not found: {val_csv}. Run preprocess-text first.")
+
     config = load_config(train_config_path)
     label_encoding = load_label_encoding(label_encoding_path)
 
     training_config = config.get("training", {})
     model_config = config.get("model", {})
     data_config = config.get("data", {})
-    split_config = config.get("split", {})
 
     batch_size = int(training_config.get("batch_size", 32))
     num_workers = int(training_config.get("num_workers", 0))
@@ -241,58 +208,18 @@ def run_text_training(
     description_col = data_config.get("description_col", "description")
     return_quality_report = bool(data_config.get("return_quality_report", False))
 
-    val_size = float(split_config.get("val_size", 0.1))
-    test_size = float(split_config.get("test_size", 0.1))
-
     set_seed(seed)
 
-    x_data_csv_path = Path(x_data_csv_path)
-    y_data_csv_path = Path(y_data_csv_path)
-
-    if not x_data_csv_path.exists():
-        raise FileNotFoundError(f"X data CSV not found: {x_data_csv_path}")
-    if not y_data_csv_path.exists():
-        raise FileNotFoundError(f"Y data CSV not found: {y_data_csv_path}")
-
-    x_df = pd.read_csv(x_data_csv_path)
-    y_df = pd.read_csv(y_data_csv_path)
-
-    if len(x_df) != len(y_df):
-        raise ValueError(
-            f"X and Y CSVs must have the same number of rows, got {len(x_df)} and {len(y_df)}."
-        )
-
-    df = pd.concat([x_df, y_df], axis=1)
-    df = df.reset_index(drop=True)
-    df["row_id"] = df.index
-
-    required_columns = {designation_col, label_col}
-    validate_dataframe_columns(df, required_columns, "Merged training data")
-
-    code_to_idx = label_encoding["code_to_idx"]
-    validate_labels_in_mapping(
-        df,
-        label_col=label_col,
-        code_to_idx=code_to_idx,
-        df_name="Merged training data",
-    )
-
-    train_df, val_df, test_df = load_or_create_splits(
-        df=df,
-        label_col=label_col,
-        split_ids_dir=split_ids_dir,
-        seed=seed,
-        force_new_split=force_new_split,
-        val_size=val_size,
-        test_size=test_size,
-    )
+    # Load preprocessed splits directly
+    train_df = pd.read_csv(train_csv)
+    val_df = pd.read_csv(val_csv)
 
     if subset > 0:
         train_df = train_df[:subset]
         val_df = val_df[:int(subset * 0.2)]
 
-    if len(train_df) == 0 or len(val_df) == 0 or len(test_df) == 0:
-        raise ValueError("At least one split is empty. Please check split sizes.")
+    if len(train_df) == 0 or len(val_df) == 0:
+        raise ValueError("Train or val split is empty.")
 
     num_classes = len(label_encoding["classes"])
 
@@ -305,7 +232,6 @@ def run_text_training(
         label_col=label_col,
         return_quality_report=return_quality_report,
     )
-
     val_dataset = RakutenTextDataset(
         dataframe=val_df,
         label_encoding=label_encoding,
@@ -337,27 +263,18 @@ def run_text_training(
     git_info = _get_git_info()
 
     with mlflow.start_run(run_name="text-classifier-training"):
-
         mlflow.log_params(git_info)
-
         mlflow.log_params({
-            "x_data_path": str(x_data_csv_path),
-            "y_data_path": str(y_data_csv_path),
+            "processed_data_dir": str(processed_data_dir),
             "train_size": len(train_df),
             "val_size": len(val_df),
-            "test_size": len(test_df),
             "num_classes": num_classes,
-            "force_new_split": force_new_split,
-            "val_split_ratio": val_size,
-            "test_split_ratio": test_size,
         })
-
         mlflow.log_params({
             "model_name": model_name,
             "pretrained": pretrained,
             "freeze_backbone": freeze_backbone,
         })
-
         mlflow.log_params({
             "learning_rate": lr,
             "num_epochs": epochs,
@@ -367,9 +284,7 @@ def run_text_training(
             "subset": subset if subset > 0 else "full",
             "optimizer": "AdamW",
         })
-
         mlflow.log_param("model_output_path", str(model_save_path))
-
         mlflow.log_artifact(str(train_config_path), artifact_path="configs")
         mlflow.log_artifact(str(preprocessing_config_path), artifact_path="configs")
 
@@ -387,18 +302,11 @@ def run_text_training(
             "final_best_val_accuracy": max(history["val_accuracy"]),
             "final_best_val_loss": min(history["val_loss"]),
         })
-
-        mlflow.pytorch.log_model(  
-            pytorch_model=trained_model,  
-            artifact_path="model",  
+        mlflow.pytorch.log_model(
+            pytorch_model=trained_model,
+            artifact_path="model",
             registered_model_name="text-classifier",
         )
-
-    history["split_sizes"] = {
-        "train": int(len(train_df)),
-        "val": int(len(val_df)),
-        "test": int(len(test_df)),
-    }
 
     metrics_path = Path("results/dvc_metrics.json")
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
@@ -412,17 +320,13 @@ def run_text_training(
 
 
 if __name__ == "__main__":
-    trained_model, history, label_encoding = run_text_training(
-        x_data_csv_path="data/X_train_update.csv",
-        y_data_csv_path="data/Y_train_CVw08PX.csv",
-        split_ids_dir="artifacts/splits",
-        force_new_split=False,
+    history, label_encoding = run_text_training(
+        processed_data_dir="data/processed",
         train_config_path="configs/text_train_config.yaml",
         preprocessing_config_path="configs/text_preprocessing_config.yaml",
         model_save_path="models/best_text_model.pt",
         label_encoding_path="configs/label_encoding.json",
     )
-
     print("Training finished.")
     print(f"Number of classes: {len(label_encoding['classes'])}")
     print(f"Best val macro-F1: {max(history['val_macro_f1']):.4f}")

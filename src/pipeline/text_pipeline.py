@@ -34,6 +34,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # ----------------------------------------------------
+    # Data preprocessing
+    # ----------------------------------------------------
+    parser.add_argument(  
+        "--processed_data_dir",  
+        type=str,  
+        default="data/processed",  
+        help="Path to preprocessed data directory.",  
+    )
+
+    # ----------------------------------------------------
     # Split handling
     # ----------------------------------------------------
     parser.add_argument(
@@ -177,10 +187,7 @@ def build_parser() -> argparse.ArgumentParser:
 def run_train_mode(args: argparse.Namespace) -> None:
     from src.training.run_text_training import run_text_training
     history, label_encoding = run_text_training(
-        x_data_csv_path=args.x_data_csv_path,
-        y_data_csv_path=args.y_data_csv_path,
-        split_ids_dir=args.split_ids_dir,
-        force_new_split=args.force_new_split,
+        processed_data_dir=args.processed_data_dir,
         train_config_path=args.train_config_path,
         preprocessing_config_path=args.preprocessing_config_path,
         model_save_path=args.model_save_path,
@@ -190,7 +197,6 @@ def run_train_mode(args: argparse.Namespace) -> None:
     print("Training finished.")
     print(f"Model saved to: {args.model_save_path}")
     print(f"Label encoding loaded from: {args.label_encoding_path}")
-    print(f"Split IDs directory: {args.split_ids_dir}")
     print(f"Number of classes: {len(label_encoding['classes'])}")
     print(f"Best validation macro-F1: {max(history['val_macro_f1']):.4f}")
 
