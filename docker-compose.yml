@@ -1,6 +1,6 @@
 services:
   train-text:
-    image: my-project/train-text:${DEVICE:-cpu}
+    image: rakuten-ml/train-text:${DEVICE:-cpu}
     build:
       context: .
       dockerfile: docker/Dockerfile.train-text
@@ -75,4 +75,4 @@ services:
       TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD: "1"
 
 volumes:
-  dvc-cache
+  dvc-cache:
