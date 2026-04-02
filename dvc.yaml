@@ -1,6 +1,6 @@
 stages:
   train-text:
-    cmd: docker compose run --rm train-text
+    cmd: uv run python -m src.pipeline.text_pipeline --mode train
     deps:
       - data/raw/X_train_update.csv
       - data/raw/Y_train_CVw08PX.csv
@@ -13,6 +13,7 @@ stages:
           - model
     outs:
       - artifacts/splits/
+      - data/preprocessed/
     metrics:
       - results/dvc_metrics.json:
           cache: false
