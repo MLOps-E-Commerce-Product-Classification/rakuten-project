@@ -31,7 +31,7 @@ train-text-build:
 train-text-run:
 	git add configs/
 	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
-	GIT_COMMIT=$(GIT_COMMIT) GIT_BRANCH=$(GIT_BRANCH) docker compose up train-text
+	DEVICE=$(DEVICE) GIT_COMMIT=$(GIT_COMMIT) GIT_BRANCH=$(GIT_BRANCH) docker compose run --rm train-text
 
 .PHONY: train-text-rebuild
 train-text-rebuild:
