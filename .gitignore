@@ -42,4 +42,3 @@ env/
 
 # system
 .DS_Store
-results/mlflow_run_id.txt

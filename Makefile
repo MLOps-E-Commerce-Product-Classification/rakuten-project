@@ -29,8 +29,10 @@ train-text-build:
 train-text-run:
 	git add src/ configs/
 	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
-	$(eval GIT_COMMIT := $(shell git rev-parse HEAD))
-	DEVICE=$(DEVICE) GIT_COMMIT=$(GIT_COMMIT) GIT_BRANCH=$(GIT_BRANCH) docker compose run --rm train-text
+	DEVICE=$(DEVICE) \
+	GIT_COMMIT=`git rev-parse HEAD` \
+	GIT_BRANCH=`git rev-parse --abbrev-ref HEAD` \
+	docker compose run --rm train-text
 
 .PHONY: train-text-stop
 train-text-stop:
