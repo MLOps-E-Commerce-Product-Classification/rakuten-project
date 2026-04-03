@@ -1,53 +1,5 @@
 schema: '2.0'
 stages:
-  train-text:
-    cmd: docker compose run --rm train-text
-    deps:
-    - path: configs/text_preprocessing_config.yaml
-      hash: md5
-      md5: 435a3faac69fbc0253d009a4e8cc5ac5
-      size: 215
-    - path: configs/text_train_config.yaml
-      hash: md5
-      md5: e3dc4edc944a127682313280fbc364a1
-      size: 450
-    - path: data/raw/X_train_update.csv
-      hash: md5
-      md5: c936389910c88bb29bf2c438af3476df
-      size: 54129120
-    - path: data/raw/Y_train_CVw08PX.csv
-      hash: md5
-      md5: 52d45c998ddc0c10f05987bb233ff5e7
-      size: 906705
-    - path: src/
-      hash: md5
-      md5: eb0f279a36d4358c10b6fd5211e350b2.dir
-      size: 649825
-      nfiles: 110
-    params:
-      configs/text_train_config.yaml:
-        model:
-          name: bert-base-multilingual-cased
-          pretrained: true
-          freeze_backbone: false
-        training:
-          learning_rate: 2e-05
-          early_stopping_patience: 2
-          num_epochs: 2
-          batch_size: 32
-          weight_decay: 0.05
-          num_workers: 2
-          seed: 42
-    outs:
-    - path: artifacts/splits/
-      hash: md5
-      md5: 38308f015517a8ea55b750c7fb2b9bb8.dir
-      size: 498407
-      nfiles: 3
-    - path: results/dvc_metrics.json
-      hash: md5
-      md5: 7b1d72586274038a26d13a19fdc18ad4
-      size: 112
   preprocess-text:
     cmd: uv run python -m src.pipeline.preprocess_text_pipeline
     deps:
@@ -59,10 +11,6 @@ stages:
       hash: md5
       md5: 7c2509d0a743b10dd2087338c7388662
       size: 208
-    - path: configs/text_train_config.yaml
-      hash: md5
-      md5: e3dc4edc944a127682313280fbc364a1
-      size: 450
     - path: data/raw/X_train_update.csv
       hash: md5
       md5: c936389910c88bb29bf2c438af3476df
@@ -73,8 +21,8 @@ stages:
       size: 906705
     - path: src/
       hash: md5
-      md5: f3f53662ae1e51cc2ea0aa097b71c19b.dir
-      size: 657493
+      md5: e6128e1181ae4e6fd1ecbdb4bdf92341.dir
+      size: 657858
       nfiles: 112
     outs:
     - path: artifacts/splits/
@@ -87,3 +35,43 @@ stages:
       md5: 4f251191a68dd3074c65ed133e730c6f.dir
       size: 152067748
       nfiles: 3
+  train-text:
+    cmd: uv run python -m src.pipeline.text_pipeline --mode train
+    deps:
+    - path: configs/text_preprocessing_config.yaml
+      hash: md5
+      md5: 7c2509d0a743b10dd2087338c7388662
+      size: 208
+    - path: configs/text_train_config.yaml
+      hash: md5
+      md5: 56ca17f549429f63d724012872cf021f
+      size: 450
+    - path: data/processed/
+      hash: md5
+      md5: 4f251191a68dd3074c65ed133e730c6f.dir
+      size: 152067748
+      nfiles: 3
+    - path: src/
+      hash: md5
+      md5: e6128e1181ae4e6fd1ecbdb4bdf92341.dir
+      size: 657858
+      nfiles: 112
+    params:
+      configs/text_train_config.yaml:
+        model:
+          name: bert-base-multilingual-cased
+          pretrained: true
+          freeze_backbone: false
+        training:
+          learning_rate: 2e-05
+          early_stopping_patience: 1
+          num_epochs: 3
+          batch_size: 32
+          weight_decay: 0.05
+          num_workers: 4
+          seed: 42
+    outs:
+    - path: results/dvc_metrics.json
+      hash: md5
+      md5: b2e7ce4af304336fc4d80334a0c8a68b
+      size: 113
