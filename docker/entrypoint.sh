@@ -34,7 +34,6 @@ import mlflow
 with mlflow.start_run(run_id="$RUN_ID"):
     mlflow.log_param("final_pipeline_commit", "$NEW_COMMIT_HASH")
 EOF
-        rm "$RUN_ID_FILE"
     fi
 
     echo ">>> Pushing to Git remote..."
