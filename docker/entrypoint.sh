@@ -16,7 +16,13 @@ echo ">>> Pushing results to DVC remote..."
 uv run dvc push
 
 echo ">>> Committing dvc.lock to Git..."
-git add dvc.lock results/dvc_metrics.json
+git add dvc.lock results/
+
+echo ">>> Git status before commit:"
+git status
+
+echo ">>> Staged changes:"
+git diff --cached --stat
 
 if git diff --cached --quiet; then
     echo "Nothing to commit, skipping."
