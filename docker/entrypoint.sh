@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-git config --global user.email "mlops@mlops@industry-ai-engineering.com"
-git config --global user.name "DVC Runner"
 git config --global --add safe.directory /app
 export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
 
