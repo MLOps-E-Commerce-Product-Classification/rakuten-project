@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+git config --global user.email "you@example.com"
+git config --global user.name "DVC Runner"
+git config --global --add safe.directory /app
+
 echo ">>> Pulling data from DVC remote..."
 uv run dvc pull data/raw/
 
@@ -37,5 +41,6 @@ EOF
     fi
 
     echo ">>> Pushing to Git remote..."
+    git remote set-url origin https://${GIT_TOKEN}@dagshub.com/Mlops2026/rakuten-project.git
     git push
 fi

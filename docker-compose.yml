@@ -25,6 +25,8 @@ services:
       - ./dvc.yaml:/app/dvc.yaml
       - ./.dvcignore:/app/.dvcignore
       - dvc-cache:/home/appuser/.cache/dvc
+      - ~/.gitconfig:/home/appuser/.gitconfig:ro
+      - ~/.ssh:/home/appuser/.ssh:ro
     deploy:
       resources:
         reservations:

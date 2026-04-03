@@ -23,8 +23,6 @@ stages:
       - configs/text_train_config.yaml:
           - training
           - model
-    outs:
-      - models/best_text_model.pt
     metrics:
       - results/dvc_metrics.json:
           cache: false
