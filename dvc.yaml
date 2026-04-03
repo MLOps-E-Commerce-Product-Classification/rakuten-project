@@ -5,7 +5,6 @@ stages:
       - data/raw/X_train_update.csv
       - data/raw/Y_train_CVw08PX.csv
       - configs/text_preprocessing_config.yaml
-      - configs/text_train_config.yaml
       - configs/label_encoding.json
       - src/
     outs:
