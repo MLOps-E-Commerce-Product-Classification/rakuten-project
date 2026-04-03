@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-git config --global --add safe.directory /app
 export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
 
 echo ">>> Pulling data from DVC remote..."
