@@ -39,3 +39,9 @@ fi
 
 echo ">>> Pushing results to DVC remote..."
 uv run dvc push
+
+# Clean up any file-system drift between container and host
+git update-index --really-refresh > /dev/null 2>&1 || true
+git reset --mixed HEAD > /dev/null 2>&1 || true
+
+echo ">>> Finished successfully."
