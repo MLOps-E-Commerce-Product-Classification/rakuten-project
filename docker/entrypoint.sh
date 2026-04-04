@@ -1,6 +1,16 @@
 #!/bin/bash
 set -e
 
+echo ">>> DEBUG: show dvc.yaml inside container"
+ls -la /app/dvc.yaml
+sed -n '1,200p' /app/dvc.yaml
+
+echo ">>> DEBUG: dvc stage list"
+uv run dvc stage list
+
+echo ">>> DEBUG: dvc dag"
+uv run dvc dag
+
 export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
 
 echo ">>> Pulling data from DVC remote..."
