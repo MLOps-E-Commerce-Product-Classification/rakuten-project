@@ -9,9 +9,6 @@ uv run dvc pull data/raw/
 echo ">>> Running DVC Pipeline..."
 uv run dvc repro
 
-echo ">>> Pushing results to DVC remote..."
-uv run dvc push
-
 echo ">>> Committing dvc.lock to Git..."
 git add dvc.lock results/
 
@@ -39,3 +36,6 @@ EOF
     echo ">>> Pushing to Git remote..."
     git push
 fi
+
+echo ">>> Pushing results to DVC remote..."
+uv run dvc push
