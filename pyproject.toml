@@ -62,7 +62,7 @@ data = [
 training = ["rakuten-multimodal-classifier[image,text,data]"]
 training-text = ["rakuten-multimodal-classifier[text,data]"]
 training-image = ["rakuten-multimodal-classifier[image,data]"]
-all     = ["rakuten-multimodal-classifier[image,text,api,data]"]
+all = ["rakuten-multimodal-classifier[image,text,api,data]"]
 
 # -----------------------------------------------------------------------------
 [dependency-groups]
