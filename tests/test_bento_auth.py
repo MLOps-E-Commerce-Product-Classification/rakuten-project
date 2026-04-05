@@ -6,7 +6,7 @@ from starlette.responses import JSONResponse
 pytest.importorskip("bentoml")
 pytest.importorskip("jwt")
 
-from src.serving.bento_service import JWTAuthMiddleware, create_jwt_token
+from src.serving.bento_service import JWTAuthMiddleware, create_jwt_token  # noqa: E402
 
 
 def _request(path: str, authorization: str | None = None) -> Request:
@@ -35,7 +35,10 @@ def _dispatch(request: Request):
     middleware = JWTAuthMiddleware(app=lambda scope, receive, send: None)
 
     async def call_next(req: Request) -> JSONResponse:
-        assert hasattr(req.state, "user") or req.url.path not in {"/predict", "/predict_batch"}
+        assert hasattr(req.state, "user") or req.url.path not in {
+            "/predict",
+            "/predict_batch",
+        }
         return JSONResponse({"ok": True, "user": getattr(req.state, "user", None)})
 
     return asyncio.run(middleware.dispatch(request, call_next))

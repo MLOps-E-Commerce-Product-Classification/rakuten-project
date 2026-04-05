@@ -5,7 +5,7 @@ training:
   batch_size: 32
   num_workers: 2
   seed: 17
-  subset: 0 # 0 if training on the whole data 
+  subset: 0 # 0 if training on the whole data
 
 model:
   name: efficientnet_b0

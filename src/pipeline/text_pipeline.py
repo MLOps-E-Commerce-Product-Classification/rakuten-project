@@ -36,11 +36,11 @@ def build_parser() -> argparse.ArgumentParser:
     # ----------------------------------------------------
     # Data preprocessing
     # ----------------------------------------------------
-    parser.add_argument(  
-        "--processed_data_dir",  
-        type=str,  
-        default="data/processed",  
-        help="Path to preprocessed data directory.",  
+    parser.add_argument(
+        "--processed_data_dir",
+        type=str,
+        default="data/processed",
+        help="Path to preprocessed data directory.",
     )
 
     # ----------------------------------------------------
@@ -186,6 +186,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def run_train_mode(args: argparse.Namespace) -> None:
     from src.training.run_text_training import run_text_training
+
     history, label_encoding = run_text_training(
         processed_data_dir=args.processed_data_dir,
         train_config_path=args.train_config_path,
@@ -203,6 +204,7 @@ def run_train_mode(args: argparse.Namespace) -> None:
 
 def run_evaluate_mode(args: argparse.Namespace) -> None:
     from src.evaluation.run_text_evaluation import run_text_evaluation
+
     results = run_text_evaluation(
         x_data_csv_path=args.x_data_csv_path,
         y_data_csv_path=args.y_data_csv_path,
@@ -217,19 +219,15 @@ def run_evaluate_mode(args: argparse.Namespace) -> None:
     )
 
     print("Evaluation finished.")
-    print(
-        f"Main metric: {results['main_metric']} = "
-        f"{results['main_metric_value']:.4f}"
-    )
+    print(f"Main metric: {results['main_metric']} = {results['main_metric_value']:.4f}")
     print(f"Results saved to: {args.results_output_path}")
 
 
 def run_inference_mode(args: argparse.Namespace) -> None:
     from src.inference.run_text_inference import run_text_inference
+
     if args.text is None and not args.texts:
-        raise ValueError(
-            "For inference mode, provide either --text or --texts."
-        )
+        raise ValueError("For inference mode, provide either --text or --texts.")
 
     text_input = args.text if args.text is not None else args.texts
 
@@ -252,6 +250,7 @@ def run_inference_mode(args: argparse.Namespace) -> None:
 
 def run_random_search_mode(args: argparse.Namespace) -> None:
     from src.training.text_random_search_hyperparameters import run_random_search
+
     summary = run_random_search(
         x_data_csv_path=args.x_data_csv_path,
         y_data_csv_path=args.y_data_csv_path,

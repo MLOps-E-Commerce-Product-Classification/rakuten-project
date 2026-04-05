@@ -4,8 +4,12 @@ pytest.importorskip("bentoml")
 pytest.importorskip("jwt")
 pytest.importorskip("torch")
 
-from src.serving.bento_service import TextBentoService, create_jwt_token
-from src.serving.schemas import BatchTextPredictionRequest, Credentials, TextPredictionRequest
+from src.serving.bento_service import TextBentoService, create_jwt_token  # noqa: E402
+from src.serving.schemas import (
+    BatchTextPredictionRequest,
+    Credentials,
+    TextPredictionRequest,
+)  # noqa: E402
 
 
 class StubModelService:
@@ -66,7 +70,9 @@ def test_predict_delegates_to_model_service():
     service = TextBentoService()
     service.model_service = StubModelService()
 
-    response = service.predict(TextPredictionRequest(designation="robe femme", description="bleu", top_k=1))
+    response = service.predict(
+        TextPredictionRequest(designation="robe femme", description="bleu", top_k=1)
+    )
 
     assert response.predicted_rakuten_code == 10
     assert response.top_k_predictions[0].rakuten_code == 10
@@ -80,7 +86,9 @@ def test_predict_batch_delegates_to_model_service():
 
     request = BatchTextPredictionRequest(
         items=[
-            TextPredictionRequest(designation="robe femme", description="bleu", top_k=1),
+            TextPredictionRequest(
+                designation="robe femme", description="bleu", top_k=1
+            ),
             TextPredictionRequest(designation="jeu video", description="ps4", top_k=1),
         ]
     )

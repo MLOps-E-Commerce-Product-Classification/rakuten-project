@@ -73,8 +73,7 @@ def compute_classification_metrics(
         )
 
         metrics["per_class_f1"] = {
-            int(label): float(score)
-            for label, score in zip(labels, per_class_f1)
+            int(label): float(score) for label, score in zip(labels, per_class_f1)
         }
 
     return metrics

@@ -47,7 +47,9 @@ def _wait_for_ready(url: str, timeout: float = 30.0) -> None:
 def _login_token(port: int) -> str:
     request = Request(
         url=f"http://127.0.0.1:{port}/login",
-        data=json.dumps({"credentials": {"username": "user123", "password": "password123"}}).encode("utf-8"),
+        data=json.dumps(
+            {"credentials": {"username": "user123", "password": "password123"}}
+        ).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
@@ -67,7 +69,15 @@ def test_bento_http_health_endpoint():
     env["PYTHONPATH"] = str(Path.cwd())
 
     process = subprocess.Popen(
-        [cli, "serve", "src.serving.bento_service:TextBentoService", "--host", "127.0.0.1", "--port", str(port)],
+        [
+            cli,
+            "serve",
+            "src.serving.bento_service:TextBentoService",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=env,
@@ -114,7 +124,15 @@ def test_bento_http_predict_endpoint_when_model_available():
     env["PYTHONPATH"] = str(Path.cwd())
 
     process = subprocess.Popen(
-        [cli, "serve", "src.serving.bento_service:TextBentoService", "--host", "127.0.0.1", "--port", str(port)],
+        [
+            cli,
+            "serve",
+            "src.serving.bento_service:TextBentoService",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=env,
@@ -126,8 +144,19 @@ def test_bento_http_predict_endpoint_when_model_available():
         token = _login_token(port)
         request = Request(
             url=f"http://127.0.0.1:{port}/predict",
-            data=json.dumps({"input_data": {"designation": "robe femme", "description": "bleu", "top_k": 1}}).encode("utf-8"),
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+            data=json.dumps(
+                {
+                    "input_data": {
+                        "designation": "robe femme",
+                        "description": "bleu",
+                        "top_k": 1,
+                    }
+                }
+            ).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {token}",
+            },
             method="POST",
         )
         with urlopen(request, timeout=15) as response:
@@ -162,7 +191,15 @@ def test_bento_http_predict_batch_endpoint_when_model_available():
     env["PYTHONPATH"] = str(Path.cwd())
 
     process = subprocess.Popen(
-        [cli, "serve", "src.serving.bento_service:TextBentoService", "--host", "127.0.0.1", "--port", str(port)],
+        [
+            cli,
+            "serve",
+            "src.serving.bento_service:TextBentoService",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=env,
@@ -174,15 +211,28 @@ def test_bento_http_predict_batch_endpoint_when_model_available():
         token = _login_token(port)
         request = Request(
             url=f"http://127.0.0.1:{port}/predict_batch",
-            data=json.dumps({
-                "input_data": {
-                    "items": [
-                        {"designation": "robe femme", "description": "bleu", "top_k": 1},
-                        {"designation": "jeu video", "description": "ps4", "top_k": 2},
-                    ]
+            data=json.dumps(
+                {
+                    "input_data": {
+                        "items": [
+                            {
+                                "designation": "robe femme",
+                                "description": "bleu",
+                                "top_k": 1,
+                            },
+                            {
+                                "designation": "jeu video",
+                                "description": "ps4",
+                                "top_k": 2,
+                            },
+                        ]
+                    }
                 }
-            }).encode("utf-8"),
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+            ).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {token}",
+            },
             method="POST",
         )
         with urlopen(request, timeout=45) as response:

@@ -44,7 +44,11 @@ def register_text_model(
         )
 
     backbone_path = ensure_local_text_backbone()
-    train_config = _load_json(train_config_path.with_suffix(".json")) if train_config_path.suffix == ".json" else None
+    train_config = (
+        _load_json(train_config_path.with_suffix(".json"))
+        if train_config_path.suffix == ".json"
+        else None
+    )
     if train_config is None:
         import yaml
 
@@ -53,11 +57,15 @@ def register_text_model(
 
     label_encoding = load_label_mapping(label_encoding_path)
     idx_to_label = invert_label_mapping(label_encoding)
-    tokenizer = build_tokenizer(preprocessing_config_path, local_model_dir=backbone_path)
+    tokenizer = build_tokenizer(
+        preprocessing_config_path, local_model_dir=backbone_path
+    )
 
     model_config = train_config.get("model", {})
     configured_name = model_config.get("name", "bert-base-multilingual-cased")
-    model_name_or_path = str(backbone_path) if backbone_path.exists() else configured_name
+    model_name_or_path = (
+        str(backbone_path) if backbone_path.exists() else configured_name
+    )
 
     model = build_text_model(
         model_name=model_name_or_path,

@@ -38,16 +38,22 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         if request.url.path in protected_paths:
             authorization_header = request.headers.get("Authorization")
             if not authorization_header:
-                return JSONResponse(status_code=401, content={"detail": "Missing authentication token"})
+                return JSONResponse(
+                    status_code=401, content={"detail": "Missing authentication token"}
+                )
             try:
                 scheme, token = authorization_header.split(" ", maxsplit=1)
                 if scheme.lower() != "bearer":
                     raise ValueError("Unsupported authorization scheme")
                 payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
             except jwt.ExpiredSignatureError:
-                return JSONResponse(status_code=401, content={"detail": "Token has expired"})
+                return JSONResponse(
+                    status_code=401, content={"detail": "Token has expired"}
+                )
             except (ValueError, jwt.InvalidTokenError):
-                return JSONResponse(status_code=401, content={"detail": "Invalid token"})
+                return JSONResponse(
+                    status_code=401, content={"detail": "Invalid token"}
+                )
             request.state.user = payload.get("sub")
         return await call_next(request)
 
@@ -75,7 +81,9 @@ def _load_registered_pytorch_model(model_ref: bentoml.Model, device: torch.devic
     try:
         bert_cls = None
         try:
-            from transformers.models.bert.modeling_bert import BertForSequenceClassification
+            from transformers.models.bert.modeling_bert import (
+                BertForSequenceClassification,
+            )
 
             bert_cls = BertForSequenceClassification
         except (ImportError, AttributeError, ModuleNotFoundError):
@@ -171,7 +179,9 @@ class TextBentoService:
         return TextPredictionResponse.model_validate(result)
 
     @bentoml.api(route="/predict_batch")
-    def predict_batch(self, input_data: BatchTextPredictionRequest) -> list[TextPredictionResponse]:
+    def predict_batch(
+        self, input_data: BatchTextPredictionRequest
+    ) -> list[TextPredictionResponse]:
         results = self.model_service.predict_texts(input_data.items)
         return [TextPredictionResponse.model_validate(result) for result in results]
 

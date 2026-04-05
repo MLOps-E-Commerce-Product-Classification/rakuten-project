@@ -47,15 +47,31 @@ def prepare_text_encoding(
     if isinstance(text_input, dict):
         designation = text_input.get("designation", "")
         description = text_input.get("description", "")
-        processed = preprocess_text(designation=designation, description=description, config_path=preprocessing_config_path)
+        processed = preprocess_text(
+            designation=designation,
+            description=description,
+            config_path=preprocessing_config_path,
+        )
     else:
-        processed = preprocess_text(designation=text_input, description="", config_path=preprocessing_config_path)
+        processed = preprocess_text(
+            designation=text_input,
+            description="",
+            config_path=preprocessing_config_path,
+        )
     text = processed[0] if isinstance(processed, tuple) else processed
 
     preprocessing_config = load_config(preprocessing_config_path)
-    max_length = int(preprocessing_config.get("preprocessing", {}).get("max_length", 128))
+    max_length = int(
+        preprocessing_config.get("preprocessing", {}).get("max_length", 128)
+    )
 
-    encoding = tokenizer(text, padding="max_length", truncation=True, max_length=max_length, return_tensors="pt")
+    encoding = tokenizer(
+        text,
+        padding="max_length",
+        truncation=True,
+        max_length=max_length,
+        return_tensors="pt",
+    )
     return encoding, text
 
 
@@ -77,7 +93,9 @@ def predict_single_text(
     idx_to_label: dict[int, str],
     top_k: int = 5,
 ) -> dict:
-    encoding, processed_text = prepare_text_encoding(text_input, tokenizer, preprocessing_config_path)
+    encoding, processed_text = prepare_text_encoding(
+        text_input, tokenizer, preprocessing_config_path
+    )
 
     input_ids = encoding["input_ids"].to(device)
     attention_mask = encoding["attention_mask"].to(device)
@@ -97,7 +115,7 @@ def predict_single_text(
     top_k_predictions = [
         {
             "rakuten_code": int(idx_to_label[int(idx)]),  # jetzt als int
-            "probability": float(probabilities[idx].item())
+            "probability": float(probabilities[idx].item()),
         }
         for idx in top_indices.tolist()
     ]
@@ -113,7 +131,7 @@ def predict_single_text(
     return {
         "predicted_rakuten_code": predicted_label,
         "top_k_predictions": top_k_predictions,
-        "probabilities": probabilities_dict
+        "probabilities": probabilities_dict,
     }
 
 
@@ -127,10 +145,24 @@ def predict_multiple_texts(
     idx_to_label: dict[int, str],
     top_k: int = 5,
 ) -> list[dict]:
-    return [predict_single_text(model, text_input, tokenizer, preprocessing_config_path, device, idx_to_label, top_k) for text_input in text_inputs]
+    return [
+        predict_single_text(
+            model,
+            text_input,
+            tokenizer,
+            preprocessing_config_path,
+            device,
+            idx_to_label,
+            top_k,
+        )
+        for text_input in text_inputs
+    ]
 
 
-def save_inference_results(results: dict | list[dict], output_path: str | Path = RESULTS_PATH / "text_inference_results.json") -> None:
+def save_inference_results(
+    results: dict | list[dict],
+    output_path: str | Path = RESULTS_PATH / "text_inference_results.json",
+) -> None:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
@@ -146,7 +178,6 @@ def run_text_inference(
     output_path: str | Path = "results/text_inference_results.json",
     top_k: int = 5,
 ) -> dict | list[dict]:
-
     train_config = load_config(train_config_path)
     label_encoding = load_label_mapping(label_encoding_path)
     idx_to_label = invert_label_mapping(label_encoding)
@@ -156,7 +187,12 @@ def run_text_inference(
     model_name = model_config.get("name", "bert-base-multilingual-cased")
     num_classes = len(label_encoding)
 
-    model = build_text_model(model_name=model_name, num_classes=num_classes, pretrained=False, freeze_backbone=False)
+    model = build_text_model(
+        model_name=model_name,
+        num_classes=num_classes,
+        pretrained=False,
+        freeze_backbone=False,
+    )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
@@ -169,9 +205,25 @@ def run_text_inference(
     model.eval()
 
     if isinstance(text_input, (str, dict)):
-        results = predict_single_text(model, text_input, tokenizer, preprocessing_config_path, device, idx_to_label, top_k)
+        results = predict_single_text(
+            model,
+            text_input,
+            tokenizer,
+            preprocessing_config_path,
+            device,
+            idx_to_label,
+            top_k,
+        )
     else:
-        results = predict_multiple_texts(model, text_input, tokenizer, preprocessing_config_path, device, idx_to_label, top_k)
+        results = predict_multiple_texts(
+            model,
+            text_input,
+            tokenizer,
+            preprocessing_config_path,
+            device,
+            idx_to_label,
+            top_k,
+        )
 
     save_inference_results(results, output_path)
     return results
@@ -180,8 +232,14 @@ def run_text_inference(
 if __name__ == "__main__":
     results = run_text_inference(
         text_input=[
-            {"designation": "T-shirt homme coton manches courtes", "description": "T-shirt confortable pour usage quotidien."},
-            {"designation": "Jeu vidéo action PS4", "description": "Edition standard neuve."},
+            {
+                "designation": "T-shirt homme coton manches courtes",
+                "description": "T-shirt confortable pour usage quotidien.",
+            },
+            {
+                "designation": "Jeu vidéo action PS4",
+                "description": "Edition standard neuve.",
+            },
         ],
         train_config_path="configs/text_train_config.yaml",
         preprocessing_config_path="configs/text_preprocessing_config.yaml",

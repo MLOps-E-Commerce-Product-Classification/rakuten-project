@@ -28,9 +28,7 @@ def load_label_encoding(label_encoding_path: str | Path) -> dict:
     label_encoding_path = Path(label_encoding_path)
 
     if not label_encoding_path.exists():
-        raise FileNotFoundError(
-            f"Label encoding file not found: {label_encoding_path}"
-        )
+        raise FileNotFoundError(f"Label encoding file not found: {label_encoding_path}")
 
     with label_encoding_path.open("r", encoding="utf-8") as f:
         return json.load(f)
@@ -69,8 +67,7 @@ def validate_labels_in_mapping(
     if unknown_labels:
         raise ValueError(
             f"{df_name} contains labels not present in the predefined label encoding: "
-            f"{unknown_labels[:10]}"
-            + (" ..." if len(unknown_labels) > 10 else "")
+            f"{unknown_labels[:10]}" + (" ..." if len(unknown_labels) > 10 else "")
         )
 
 
@@ -241,7 +238,7 @@ def run_image_training(
     preprocessing_config_path: str | Path = "configs/image_preprocessing_config.yaml",
     model_save_path: str | Path = "models/best_image_model.pt",
     label_encoding_path: str | Path = "configs/label_encoding.json",
-    use_best_config_if_available: bool = True,   # <-- NEU
+    use_best_config_if_available: bool = True,  # <-- NEU
 ) -> tuple[torch.nn.Module, dict, dict]:
     """
     Run end-to-end image training with:
@@ -312,7 +309,6 @@ def run_image_training(
     x_df = pd.read_csv(x_data_csv_path)
     y_df = pd.read_csv(y_data_csv_path)
 
-
     if len(x_df) != len(y_df):
         raise ValueError(
             f"X and Y CSVs must have the same number of rows, got {len(x_df)} and {len(y_df)}."
@@ -345,8 +341,7 @@ def run_image_training(
 
     if subset > 0:
         train_df = train_df[:subset]
-        val_df = val_df[:int(subset*0.2)]
-        
+        val_df = val_df[: int(subset * 0.2)]
 
     # Optional sanity check
     if len(train_df) == 0 or len(val_df) == 0 or len(test_df) == 0:

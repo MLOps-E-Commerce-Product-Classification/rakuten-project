@@ -69,6 +69,7 @@ all     = ["rakuten-multimodal-classifier[image,text,api,data]"]
 dev = [
   "ipykernel>=6.25.0",
   "matplotlib>=3.8.0",
+  "pre-commit>=4.5.1",
   "pytest>=7.4.0",
 ]
 

@@ -71,8 +71,7 @@ def compute_classification_metrics(
         )
 
         metrics["per_class_f1"] = {
-            int(label): float(score)
-            for label, score in zip(labels, per_class_f1)
+            int(label): float(score) for label, score in zip(labels, per_class_f1)
         }
 
     if compute_confusion_matrix_flag:
@@ -169,9 +168,7 @@ def evaluate_model(
 
     measure_latency = performance_config.get("measure_latency", True)
     measure_throughput = performance_config.get("measure_throughput", True)
-    latency_num_warmup_batches = performance_config.get(
-        "latency_num_warmup_batches", 2
-    )
+    latency_num_warmup_batches = performance_config.get("latency_num_warmup_batches", 2)
     latency_num_measure_batches = performance_config.get(
         "latency_num_measure_batches", 10
     )

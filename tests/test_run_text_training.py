@@ -335,7 +335,9 @@ def test_run_text_training_orchestrates_pipeline_and_returns_expected_outputs(
     monkeypatch.setattr(rtt, "load_label_encoding", lambda _: label_encoding)
     monkeypatch.setattr(rtt, "set_seed", lambda seed: captured.setdefault("seed", seed))
     monkeypatch.setattr(rtt.torch.cuda, "is_available", lambda: False)
-    monkeypatch.setattr(rtt, "mlflow", __import__("unittest.mock", fromlist=["MagicMock"]).MagicMock())
+    monkeypatch.setattr(
+        rtt, "mlflow", __import__("unittest.mock", fromlist=["MagicMock"]).MagicMock()
+    )
 
     def fake_load_or_create_splits(
         df: pd.DataFrame,
