@@ -3,7 +3,6 @@ import copy
 import json
 import logging
 import random
-import shutil
 
 import pandas as pd
 import yaml
@@ -111,7 +110,6 @@ def run_random_search(
     label_encoding_path="configs/label_encoding.json",
     random_seed=42,
 ):
-
     random.seed(random_seed)
 
     base_config = load_yaml_config(base_train_config_path)
@@ -130,16 +128,11 @@ def run_random_search(
 
     best_score = None
     best_config = None
-    best_trial_config_path = None
 
     for trial in range(1, n_trials + 1):
-
         SEARCH_LOGGER.info(f"Trial {trial}/{n_trials}")
 
-        sampled_config, sampled_params = sample_random_config(
-            base_config,
-            search_space
-        )
+        sampled_config, sampled_params = sample_random_config(base_config, search_space)
 
         # SPEED TRICK
         sampled_config["training"]["epochs"] = trial_epochs
@@ -150,7 +143,6 @@ def run_random_search(
         save_yaml_config(sampled_config, trial_config_path)
 
         try:
-
             _, history, _ = run_image_training(
                 x_data_csv_path=x_data_csv_path,
                 y_data_csv_path=y_data_csv_path,
@@ -166,24 +158,17 @@ def run_random_search(
 
             score = get_optimization_score(history, optimization_metric)
 
-            result_row = {
-                "trial": trial,
-                **sampled_params,
-                optimization_metric: score
-            }
+            result_row = {"trial": trial, **sampled_params, optimization_metric: score}
 
             results.append(result_row)
 
             if is_better_score(score, best_score, optimization_metric):
-
                 best_score = score
                 best_config = sampled_config
-                best_trial_config_path = trial_config_path
 
                 SEARCH_LOGGER.info(f"New best score: {score}")
 
         except Exception as e:
-
             SEARCH_LOGGER.exception(f"Trial {trial} failed: {e}")
 
         if trial_model_path.exists():
@@ -224,5 +209,5 @@ def run_random_search(
         "best_score": best_score,
         "best_config": str(final_best_config_path),
         "best_model": str(final_best_model_path),
-        "results_csv": str(csv_path)
+        "results_csv": str(csv_path),
     }

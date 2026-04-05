@@ -90,11 +90,11 @@ class RakutenTextDataset(Dataset):
             return_tensors="pt",
         )
 
-        sample = {  
-            "input_ids": encoding["input_ids"].squeeze(0),  
-            "attention_mask": encoding["attention_mask"].squeeze(0),  
-            "label": torch.tensor(label, dtype=torch.long), # Now it's 0-N  
-            "text": text,  
+        sample = {
+            "input_ids": encoding["input_ids"].squeeze(0),
+            "attention_mask": encoding["attention_mask"].squeeze(0),
+            "label": torch.tensor(label, dtype=torch.long),  # Now it's 0-N
+            "text": text,
         }
 
         sample.update(self._get_optional_metadata(row))

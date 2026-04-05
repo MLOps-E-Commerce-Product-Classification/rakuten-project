@@ -20,14 +20,14 @@ x-airflow-common: &airflow-common
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
-    - type: bind 
-      source: ./data/raw 
+    - type: bind
+      source: ./data/raw
       target: /app/data/raw
-    - type: bind 
-      source: ./data/new_data 
+    - type: bind
+      source: ./data/new_data
       target: /app/data/new_data
-    - type: bind 
-      source: ./data/new_train_data 
+    - type: bind
+      source: ./data/new_train_data
       target: /app/data/new_train_data
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-50000}"
   depends_on:

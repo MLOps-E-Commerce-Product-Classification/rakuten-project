@@ -701,3 +701,10 @@ make docker-bento-up
 `make build-bento-text` first prepares the local Hugging Face tokenizer assets, then registers `rakuten_text_classifier:latest` in the BentoML Model Store, and finally builds the Bento. The Bento itself references the registered model via the `models:` section in `bentofile.yaml` instead of bundling the raw `.pt` file directly.
 
 Dependency note: `pyproject.toml` and `bentofile.yaml` are the authoritative sources for BentoML serving and packaging. `requirements.txt` is a broader exported development snapshot and is not used by the Bento build itself.
+
+## Pre-commit setup
+
+```
+uv sync
+uv run pre-commit install
+```

@@ -38,6 +38,7 @@ def load_label_encoding(label_encoding_path: str | Path) -> dict:
 def set_seed(seed: int) -> None:
     import random
     import numpy as np
+
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -45,7 +46,9 @@ def set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
-def validate_dataframe_columns(df: pd.DataFrame, required_columns: set[str], df_name: str) -> None:
+def validate_dataframe_columns(
+    df: pd.DataFrame, required_columns: set[str], df_name: str
+) -> None:
     missing = required_columns - set(df.columns)
     if missing:
         raise ValueError(f"{df_name} is missing required columns: {sorted(missing)}")
@@ -159,7 +162,9 @@ def _get_git_info() -> dict:
                 ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
             ).strip()
             branch = subprocess.check_output(
-                ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True, stderr=subprocess.DEVNULL
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                text=True,
+                stderr=subprocess.DEVNULL,
             ).strip()
         except Exception:
             commit = "unknown"
@@ -170,6 +175,7 @@ def _get_git_info() -> dict:
         "pre_training_git_branch": branch,
         "pre_training_timestamp": datetime.now().isoformat(timespec="seconds"),
     }
+
 
 def run_text_training(
     processed_data_dir: str | Path = "data/processed",
@@ -184,9 +190,13 @@ def run_text_training(
     val_csv = processed_data_dir / "val.csv"
 
     if not train_csv.exists():
-        raise FileNotFoundError(f"Processed train data not found: {train_csv}. Run preprocess-text first.")
+        raise FileNotFoundError(
+            f"Processed train data not found: {train_csv}. Run preprocess-text first."
+        )
     if not val_csv.exists():
-        raise FileNotFoundError(f"Processed val data not found: {val_csv}. Run preprocess-text first.")
+        raise FileNotFoundError(
+            f"Processed val data not found: {val_csv}. Run preprocess-text first."
+        )
 
     config = load_config(train_config_path)
     label_encoding = load_label_encoding(label_encoding_path)
@@ -220,7 +230,7 @@ def run_text_training(
 
     if subset > 0:
         train_df = train_df[:subset]
-        val_df = val_df[:int(subset * 0.2)]
+        val_df = val_df[: int(subset * 0.2)]
 
     if len(train_df) == 0 or len(val_df) == 0:
         raise ValueError("Train or val split is empty.")
@@ -249,12 +259,18 @@ def run_text_training(
     pin_memory = torch.cuda.is_available()
 
     train_dataloader = DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True,
-        num_workers=num_workers, pin_memory=pin_memory,
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
     )
     val_dataloader = DataLoader(
-        val_dataset, batch_size=batch_size, shuffle=False,
-        num_workers=num_workers, pin_memory=pin_memory,
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
     )
 
     model = build_text_model(
@@ -268,26 +284,32 @@ def run_text_training(
 
     with mlflow.start_run(run_name="text-classifier-training"):
         mlflow.log_params(git_info)
-        mlflow.log_params({
-            "processed_data_dir": str(processed_data_dir),
-            "train_size": len(train_df),
-            "val_size": len(val_df),
-            "num_classes": num_classes,
-        })
-        mlflow.log_params({
-            "model_name": model_name,
-            "pretrained": pretrained,
-            "freeze_backbone": freeze_backbone,
-        })
-        mlflow.log_params({
-            "learning_rate": lr,
-            "num_epochs": epochs,
-            "weight_decay": wd,
-            "batch_size": batch_size,
-            "seed": seed,
-            "subset": subset if subset > 0 else "full",
-            "optimizer": "AdamW",
-        })
+        mlflow.log_params(
+            {
+                "processed_data_dir": str(processed_data_dir),
+                "train_size": len(train_df),
+                "val_size": len(val_df),
+                "num_classes": num_classes,
+            }
+        )
+        mlflow.log_params(
+            {
+                "model_name": model_name,
+                "pretrained": pretrained,
+                "freeze_backbone": freeze_backbone,
+            }
+        )
+        mlflow.log_params(
+            {
+                "learning_rate": lr,
+                "num_epochs": epochs,
+                "weight_decay": wd,
+                "batch_size": batch_size,
+                "seed": seed,
+                "subset": subset if subset > 0 else "full",
+                "optimizer": "AdamW",
+            }
+        )
         mlflow.log_param("model_output_path", str(model_save_path))
         mlflow.log_artifact(str(train_config_path), artifact_path="configs")
         mlflow.log_artifact(str(preprocessing_config_path), artifact_path="configs")
@@ -301,11 +323,13 @@ def run_text_training(
             model_save_path=model_save_path,
         )
 
-        mlflow.log_metrics({
-            "final_best_val_macro_f1": max(history["val_macro_f1"]),
-            "final_best_val_accuracy": max(history["val_accuracy"]),
-            "final_best_val_loss": min(history["val_loss"]),
-        })
+        mlflow.log_metrics(
+            {
+                "final_best_val_macro_f1": max(history["val_macro_f1"]),
+                "final_best_val_accuracy": max(history["val_accuracy"]),
+                "final_best_val_loss": min(history["val_loss"]),
+            }
+        )
         mlflow.pytorch.log_model(
             pytorch_model=trained_model,
             artifact_path="model",
@@ -319,11 +343,16 @@ def run_text_training(
 
     metrics_path = Path("results/dvc_metrics.json")
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
-    metrics_path.write_text(json.dumps({
-        "val_macro_f1": max(history["val_macro_f1"]),
-        "val_accuracy": max(history["val_accuracy"]),
-        "val_loss": min(history["val_loss"]),
-    }, indent=2))
+    metrics_path.write_text(
+        json.dumps(
+            {
+                "val_macro_f1": max(history["val_macro_f1"]),
+                "val_accuracy": max(history["val_accuracy"]),
+                "val_loss": min(history["val_loss"]),
+            },
+            indent=2,
+        )
+    )
 
     return history, label_encoding
 

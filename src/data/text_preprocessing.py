@@ -24,9 +24,7 @@ def setup_logger(name: str, log_file: str | Path) -> logging.Logger:
 
     if not logger.handlers:
         handler = logging.FileHandler(log_file, encoding="utf-8")
-        formatter = logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
@@ -34,9 +32,7 @@ def setup_logger(name: str, log_file: str | Path) -> logging.Logger:
     return logger
 
 
-QUALITY_LOGGER = setup_logger(
-    "text_quality", LOG_PATH / "text_quality.log"
-)
+QUALITY_LOGGER = setup_logger("text_quality", LOG_PATH / "text_quality.log")
 
 PREPROCESSING_LOGGER = setup_logger(
     "text_preprocessing", LOG_PATH / "text_preprocessing.log"
@@ -61,9 +57,7 @@ def load_text_preprocessing_config(config_path: str | Path) -> dict:
         with config_path.open("r", encoding="utf-8") as f:
             return yaml.safe_load(f)
     except Exception:
-        PREPROCESSING_LOGGER.exception(
-            f"Failed to load config file {config_path}"
-        )
+        PREPROCESSING_LOGGER.exception(f"Failed to load config file {config_path}")
         raise
 
 
@@ -78,6 +72,7 @@ def _coerce_text(value: Any) -> str:
 
     try:
         import pandas as pd  # local import to avoid hard dependency at module load
+
         if pd.isna(value):
             return ""
     except Exception:
@@ -232,7 +227,5 @@ def build_tokenizer(
                 )
         return AutoTokenizer.from_pretrained(tokenizer_model)
     except Exception:
-        PREPROCESSING_LOGGER.exception(
-            f"Failed to load tokenizer '{tokenizer_model}'"
-        )
+        PREPROCESSING_LOGGER.exception(f"Failed to load tokenizer '{tokenizer_model}'")
         raise

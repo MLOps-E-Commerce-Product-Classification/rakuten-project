@@ -26,8 +26,12 @@ def load_label_encoding(label_encoding_path: str | Path) -> dict:
         return json.load(f)
 
 
-def prepare_image_tensor(image_path: str | Path, preprocessing_config_path: str | Path) -> torch.Tensor:
-    processed = preprocess_image(image=image_path, config_path=preprocessing_config_path)
+def prepare_image_tensor(
+    image_path: str | Path, preprocessing_config_path: str | Path
+) -> torch.Tensor:
+    processed = preprocess_image(
+        image=image_path, config_path=preprocessing_config_path
+    )
     if isinstance(processed, tuple):
         image_array, _ = processed
     else:
@@ -43,24 +47,22 @@ def predict_single_image_all(
     preprocessing_config_path: str | Path,
     device: torch.device,
     idx_to_code: dict[str, int],
-    top_k: int = 5
+    top_k: int = 5,
 ) -> dict:
-
     image_path = Path(image_path)
     if not image_path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
 
-    image_tensor = prepare_image_tensor(image_path, preprocessing_config_path).unsqueeze(0).to(device)
+    image_tensor = (
+        prepare_image_tensor(image_path, preprocessing_config_path)
+        .unsqueeze(0)
+        .to(device)
+    )
 
     outputs = model(image_tensor)
     probabilities = torch.softmax(outputs, dim=1).squeeze(0).cpu()
 
-    probabilities = torch.nan_to_num(
-        probabilities,
-        nan=0.0,
-        posinf=1.0,
-        neginf=0.0
-    )
+    probabilities = torch.nan_to_num(probabilities, nan=0.0, posinf=1.0, neginf=0.0)
 
     probabilities = probabilities / probabilities.sum()
 
@@ -83,7 +85,7 @@ def predict_single_image_all(
         "image_path": str(image_path),
         "predicted_rakuten_code": predicted_rakuten_code,
         "top_k_predictions": top_k_predictions,
-        "probabilities": code_prob
+        "probabilities": code_prob,
     }
 
 
@@ -93,9 +95,8 @@ def predict_multiple_images_all(
     preprocessing_config_path: str | Path,
     device: torch.device,
     idx_to_code: dict[str, int],
-    top_k: int = 5
+    top_k: int = 5,
 ) -> list[dict]:
-
     return [
         predict_single_image_all(
             model=model,
@@ -103,13 +104,16 @@ def predict_multiple_images_all(
             preprocessing_config_path=preprocessing_config_path,
             device=device,
             idx_to_code=idx_to_code,
-            top_k=top_k
+            top_k=top_k,
         )
         for path in image_paths
     ]
 
 
-def save_inference_results(results: dict | list[dict], output_path: str | Path = RESULTS_PATH / "inference_results.json") -> None:
+def save_inference_results(
+    results: dict | list[dict],
+    output_path: str | Path = RESULTS_PATH / "inference_results.json",
+) -> None:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
@@ -133,7 +137,12 @@ def run_image_inference(
 
     # Build model and load weights
     num_classes = len(label_encoding["classes"])
-    model = build_image_model(model_name=model_name, num_classes=num_classes, pretrained=False, freeze_backbone=False)
+    model = build_image_model(
+        model_name=model_name,
+        num_classes=num_classes,
+        pretrained=False,
+        freeze_backbone=False,
+    )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
@@ -147,23 +156,12 @@ def run_image_inference(
     # Run inference
     if isinstance(image_input, (str, Path)):
         results = predict_single_image_all(
-            model,
-            image_input,
-            preprocessing_config_path,
-            device,
-            idx_to_code,
-            top_k
+            model, image_input, preprocessing_config_path, device, idx_to_code, top_k
         )
     else:
         results = predict_multiple_images_all(
-            model,
-            image_input,
-            preprocessing_config_path,
-            device,
-            idx_to_code,
-            top_k
+            model, image_input, preprocessing_config_path, device, idx_to_code, top_k
         )
-        
 
     save_inference_results(results, output_path)
     return results
@@ -180,7 +178,7 @@ if __name__ == "__main__":
         model_weights_path="models/best_image_model.pt",
         label_encoding_path="configs/label_encoding.json",
         output_path="results/inference_results.json",
-        top_k=5
+        top_k=5,
     )
 
     print("Inference finished. Results saved to: results/inference_results.json")

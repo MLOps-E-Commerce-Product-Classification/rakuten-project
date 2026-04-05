@@ -109,9 +109,7 @@ def sample_random_config(base_config: dict, search_space: dict) -> tuple[dict, d
 
     for key, candidate_values in search_space.items():
         if not isinstance(candidate_values, list) or len(candidate_values) == 0:
-            raise ValueError(
-                f"Search space for '{key}' must be a non-empty list."
-            )
+            raise ValueError(f"Search space for '{key}' must be a non-empty list.")
 
         sampled_value = random.choice(candidate_values)
         set_nested_value(sampled_config, key, sampled_value)
@@ -175,7 +173,8 @@ def run_random_search(
     search_space_config_path: str | Path = "configs/text_parameter_search_space.yaml",
     final_best_config_path: str | Path = "configs/best_text_train_config.yaml",
     final_best_model_path: str | Path = "search/best_text_model.pt",
-    final_best_label_mapping_path: str | Path = "artifacts/best_text_label_mapping.json",
+    final_best_label_mapping_path: str
+    | Path = "artifacts/best_text_label_mapping.json",
     random_seed: int = 42,
 ) -> dict:
     """
@@ -300,9 +299,7 @@ def run_random_search(
                 "error": str(e),
             }
 
-            SEARCH_LOGGER.exception(
-                f"Trial {trial_idx} failed with error: {e}"
-            )
+            SEARCH_LOGGER.exception(f"Trial {trial_idx} failed with error: {e}")
 
             safe_delete_file(trial_model_path)
             safe_delete_file(trial_label_mapping_path)

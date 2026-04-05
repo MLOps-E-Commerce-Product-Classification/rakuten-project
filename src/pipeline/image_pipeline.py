@@ -215,10 +215,7 @@ def run_evaluate_mode(args: argparse.Namespace) -> None:
     )
 
     print("Evaluation finished.")
-    print(
-        f"Main metric: {results['main_metric']} = "
-        f"{results['main_metric_value']:.4f}"
-    )
+    print(f"Main metric: {results['main_metric']} = {results['main_metric_value']:.4f}")
     print(f"Results saved to: {args.results_output_path}")
 
 

@@ -53,7 +53,9 @@ if "transformers" not in sys.modules:
             return {"model_name": model_name, "num_labels": num_labels}
 
     transformers_stub.AutoTokenizer = _AutoTokenizer
-    transformers_stub.AutoModelForSequenceClassification = _AutoModelForSequenceClassification
+    transformers_stub.AutoModelForSequenceClassification = (
+        _AutoModelForSequenceClassification
+    )
     transformers_stub.AutoConfig = _AutoConfig
     sys.modules["transformers"] = transformers_stub
 

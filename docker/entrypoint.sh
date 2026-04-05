@@ -27,14 +27,14 @@ if git diff --cached --quiet; then
 else
     COMMIT_MSG="ci: dvc repro [$(git rev-parse --short HEAD)] - $(date '+%Y-%m-%d %H:%M')"
     git commit -m "$COMMIT_MSG"
-    
+
     NEW_COMMIT_HASH=$(git rev-parse HEAD)
     RUN_ID_FILE="results/mlflow_run_id.txt"
 
     if [ -f "$RUN_ID_FILE" ]; then
         echo ">>> Logging final commit hash $NEW_COMMIT_HASH to MLflow..."
         RUN_ID=$(cat "$RUN_ID_FILE")
-        
+
         uv run python - <<EOF
 import mlflow
 

@@ -57,9 +57,17 @@ def compute_classification_metrics(
         "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
     }
     if compute_per_class_f1:
-        labels = list(range(num_classes)) if num_classes else sorted(set(y_true) | set(y_pred))
-        per_class_f1 = f1_score(y_true, y_pred, labels=labels, average=None, zero_division=0)
-        metrics["per_class_f1"] = {int(l): float(s) for l, s in zip(labels, per_class_f1)}
+        labels = (
+            list(range(num_classes))
+            if num_classes
+            else sorted(set(y_true) | set(y_pred))
+        )
+        per_class_f1 = f1_score(
+            y_true, y_pred, labels=labels, average=None, zero_division=0
+        )
+        metrics["per_class_f1"] = {
+            int(label): float(s) for label, s in zip(labels, per_class_f1)
+        }
     return metrics
 
 
@@ -82,7 +90,9 @@ def train_one_epoch(
         labels = batch["label"].to(device)
 
         optimizer.zero_grad()
-        outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+        outputs = model(
+            input_ids=input_ids, attention_mask=attention_mask, labels=labels
+        )
         loss = outputs.loss
         loss.backward()
         optimizer.step()
@@ -95,7 +105,9 @@ def train_one_epoch(
 
         if (i + 1) % log_interval == 0 or (i + 1) == num_batches:
             pct = (i + 1) / num_batches * 100
-            TRAIN_LOGGER.info(f"  Batch {i+1}/{num_batches} ({pct:.1f}%) | loss={loss.item():.4f}")
+            TRAIN_LOGGER.info(
+                f"  Batch {i + 1}/{num_batches} ({pct:.1f}%) | loss={loss.item():.4f}"
+            )
 
     metrics = compute_classification_metrics(all_labels, all_preds, num_classes)
     metrics["loss"] = running_loss / total
@@ -121,7 +133,9 @@ def validate_one_epoch(
         attention_mask = batch["attention_mask"].to(device)
         labels = batch["label"].to(device)
 
-        outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+        outputs = model(
+            input_ids=input_ids, attention_mask=attention_mask, labels=labels
+        )
         running_loss += outputs.loss.item() * labels.size(0)
         total += labels.size(0)
         preds = torch.argmax(outputs.logits, dim=1)
@@ -130,9 +144,11 @@ def validate_one_epoch(
 
         if (i + 1) % log_interval == 0 or (i + 1) == num_batches:
             pct = (i + 1) / num_batches * 100
-            TRAIN_LOGGER.info(f"  Val Batch {i+1}/{num_batches} ({pct:.1f}%)")
+            TRAIN_LOGGER.info(f"  Val Batch {i + 1}/{num_batches} ({pct:.1f}%)")
 
-    metrics = compute_classification_metrics(all_labels, all_preds, num_classes, compute_per_class_f1)
+    metrics = compute_classification_metrics(
+        all_labels, all_preds, num_classes, compute_per_class_f1
+    )
     metrics["loss"] = running_loss / total
     return metrics
 
@@ -161,8 +177,12 @@ def train_model(
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=wd)
 
     history = {
-        "train_loss": [], "train_accuracy": [], "train_macro_f1": [],
-        "val_loss": [], "val_accuracy": [], "val_macro_f1": [],
+        "train_loss": [],
+        "train_accuracy": [],
+        "train_macro_f1": [],
+        "val_loss": [],
+        "val_accuracy": [],
+        "val_macro_f1": [],
     }
     if compute_per_f1:
         history["val_per_class_f1"] = []
@@ -178,10 +198,14 @@ def train_model(
     mlflow.log_param("early_stopping_patience", patience)
 
     for epoch in range(epochs):
-        TRAIN_LOGGER.info(f"Starting epoch {epoch+1}/{epochs}")
+        TRAIN_LOGGER.info(f"Starting epoch {epoch + 1}/{epochs}")
 
-        train_m = train_one_epoch(model, train_dataloader, optimizer, device, num_classes)
-        val_m = validate_one_epoch(model, val_dataloader, device, num_classes, compute_per_f1)
+        train_m = train_one_epoch(
+            model, train_dataloader, optimizer, device, num_classes
+        )
+        val_m = validate_one_epoch(
+            model, val_dataloader, device, num_classes, compute_per_f1
+        )
 
         for k in ["loss", "accuracy", "macro_f1"]:
             history[f"train_{k}"].append(train_m[k])
@@ -190,7 +214,7 @@ def train_model(
             history["val_per_class_f1"].append(val_m["per_class_f1"])
 
         TRAIN_LOGGER.info(
-            f"Epoch {epoch+1}/{epochs} | "
+            f"Epoch {epoch + 1}/{epochs} | "
             f"train_loss={train_m['loss']:.4f} | "
             f"val_loss={val_m['loss']:.4f} | "
             f"val_f1={val_m['macro_f1']:.4f}"
@@ -209,7 +233,11 @@ def train_model(
         )
 
         curr_score = val_m[main_metric]
-        is_better = curr_score < best_score if main_metric == "loss" else curr_score > best_score
+        is_better = (
+            curr_score < best_score
+            if main_metric == "loss"
+            else curr_score > best_score
+        )
 
         if is_better:
             best_score = curr_score
@@ -219,10 +247,12 @@ def train_model(
             mlflow.log_metric("best_" + main_metric, best_score)
         else:
             epochs_no_improve += 1
-            TRAIN_LOGGER.info(f"No improvement for {epochs_no_improve}/{patience} epochs")
+            TRAIN_LOGGER.info(
+                f"No improvement for {epochs_no_improve}/{patience} epochs"
+            )
             if epochs_no_improve >= patience:
                 TRAIN_LOGGER.info(
-                    f"Early stopping triggered at epoch {epoch+1}. "
+                    f"Early stopping triggered at epoch {epoch + 1}. "
                     f"Best {main_metric}={best_score:.4f}"
                 )
                 mlflow.log_param("early_stopped_at_epoch", epoch + 1)

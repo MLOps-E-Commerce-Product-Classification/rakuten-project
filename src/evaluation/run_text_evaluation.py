@@ -6,6 +6,7 @@ from pathlib import Path
 import json
 
 import matplotlib
+
 matplotlib.use("Agg")  # non-interactive backend for Docker
 import matplotlib.pyplot as plt
 import mlflow
@@ -80,8 +81,7 @@ def apply_label_mapping(
     if unseen_labels:
         raise ValueError(
             "Evaluation set contains labels not present in the training label mapping: "
-            f"{unseen_labels[:10]}"
-            + (" ..." if len(unseen_labels) > 10 else "")
+            f"{unseen_labels[:10]}" + (" ..." if len(unseen_labels) > 10 else "")
         )
 
     df[encoded_label_col] = labels_as_str.map(mapping)
@@ -102,7 +102,9 @@ def generate_evaluation_plots(results: dict, output_dir: Path) -> None:
     # --- 1. Confusion Matrix (row-normalized) ---
     if cm:
         cm_array = np.array(cm)
-        cm_norm = cm_array.astype(float) / cm_array.sum(axis=1, keepdims=True).clip(min=1)
+        cm_norm = cm_array.astype(float) / cm_array.sum(axis=1, keepdims=True).clip(
+            min=1
+        )
         n = cm_norm.shape[0]
         fig, ax = plt.subplots(figsize=(max(10, n * 0.5), max(8, n * 0.45)))
         im = ax.imshow(cm_norm, interpolation="nearest", cmap="Blues", vmin=0, vmax=1)
@@ -118,17 +120,25 @@ def generate_evaluation_plots(results: dict, output_dir: Path) -> None:
         plt.tight_layout()
         fig.savefig(output_dir / "confusion_matrix.png", dpi=150, bbox_inches="tight")
         plt.close(fig)
-        print(f"[Plots] Saved confusion_matrix.png")
+        print("[Plots] Saved confusion_matrix.png")
 
     # --- 2. Per-Class F1 Bar Chart ---
     if per_class_f1:
         classes = list(per_class_f1.keys())
         scores = list(per_class_f1.values())
         fig, ax = plt.subplots(figsize=(max(10, len(classes) * 0.5), 5))
-        colors = ["#d9534f" if s < 0.6 else "#f0ad4e" if s < 0.8 else "#5cb85c" for s in scores]
+        colors = [
+            "#d9534f" if s < 0.6 else "#f0ad4e" if s < 0.8 else "#5cb85c"
+            for s in scores
+        ]
         ax.bar(classes, scores, color=colors, edgecolor="white", linewidth=0.5)
-        ax.axhline(y=float(np.mean(scores)), color="steelblue", linestyle="--", linewidth=1.5,
-                   label=f"Mean F1: {np.mean(scores):.3f}")
+        ax.axhline(
+            y=float(np.mean(scores)),
+            color="steelblue",
+            linestyle="--",
+            linewidth=1.5,
+            label=f"Mean F1: {np.mean(scores):.3f}",
+        )
         ax.set_ylim(0, 1.05)
         ax.set_title("Per-Class F1 Score", fontsize=14)
         ax.set_xlabel("Class", fontsize=11)
@@ -139,7 +149,7 @@ def generate_evaluation_plots(results: dict, output_dir: Path) -> None:
         plt.tight_layout()
         fig.savefig(output_dir / "per_class_f1.png", dpi=150, bbox_inches="tight")
         plt.close(fig)
-        print(f"[Plots] Saved per_class_f1.png")
+        print("[Plots] Saved per_class_f1.png")
 
     # --- 3. Classification Report Table ---
     if per_class_f1:
@@ -163,9 +173,11 @@ def generate_evaluation_plots(results: dict, output_dir: Path) -> None:
         table.scale(1.2, 1.1)
         ax.set_title("Classification Report", fontsize=13, pad=10)
         plt.tight_layout()
-        fig.savefig(output_dir / "classification_report.png", dpi=150, bbox_inches="tight")
+        fig.savefig(
+            output_dir / "classification_report.png", dpi=150, bbox_inches="tight"
+        )
         plt.close(fig)
-        print(f"[Plots] Saved classification_report.png")
+        print("[Plots] Saved classification_report.png")
 
 
 def log_evaluation_to_mlflow(
@@ -207,7 +219,9 @@ def log_evaluation_to_mlflow(
 
         # --- Full results JSON ---
         if results_output_path.exists():
-            mlflow.log_artifact(str(results_output_path), artifact_path="evaluation_plots")
+            mlflow.log_artifact(
+                str(results_output_path), artifact_path="evaluation_plots"
+            )
 
     print(f"[MLflow] Evaluation results logged to run: {mlflow_run_id}")
 
@@ -245,14 +259,13 @@ def run_text_evaluation(
 
     # 3. Load configs and label mapping
     train_config = load_config(train_config_path)
-    eval_config = load_config(eval_config_path)
-    label_mapping = load_label_mapping(label_encoding_path)       # code_to_idx only → for num_classes, apply_label_mapping
-    label_encoding = load_full_label_encoding(label_encoding_path)  # full dict → for RakutenTextDataset
+    label_mapping = load_label_mapping(
+        label_encoding_path
+    )  # code_to_idx only → for num_classes, apply_label_mapping
 
     training_config = train_config.get("training", {})
     model_config = train_config.get("model", {})
     data_config = train_config.get("data", {})
-    metrics_config = eval_config.get("metrics", {})
 
     # 4. Load data and combine (X and Y)
     if x_data_csv_path == y_data_csv_path:
@@ -284,8 +297,12 @@ def run_text_evaluation(
         eval_df[description_col] = ""
 
     # 7. Apply label mapping
-    if encoded_label_col in eval_df.columns and pd.api.types.is_integer_dtype(eval_df[encoded_label_col]):
-        print(f"Column '{encoded_label_col}' already exists and is numeric. Using existing labels.")
+    if encoded_label_col in eval_df.columns and pd.api.types.is_integer_dtype(
+        eval_df[encoded_label_col]
+    ):
+        print(
+            f"Column '{encoded_label_col}' already exists and is numeric. Using existing labels."
+        )
     else:
         # Otherwise, we need to map from the original label_col (e.g., 'prdtypecode')
         eval_df = apply_label_mapping(
@@ -383,12 +400,22 @@ if __name__ == "__main__":
     parser.add_argument("--y_data_csv_path", default="data/raw/Y_val.csv")
     parser.add_argument("--split_ids_dir", default="artifacts/splits")
     parser.add_argument("--train_config_path", default="configs/text_train_config.yaml")
-    parser.add_argument("--eval_config_path", default="configs/text_evaluate_config.yaml")
-    parser.add_argument("--preprocessing_config_path", default="configs/text_preprocessing_config.yaml")
+    parser.add_argument(
+        "--eval_config_path", default="configs/text_evaluate_config.yaml"
+    )
+    parser.add_argument(
+        "--preprocessing_config_path", default="configs/text_preprocessing_config.yaml"
+    )
     parser.add_argument("--model_weights_path", default="models/best_text_model.pt")
     parser.add_argument("--label_encoding_path", default="artifacts/label_mapping.json")
-    parser.add_argument("--results_output_path", default="results/text_evaluation_results.json")
-    parser.add_argument("--mlflow_run_id", default=None, help="Existing MLflow run ID to log results to.")
+    parser.add_argument(
+        "--results_output_path", default="results/text_evaluation_results.json"
+    )
+    parser.add_argument(
+        "--mlflow_run_id",
+        default=None,
+        help="Existing MLflow run ID to log results to.",
+    )
     args = parser.parse_args()
 
     # Allow passing mlflow_run_id via environment variable as fallback
@@ -408,7 +435,5 @@ if __name__ == "__main__":
     )
 
     print("Evaluation finished.")
-    print(
-        f"Main metric: {results['main_metric']} = {results['main_metric_value']:.4f}"
-    )
+    print(f"Main metric: {results['main_metric']} = {results['main_metric_value']:.4f}")
     print("Results saved to: results/text_evaluation_results.json")

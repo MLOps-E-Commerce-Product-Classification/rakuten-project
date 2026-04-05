@@ -20,9 +20,7 @@ def setup_logger(name: str, log_file: str | Path) -> logging.Logger:
 
     if not logger.handlers:
         handler = logging.FileHandler(log_file, encoding="utf-8")
-        formatter = logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
@@ -30,9 +28,7 @@ def setup_logger(name: str, log_file: str | Path) -> logging.Logger:
     return logger
 
 
-QUALITY_LOGGER = setup_logger(
-    "image_quality", LOG_PATH / "image_quality.log"
-)
+QUALITY_LOGGER = setup_logger("image_quality", LOG_PATH / "image_quality.log")
 
 PREPROCESSING_LOGGER = setup_logger(
     "image_preprocessing", LOG_PATH / "image_preprocessing.log"
@@ -53,9 +49,7 @@ def load_image_preprocessing_config(config_path: str | Path) -> dict:
         with config_path.open("r", encoding="utf-8") as f:
             return yaml.safe_load(f)
     except Exception:
-        PREPROCESSING_LOGGER.exception(
-            f"Failed to load config file {config_path}"
-        )
+        PREPROCESSING_LOGGER.exception(f"Failed to load config file {config_path}")
         raise
 
 
@@ -130,9 +124,7 @@ def preprocess_image(
         compute_quality = quality_config.get("compute_quality_report", False)
 
         if not isinstance(output_size, (list, tuple)) or len(output_size) != 2:
-            raise ValueError(
-                "output_size must be a list or tuple like [224, 224]"
-            )
+            raise ValueError("output_size must be a list or tuple like [224, 224]")
 
         width, height = int(output_size[0]), int(output_size[1])
 
@@ -152,15 +144,11 @@ def preprocess_image(
             try:
                 image = Image.open(image_path)
             except Exception:
-                PREPROCESSING_LOGGER.exception(
-                    f"Failed to load image {image_path}"
-                )
+                PREPROCESSING_LOGGER.exception(f"Failed to load image {image_path}")
                 raise
 
         if not isinstance(image, Image.Image):
-            raise TypeError(
-                "image must be a path or PIL.Image.Image"
-            )
+            raise TypeError("image must be a path or PIL.Image.Image")
 
         if convert_rgb:
             image = image.convert("RGB")
@@ -240,9 +228,7 @@ def preprocess_image(
                 image_array = (image_array - mean) / std
 
             elif normalize_mode != "zero_one":
-                raise ValueError(
-                    "normalize_mode must be 'zero_one' or 'imagenet'"
-                )
+                raise ValueError("normalize_mode must be 'zero_one' or 'imagenet'")
 
         # ----------------------------------------------------
         # Return
@@ -254,7 +240,5 @@ def preprocess_image(
         return image_array
 
     except Exception:
-        PREPROCESSING_LOGGER.exception(
-            f"Preprocessing failed for image_id={image_id}"
-        )
+        PREPROCESSING_LOGGER.exception(f"Preprocessing failed for image_id={image_id}")
         raise

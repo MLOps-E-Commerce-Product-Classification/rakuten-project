@@ -31,12 +31,10 @@ def build_image_model(
 
     if model_name not in SUPPORTED_MODELS:
         raise ValueError(
-            f"Unsupported model '{model_name}'. "
-            f"Supported: {SUPPORTED_MODELS}"
+            f"Unsupported model '{model_name}'. Supported: {SUPPORTED_MODELS}"
         )
 
     if model_name == "efficientnet_b0":
-
         weights = EfficientNet_B0_Weights.DEFAULT if pretrained else None
         model = efficientnet_b0(weights=weights)
 
@@ -44,7 +42,6 @@ def build_image_model(
         model.classifier[1] = nn.Linear(in_features, num_classes)
 
     elif model_name == "resnet18":
-
         weights = ResNet18_Weights.DEFAULT if pretrained else None
         model = resnet18(weights=weights)
 
@@ -53,7 +50,6 @@ def build_image_model(
 
     # Freeze backbone if requested
     if freeze_backbone:
-
         for param in model.parameters():
             param.requires_grad = False
 
@@ -68,10 +64,7 @@ def build_image_model(
     return model
 
 
-def get_model_transforms(
-    model_name: str,
-    pretrained: bool = True
-) -> Any | None:
+def get_model_transforms(model_name: str, pretrained: bool = True) -> Any | None:
     """
     Return recommended preprocessing transforms for pretrained weights.
     """
@@ -87,7 +80,4 @@ def get_model_transforms(
     if model_name == "resnet18":
         return ResNet18_Weights.DEFAULT.transforms()
 
-    raise ValueError(
-        f"Unsupported model '{model_name}'. "
-        f"Supported: {SUPPORTED_MODELS}"
-    )
+    raise ValueError(f"Unsupported model '{model_name}'. Supported: {SUPPORTED_MODELS}")

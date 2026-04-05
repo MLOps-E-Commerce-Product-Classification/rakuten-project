@@ -55,9 +55,7 @@ def compute_classification_metrics(
 ) -> dict:
     metrics = {
         "accuracy": float(accuracy_score(y_true, y_pred)),
-        "macro_f1": float(
-            f1_score(y_true, y_pred, average="macro", zero_division=0)
-        ),
+        "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
     }
 
     if num_classes is None:
@@ -74,8 +72,7 @@ def compute_classification_metrics(
             zero_division=0,
         )
         metrics["per_class_f1"] = {
-            int(label): float(score)
-            for label, score in zip(labels, per_class_f1)
+            int(label): float(score) for label, score in zip(labels, per_class_f1)
         }
 
     if compute_confusion_matrix_flag:
@@ -169,16 +166,12 @@ def evaluate_model(
     performance_config = config.get("performance", {})
 
     compute_per_class_f1 = metrics_config.get("compute_per_class_f1", True)
-    compute_confusion_matrix_flag = metrics_config.get(
-        "compute_confusion_matrix", True
-    )
+    compute_confusion_matrix_flag = metrics_config.get("compute_confusion_matrix", True)
     main_metric = metrics_config.get("main_metric", "macro_f1")
 
     measure_latency = performance_config.get("measure_latency", True)
     measure_throughput = performance_config.get("measure_throughput", True)
-    latency_num_warmup_batches = performance_config.get(
-        "latency_num_warmup_batches", 2
-    )
+    latency_num_warmup_batches = performance_config.get("latency_num_warmup_batches", 2)
     latency_num_measure_batches = performance_config.get(
         "latency_num_measure_batches", 10
     )

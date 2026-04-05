@@ -84,7 +84,11 @@ def preprocess_and_save(
 
     def combine(row):
         parts = [p for p in [row["designation_clean"], row["description_clean"]] if p]
-        return separator.join(parts).strip() if combine_fields else row["designation_clean"]
+        return (
+            separator.join(parts).strip()
+            if combine_fields
+            else row["designation_clean"]
+        )
 
     df["text"] = df.apply(combine, axis=1).replace("", "[EMPTY_TEXT]")
 
@@ -114,14 +118,28 @@ def preprocess_and_save(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Preprocess text data and save splits.")
-    parser.add_argument("--x_data_csv_path", type=str, default="data/raw/X_train_update.csv")
-    parser.add_argument("--y_data_csv_path", type=str, default="data/raw/Y_train_CVw08PX.csv")
+    parser = argparse.ArgumentParser(
+        description="Preprocess text data and save splits."
+    )
+    parser.add_argument(
+        "--x_data_csv_path", type=str, default="data/raw/X_train_update.csv"
+    )
+    parser.add_argument(
+        "--y_data_csv_path", type=str, default="data/raw/Y_train_CVw08PX.csv"
+    )
     parser.add_argument("--output_dir", type=str, default="data/processed")
     parser.add_argument("--split_ids_dir", type=str, default="artifacts/splits")
-    parser.add_argument("--train_config_path", type=str, default="configs/text_train_config.yaml")
-    parser.add_argument("--preprocessing_config_path", type=str, default="configs/text_preprocessing_config.yaml")
-    parser.add_argument("--label_encoding_path", type=str, default="configs/label_encoding.json")
+    parser.add_argument(
+        "--train_config_path", type=str, default="configs/text_train_config.yaml"
+    )
+    parser.add_argument(
+        "--preprocessing_config_path",
+        type=str,
+        default="configs/text_preprocessing_config.yaml",
+    )
+    parser.add_argument(
+        "--label_encoding_path", type=str, default="configs/label_encoding.json"
+    )
     parser.add_argument("--force_new_split", action="store_true")
     return parser
 
