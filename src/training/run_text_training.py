@@ -2,6 +2,7 @@ from pathlib import Path
 import json
 import os
 import subprocess
+from datetime import datetime
 
 import mlflow
 import mlflow.pytorch
@@ -164,8 +165,11 @@ def _get_git_info() -> dict:
             commit = "unknown"
             branch = "unknown"
 
-    return {"git_commit": commit, "git_branch": branch}
-
+    return {
+        "pre_training_git_commit": commit,
+        "pre_training_git_branch": branch,
+        "pre_training_timestamp": datetime.now().isoformat(timespec="seconds"),
+    }
 
 def run_text_training(
     processed_data_dir: str | Path = "data/processed",
@@ -307,6 +311,11 @@ def run_text_training(
             artifact_path="model",
             registered_model_name="text-classifier",
         )
+        run_id = mlflow.active_run().info.run_id
+        run_id_path = Path("results/mlflow_run_id.txt")
+        run_id_path.parent.mkdir(parents=True, exist_ok=True)
+        run_id_path.write_text(run_id)
+        print(f"Saved MLflow run ID {run_id} to {run_id_path}")
 
     metrics_path = Path("results/dvc_metrics.json")
     metrics_path.parent.mkdir(parents=True, exist_ok=True)

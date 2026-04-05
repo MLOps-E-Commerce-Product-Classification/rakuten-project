@@ -5,7 +5,6 @@ stages:
       - data/raw/X_train_update.csv
       - data/raw/Y_train_CVw08PX.csv
       - configs/text_preprocessing_config.yaml
-      - configs/text_train_config.yaml
       - configs/label_encoding.json
       - src/
     outs:
@@ -23,8 +22,6 @@ stages:
       - configs/text_train_config.yaml:
           - training
           - model
-    outs:
-      - models/best_text_model.pt
     metrics:
       - results/dvc_metrics.json:
           cache: false

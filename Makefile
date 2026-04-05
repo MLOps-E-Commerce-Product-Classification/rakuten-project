@@ -2,18 +2,16 @@
 # Variables
 # ============================================================
 
-DEVICE ?= cpu  # override via: make train-text-build DEVICE=cu121
+DEVICE ?= cpu
 
-GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 
 PORT ?= 3000
 BENTO_SERVICE ?= src.serving.bento_service:TextBentoService
 BASE_URL ?= http://127.0.0.1:$(PORT)
 
-export GIT_COMMIT
-export GIT_BRANCH
 export DEVICE
+export GIT_BRANCH
 
 # ============================================================
 # Text Training
@@ -23,22 +21,18 @@ export DEVICE
 train-text-build:
 	docker compose build \
 		--build-arg DEVICE=$(DEVICE) \
-		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg GIT_COMMIT=$(shell git rev-parse HEAD 2>/dev/null || echo "unknown") \
 		--build-arg GIT_BRANCH=$(GIT_BRANCH) \
 		train-text
 
 .PHONY: train-text-run
 train-text-run:
-	git add configs/
+	git add src/ configs/
 	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
-	DEVICE=$(DEVICE) GIT_COMMIT=$(GIT_COMMIT) GIT_BRANCH=$(GIT_BRANCH) docker compose run --rm train-text
-
-.PHONY: train-text-rebuild
-train-text-rebuild:
-	git add configs/
-	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
-	$(MAKE) train-text-build
-	$(MAKE) train-text-run
+	DEVICE=$(DEVICE) \
+	GIT_COMMIT=`git rev-parse HEAD` \
+	GIT_BRANCH=`git rev-parse --abbrev-ref HEAD` \
+	docker compose run --rm train-text
 
 .PHONY: train-text-stop
 train-text-stop:
@@ -98,16 +92,15 @@ ENCODING  ?= configs/label_encoding.json
 evaluate-build:
 	docker compose build \
 		--build-arg DEVICE=$(DEVICE) \
-		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg GIT_COMMIT=$(shell git rev-parse HEAD 2>/dev/null || echo "unknown") \
 		--build-arg GIT_BRANCH=$(GIT_BRANCH) \
 		evaluate-text
 
 .PHONY: evaluate-run
 evaluate-run:
 	$(call check_defined, MLFLOW_ID)
-	# Inject environment variables for docker-compose interpolation
 	DEVICE=$(DEVICE) \
-	GIT_COMMIT=$(GIT_COMMIT) \
+	GIT_COMMIT=$(shell git rev-parse HEAD 2>/dev/null || echo "unknown") \
 	GIT_BRANCH=$(GIT_BRANCH) \
 	docker compose run --rm evaluate-text \
 		--mlflow_run_id $(MLFLOW_ID) \

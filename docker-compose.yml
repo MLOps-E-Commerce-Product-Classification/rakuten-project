@@ -21,10 +21,13 @@ services:
       - ./artifacts:/app/artifacts
       - ./results:/app/results
       - ./.dvc:/app/.dvc
+      - ./dvc.lock:/app/dvc.lock
       - ./.git:/app/.git
       - ./dvc.yaml:/app/dvc.yaml
       - ./.dvcignore:/app/.dvcignore
       - dvc-cache:/home/appuser/.cache/dvc
+      - ~/.gitconfig:/home/appuser/.gitconfig:ro
+      - ~/.ssh:/home/appuser/.ssh:ro
     deploy:
       resources:
         reservations:
