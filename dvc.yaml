@@ -13,7 +13,7 @@ stages:
       - artifacts/splits/
 
   train-text:
-    cmd: uv run python -m src.pipeline.text_pipeline --mode ${TRAIN_MODE}
+    cmd: uv run python -m src.pipeline.text_pipeline --mode train
     deps:
       - data/processed/
       - configs/text_train_config.yaml
