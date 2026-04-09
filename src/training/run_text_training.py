@@ -83,6 +83,15 @@ def validate_dataframe_columns(
         raise ValueError(f"{df_name} is missing required columns: {sorted(missing)}")
 
 
+def validate_labels_in_mapping(
+    df: pd.DataFrame, label_col: str, code_to_idx: dict, df_name: str
+) -> None:
+    labels_as_str = df[label_col].astype(str)
+    unknown_labels = sorted(set(labels_as_str) - set(code_to_idx.keys()))
+    if unknown_labels:
+        raise ValueError(f"{df_name} contains unknown labels: {unknown_labels[:10]}")
+
+
 def save_split_ids(split_ids: pd.Index, output_path: str | Path) -> None:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -117,16 +126,13 @@ def load_or_create_splits(
 
     split_ids_dir = Path(split_ids_dir)
     split_ids_dir.mkdir(parents=True, exist_ok=True)
-    train_ids_path = split_ids_dir / "train_ids.csv"
-    val_ids_path = split_ids_dir / "val_ids.csv"
-    test_ids_path = split_ids_dir / "test_ids.csv"
+    train_ids_path, val_ids_path, test_ids_path = (
+        split_ids_dir / "train_ids.csv",
+        split_ids_dir / "val_ids.csv",
+        split_ids_dir / "test_ids.csv",
+    )
 
-    if (
-        train_ids_path.exists()
-        and val_ids_path.exists()
-        and test_ids_path.exists()
-        and not force_new_split
-    ):
+    if train_ids_path.exists() and not force_new_split:
         return (
             df.loc[load_split_ids(train_ids_path)].copy(),
             df.loc[load_split_ids(val_ids_path)].copy(),
@@ -142,8 +148,7 @@ def load_or_create_splits(
         stratify=labels if use_stratify else None,
     )
 
-    temp_df = df.loc[temp_ids]
-    temp_labels = temp_df[label_col].astype(str)
+    temp_labels = df.loc[temp_ids][label_col].astype(str)
     use_stratify_val, _ = _can_use_stratify(temp_labels)
     val_ids, test_ids = train_test_split(
         temp_ids,
