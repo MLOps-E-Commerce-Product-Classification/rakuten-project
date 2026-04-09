@@ -3,9 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from src.utils.mlflow_registry import get_production_model_timestamp
 import pandas as pd
-
 
 from src.data.text_preprocessing import (
     clean_text,
@@ -30,12 +28,16 @@ def preprocess_and_save(
     preprocessing_config_path: str | Path,
     label_encoding_path: str | Path,
     force_new_split: bool = False,
-    pseudo_label_csv_path = Path("data/raw/pseudo_labeled_samples.csv")
+    pseudo_label_csv_path: str | Path = Path("data/raw/pseudo_labeled_samples.csv"),
 ) -> None:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load configs
+    # Ensure pseudo_label_csv_path is a Path object
+    if pseudo_label_csv_path:
+        pseudo_label_csv_path = Path(pseudo_label_csv_path)
+
+    # Load configuration files
     config = load_config(train_config_path)
     label_encoding = load_label_encoding(label_encoding_path)
     preprocessing_config = load_text_preprocessing_config(preprocessing_config_path)
@@ -60,34 +62,41 @@ def preprocess_and_save(
 
     set_seed(seed)
 
-    # Load and merge base raw data
+    # Load and merge base raw datasets
+    print(f"Loading base data from {x_data_csv_path} and {y_data_csv_path}...")
     x_df = pd.read_csv(x_data_csv_path, index_col=0)
     y_df = pd.read_csv(y_data_csv_path, index_col=0)
     base_df = pd.concat([x_df, y_df], axis=1).reset_index(drop=True)
 
     dfs = [base_df]
 
-    # OPTIONAL: load pseudo-labeled samples if present
-    pseudo_label_csv_path = Path("data/raw/pseudo_labeled_samples.csv")
-    if pseudo_label_csv_path.exists():
-        pseudo_df = pd.read_csv(pseudo_label_csv_path)
+    # OPTIONAL: load pseudo-labeled samples if the file exists
+    # Internal hardcoded re-assignment removed to allow flexible path usage
+    if pseudo_label_csv_path and pseudo_label_csv_path.exists():
+        try:
+            pseudo_df = pd.read_csv(pseudo_label_csv_path)
+            # Validate required columns in pseudo-labeled data
+            required_cols = {designation_col, label_col}
+            missing = required_cols - set(pseudo_df.columns)
+            if not missing:
+                if description_col not in pseudo_df.columns:
+                    pseudo_df[description_col] = ""
+                print(
+                    f"Loaded {len(pseudo_df)} pseudo-labeled samples from {pseudo_label_csv_path}"
+                )
+                dfs.append(pseudo_df)
+            else:
+                print(
+                    f"Warning: Pseudo-labeled CSV missing columns {missing}. Skipping optional data."
+                )
+        except Exception as e:
+            print(f"Warning: Could not read pseudo-labels file: {e}")
+    else:
+        print(
+            f"Info: Optional pseudo-labeled file not found at {pseudo_label_csv_path}. Proceeding with base data only."
+        )
 
-        # Ensure required columns exist
-        required_cols = {designation_col, label_col}
-        missing = required_cols - set(pseudo_df.columns)
-        if missing:
-            raise ValueError(
-                f"Pseudo-labeled CSV missing required columns: {missing}"
-            )
-
-        # Ensure description exists
-        if description_col not in pseudo_df.columns:
-            pseudo_df[description_col] = ""
-
-        print(f"Loaded {len(pseudo_df)} pseudo-labeled samples")
-        dfs.append(pseudo_df)
-
-    # Final merged dataset
+    # Create final merged dataset
     df = pd.concat(dfs, ignore_index=True)
     if description_col not in df.columns:
         df[description_col] = ""
@@ -100,7 +109,7 @@ def preprocess_and_save(
         df_name="Merged data",
     )
 
-    # Apply preprocessing
+    # Apply text cleaning and preprocessing
     print("Applying text preprocessing...")
     df["designation_clean"] = df[designation_col].apply(
         lambda x: clean_text(x, remove_html=remove_html, lowercase=lowercase)
@@ -119,10 +128,10 @@ def preprocess_and_save(
 
     df["text"] = df.apply(combine, axis=1).replace("", "[EMPTY_TEXT]")
 
-    # Map label to index
+    # Map target labels to numerical indices
     df["label"] = df[label_col].astype(str).map(label_encoding["code_to_idx"])
 
-    # Create splits
+    # Split data into train, validation, and test sets
     train_df, val_df, test_df = load_or_create_splits(
         df=df,
         label_col=label_col,
@@ -133,7 +142,7 @@ def preprocess_and_save(
         test_size=test_size,
     )
 
-    # Save processed splits
+    # Save processed splits to disk
     train_df.to_csv(output_dir / "train.csv", index=False)
     val_df.to_csv(output_dir / "val.csv", index=False)
     test_df.to_csv(output_dir / "test.csv", index=False)
@@ -167,6 +176,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--label_encoding_path", type=str, default="configs/label_encoding.json"
     )
+    parser.add_argument(
+        "--pseudo_label_csv_path",
+        type=str,
+        default="data/raw/pseudo_labeled_samples.csv",
+    )
     parser.add_argument("--force_new_split", action="store_true")
     return parser
 
@@ -183,6 +197,7 @@ def main() -> None:
         preprocessing_config_path=args.preprocessing_config_path,
         label_encoding_path=args.label_encoding_path,
         force_new_split=args.force_new_split,
+        pseudo_label_csv_path=args.pseudo_label_csv_path,
     )
 
 
