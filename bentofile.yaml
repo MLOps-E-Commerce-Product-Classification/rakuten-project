@@ -12,13 +12,14 @@ models:
 python:
   packages:
     - "bentoml>=1.4.0,<2.0.0"
-    - "mlflow>=2.22.1"
+    - "mlflow==3.10.1"
     - "pandas>=2.2.0"
-    - "torch"
-    - "transformers>=4.35.0"
+    - "torch==2.5.1"
+    - "transformers==5.4.0"
     - "accelerate>=0.23.0"
     - "pydantic>=2.11.0"
     - "pyyaml>=6.0.0"
     - "numpy>=2.0.0"
     - "huggingface_hub>=0.23.0"
     - "PyJWT>=2.10.1"
+    - "boto3"

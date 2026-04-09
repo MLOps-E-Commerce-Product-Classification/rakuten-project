@@ -330,6 +330,9 @@ def run_text_training(
                 "final_best_val_loss": min(history["val_loss"]),
             }
         )
+
+        trained_model.to("cpu")
+
         mlflow.pytorch.log_model(
             pytorch_model=trained_model,
             artifact_path="model",
