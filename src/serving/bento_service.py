@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -33,16 +34,22 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         if request.url.path in protected_paths:
             authorization_header = request.headers.get("Authorization")
             if not authorization_header:
-                return JSONResponse(status_code=401, content={"detail": "Missing authentication token"})
+                return JSONResponse(
+                    status_code=401, content={"detail": "Missing authentication token"}
+                )
             try:
                 scheme, token = authorization_header.split(" ", maxsplit=1)
                 if scheme.lower() != "bearer":
                     raise ValueError("Unsupported authorization scheme")
                 payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
             except jwt.ExpiredSignatureError:
-                return JSONResponse(status_code=401, content={"detail": "Token has expired"})
+                return JSONResponse(
+                    status_code=401, content={"detail": "Token has expired"}
+                )
             except (ValueError, jwt.InvalidTokenError):
-                return JSONResponse(status_code=401, content={"detail": "Invalid token"})
+                return JSONResponse(
+                    status_code=401, content={"detail": "Invalid token"}
+                )
             request.state.user = payload.get("sub")
         return await call_next(request)
 
@@ -83,33 +90,65 @@ class TextModelService:
     def __init__(self) -> None:
         self._loaded = False
         self.model_reference = _resolved_model_reference()
+        self.raw_model = None  # Hier speichern wir das entpackte Modell
 
     def _load(self) -> None:
         if self._loaded:
             return
 
+        import mlflow.pyfunc
+
         self.model_reference = _resolved_model_reference()
         self.model_ref = bentoml.models.get(self.model_reference["model_tag"])
-        self.model = bentoml.mlflow.load_model(self.model_ref)
-        self._loaded = True
+
+        base_path = self.model_ref.path
+        model_uri = os.path.join(base_path, "mlflow_model")
+
+        if not os.path.exists(os.path.join(model_uri, "MLmodel")):
+            if os.path.exists(os.path.join(base_path, "MLmodel")):
+                model_uri = base_path
+
+        print(f"Lade MLflow Modell von: {model_uri}")
+
+        try:
+            # 1. MLflow Wrapper laden
+            loaded_pyfunc = mlflow.pyfunc.load_model(model_uri)
+
+            # 2. Den "rohen" Kern finden, um die Float-Konvertierung zu umgehen
+            impl = loaded_pyfunc._model_impl
+
+            if hasattr(impl, "python_model"):
+                # Fall: Es ist ein benutzerdefiniertes MLflow PythonModel
+                self.raw_model = impl.python_model
+            elif hasattr(impl, "pytorch_model"):
+                # Fall: MLflow hat es direkt als PyTorch-Modell erkannt
+                self.raw_model = impl.pytorch_model
+            else:
+                # Fallback: Wir nutzen den Wrapper selbst
+                self.raw_model = loaded_pyfunc
+
+            self._loaded = True
+            print(f"Modell erfolgreich geladen (Typ: {type(self.raw_model).__name__})")
+        except Exception as e:
+            print(f"Kritischer Fehler beim Laden: {e}")
+            raise e
 
     def is_ready(self) -> bool:
         return _check_model_ready()
 
     def _predict_rows(self, items: list[TextPredictionRequest]) -> list[dict[str, Any]]:
         self._load()
-        input_frame = pd.DataFrame(
+
+        input_df = pd.DataFrame(
             [
-                {
-                    "designation": item.designation,
-                    "description": item.description,
-                    "top_k": item.top_k,
-                }
-                for item in items
+                {"designation": i.designation, "description": i.description}
+                for i in items
             ]
         )
-        rows = _coerce_prediction_rows(self.model.predict(input_frame))
-        return [dict(row) for row in rows]
+
+        predictions_array = self.raw_model.predict(input_df)
+
+        return self._format_output(predictions_array, items)
 
     @bentoml.api
     def predict_text(self, input_data: TextPredictionRequest) -> dict[str, Any]:
@@ -153,7 +192,9 @@ class TextBentoService:
         return TextPredictionResponse.model_validate(result)
 
     @bentoml.api(route="/predict_batch")
-    def predict_batch(self, input_data: BatchTextPredictionRequest) -> list[TextPredictionResponse]:
+    def predict_batch(
+        self, input_data: BatchTextPredictionRequest
+    ) -> list[TextPredictionResponse]:
         results = self.model_service.predict_texts(input_data.items)
         return [TextPredictionResponse.model_validate(result) for result in results]
 
