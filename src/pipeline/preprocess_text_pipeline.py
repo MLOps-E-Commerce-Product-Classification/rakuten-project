@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from src.utils.mlflow_registry import get_production_model_timestamp
 import pandas as pd
+
 
 from src.data.text_preprocessing import (
     clean_text,
@@ -28,6 +30,7 @@ def preprocess_and_save(
     preprocessing_config_path: str | Path,
     label_encoding_path: str | Path,
     force_new_split: bool = False,
+    pseudo_label_csv_path = Path("data/raw/pseudo_labeled_samples.csv")
 ) -> None:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -57,11 +60,35 @@ def preprocess_and_save(
 
     set_seed(seed)
 
-    # Load and merge raw data
+    # Load and merge base raw data
     x_df = pd.read_csv(x_data_csv_path, index_col=0)
     y_df = pd.read_csv(y_data_csv_path, index_col=0)
-    df = pd.concat([x_df, y_df], axis=1).reset_index(drop=True)
+    base_df = pd.concat([x_df, y_df], axis=1).reset_index(drop=True)
 
+    dfs = [base_df]
+
+    # OPTIONAL: load pseudo-labeled samples if present
+    pseudo_label_csv_path = Path("data/raw/pseudo_labeled_samples.csv")
+    if pseudo_label_csv_path.exists():
+        pseudo_df = pd.read_csv(pseudo_label_csv_path)
+
+        # Ensure required columns exist
+        required_cols = {designation_col, label_col}
+        missing = required_cols - set(pseudo_df.columns)
+        if missing:
+            raise ValueError(
+                f"Pseudo-labeled CSV missing required columns: {missing}"
+            )
+
+        # Ensure description exists
+        if description_col not in pseudo_df.columns:
+            pseudo_df[description_col] = ""
+
+        print(f"Loaded {len(pseudo_df)} pseudo-labeled samples")
+        dfs.append(pseudo_df)
+
+    # Final merged dataset
+    df = pd.concat(dfs, ignore_index=True)
     if description_col not in df.columns:
         df[description_col] = ""
 

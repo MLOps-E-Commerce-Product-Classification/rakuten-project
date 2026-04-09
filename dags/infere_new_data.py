@@ -6,7 +6,7 @@ from pathlib import Path
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.sensors.filesystem import FileSensor
-from datetime import datetime
+from datetime import datetime, timezone
 
 NEW_DATA_DIR = Path("/app/data/new_data")
 PROCESSED_DIR = Path("/app/data/new_train_data")
@@ -27,13 +27,18 @@ def process_new_data():
         try:
             response = requests.post(API_URL, json=data, timeout=10)
             response.raise_for_status()
-            predictions = response.json()
+            prediction = response.json()
         except Exception as e:
             raise RuntimeError(f"API call failed for {file}: {e}")
 
         # save combined JSON + prediction
         out_file = PROCESSED_DIR / file.name
-        combined = {"input": data, "prediction": predictions}
+        combined = {"designation": data["designation"], 
+                    "description": data["description"],
+                    "label": prediction, #TODO fetch the correct part of the prediction
+                    "source": "pseudo-label",
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z") #TODO ensure models are saved with correct timestamp
+                    }
 
         with open(out_file, "w") as f:
             json.dump(combined, f, indent=2)

@@ -4,6 +4,7 @@ stages:
     deps:
       - data/raw/X_train_update.csv
       - data/raw/Y_train_CVw08PX.csv
+      - data/raw/pseudo_labeled_samples.csv
       - configs/text_preprocessing_config.yaml
       - configs/label_encoding.json
       - src/
@@ -12,7 +13,7 @@ stages:
       - artifacts/splits/
 
   train-text:
-    cmd: uv run python -m src.pipeline.text_pipeline --mode train
+    cmd: uv run python -m src.pipeline.text_pipeline --mode ${TRAIN_MODE}
     deps:
       - data/processed/
       - configs/text_train_config.yaml
