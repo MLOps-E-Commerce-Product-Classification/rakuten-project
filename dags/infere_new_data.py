@@ -12,7 +12,7 @@ NEW_DATA_DIR = Path("/app/data/new_data")
 PROCESSED_DIR = Path("/app/data/new_train_data")
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
-API_URL = "http://localhost:8000/predict"
+API_URL = "http://localhost:3000/predict"
 
 
 def process_new_data():

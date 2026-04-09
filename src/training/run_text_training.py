@@ -22,36 +22,15 @@ from src.training.train_text import train_model
 
 load_dotenv()
 
+# ---------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------
 MODEL_NAME = "text-classifier"
 SELECTION_METRIC = "final_best_val_macro_f1"
 IMPROVEMENT_THRESHOLD = 0.005  # = 0.5 percentage points
 
 # ---------------------------------------------------------------------
-# MLflow Pyfunc Wrapper (Wichtig für BentoML!)
-# ---------------------------------------------------------------------
-class RakutenModelWrapper(mlflow.pyfunc.PythonModel):
-    def load_context(self, context):
-        from transformers import AutoTokenizer
-        self.model = mlflow.pytorch.load_model(context.artifacts["pytorch_model"])
-        self.model.eval()
-        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-multilingual-cased")
-
-    def predict(self, context, model_input):
-        import torch
-        designations = model_input["designation"].astype(str).tolist()
-        descriptions = model_input["description"].astype(str).tolist()
-        texts = [f"{desig} {desc}" for desig, desc in zip(designations, descriptions)]
-
-        inputs = self.tokenizer(
-            texts, return_tensors="pt", padding=True, truncation=True, max_length=512
-        )
-        with torch.no_grad():
-            outputs = self.model(**inputs)
-            probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-        return probs.numpy()
-
-# ---------------------------------------------------------------------
-# MLflow Helpers (Promotion Logic)
+# MLflow Helpers (Promotion & Git)
 # ---------------------------------------------------------------------
 def get_production_metric(model_name: str, metric_name: str) -> float:
     client = MlflowClient()
@@ -59,6 +38,8 @@ def get_production_metric(model_name: str, metric_name: str) -> float:
     if not versions:
         raise RuntimeError(f"No Production model found for {model_name}")
     run = client.get_run(versions[0].run_id)
+    if metric_name not in run.data.metrics:
+        raise RuntimeError(f"Production model missing metric '{metric_name}'")
     return run.data.metrics[metric_name]
 
 def get_candidate_model_version(model_name: str, run_id: str):
@@ -67,23 +48,57 @@ def get_candidate_model_version(model_name: str, run_id: str):
     for v in versions:
         if v.run_id == run_id:
             return v
-    raise RuntimeError("Could not find model version for current run")
+    raise RuntimeError("Could not resolve model version for current run")
+
+def get_git_info() -> dict:
+    try:
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True).strip()
+    except Exception:
+        commit, branch = "unknown", "unknown"
+    return {
+        "git_commit": commit,
+        "git_branch": branch,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+# ---------------------------------------------------------------------
+# PyFunc wrapper (Wichtig für BentoML & API Inferenz)
+# ---------------------------------------------------------------------
+class RakutenModelWrapper(mlflow.pyfunc.PythonModel):
+    def load_context(self, context):
+        from transformers import AutoTokenizer
+        self.model = mlflow.pytorch.load_model(context.artifacts["pytorch_model"])
+        self.model.eval()
+        # Nutzt jetzt den dynamischen Tokenizer-Namen aus den Artifacts
+        self.tokenizer = AutoTokenizer.from_pretrained(context.artifacts["tokenizer_name"])
+
+    def predict(self, context, model_input):
+        import torch
+        # Optimierte String-Konkatenierung aus dem API-Commit
+        texts = (
+            model_input["designation"].astype(str)
+            + " "
+            + model_input["description"].astype(str)
+        ).tolist()
+
+        inputs = self.tokenizer(
+            texts, return_tensors="pt", padding=True, truncation=True, max_length=512
+        )
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            probs = torch.softmax(outputs.logits, dim=-1)
+        return probs.numpy()
 
 # ---------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------
-def load_config(config_path: str | Path) -> dict:
-    config_path = Path(config_path)
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
-    with config_path.open("r", encoding="utf-8") as f:
+def load_config(path: str | Path) -> dict:
+    with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
-def load_label_encoding(label_encoding_path: str | Path) -> dict:
-    label_encoding_path = Path(label_encoding_path)
-    if not label_encoding_path.exists():
-        raise FileNotFoundError(f"Label encoding file not found: {label_encoding_path}")
-    with label_encoding_path.open("r", encoding="utf-8") as f:
+def load_label_encoding(path: str | Path) -> dict:
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 def set_seed(seed: int) -> None:
@@ -94,35 +109,23 @@ def set_seed(seed: int) -> None:
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-def _get_git_info() -> dict:
-    commit = os.environ.get("GIT_COMMIT", "unknown")
-    branch = os.environ.get("GIT_BRANCH", "unknown")
-    if commit == "unknown":
-        try:
-            commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-            branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True).strip()
-        except: pass
-    return {
-        "pre_training_git_commit": commit,
-        "pre_training_git_branch": branch,
-        "pre_training_timestamp": datetime.utcnow().isoformat() + "Z",
-    }
-
 # ---------------------------------------------------------------------
 # Main training + promotion logic
 # ---------------------------------------------------------------------
 def run_text_training(
-    processed_data_dir: str | Path = "data/processed",
-    train_config_path: str | Path = "configs/text_train_config.yaml",
-    preprocessing_config_path: str | Path = "configs/text_preprocessing_config.yaml",
-    model_save_path: str | Path = "models/best_text_model.pt",
-    label_encoding_path: str | Path = "configs/label_encoding.json",
-    retrain: bool = False,
-    base_model_uri: str | None = None,
+    processed_data_dir="data/processed",
+    train_config_path="configs/text_train_config.yaml",
+    preprocessing_config_path="configs/text_preprocessing_config.yaml",
+    label_encoding_path="configs/label_encoding.json",
+    retrain=False,
+    base_model_uri=None,
 ):
     processed_data_dir = Path(processed_data_dir)
     train_df = pd.read_csv(processed_data_dir / "train.csv")
     val_df = pd.read_csv(processed_data_dir / "val.csv")
+
+    if train_df.empty or val_df.empty:
+        raise RuntimeError("Train or validation split is empty")
 
     config = load_config(train_config_path)
     label_encoding = load_label_encoding(label_encoding_path)
@@ -133,24 +136,36 @@ def run_text_training(
 
     set_seed(training_cfg.get("seed", 42))
 
-    train_dataset = RakutenTextDataset(train_df, label_encoding, preprocessing_config_path, 
-                                       data_cfg["designation_col"], data_cfg["description_col"], data_cfg["label_col"])
-    val_dataset = RakutenTextDataset(val_df, label_encoding, preprocessing_config_path, 
-                                     data_cfg["designation_col"], data_cfg["description_col"], data_cfg["label_col"])
+    train_ds = RakutenTextDataset(
+        train_df, label_encoding, preprocessing_config_path,
+        data_cfg["designation_col"], data_cfg["description_col"], data_cfg["label_col"]
+    )
+    val_ds = RakutenTextDataset(
+        val_df, label_encoding, preprocessing_config_path,
+        data_cfg["designation_col"], data_cfg["description_col"], data_cfg["label_col"]
+    )
 
-    train_dl = DataLoader(train_dataset, batch_size=training_cfg["batch_size"], shuffle=True)
-    val_dl = DataLoader(val_dataset, batch_size=training_cfg["batch_size"], shuffle=False)
+    train_dl = DataLoader(train_ds, batch_size=training_cfg["batch_size"], shuffle=True)
+    val_dl = DataLoader(val_ds, batch_size=training_cfg["batch_size"], shuffle=False)
 
-    if retrain and base_model_uri:
+    if retrain:
+        if not base_model_uri:
+            raise ValueError("Retrain requested but base_model_uri is missing")
         model = mlflow.pytorch.load_model(base_model_uri)
     else:
-        model = build_text_model(model_cfg["name"], len(label_encoding["classes"]), 
-                                 model_cfg.get("pretrained", True), model_cfg.get("freeze_backbone", False))
+        model = build_text_model(
+            model_cfg["name"], len(label_encoding["classes"]),
+            pretrained=model_cfg.get("pretrained", True),
+            freeze_backbone=model_cfg.get("freeze_backbone", False)
+        )
 
-    with mlflow.start_run(run_name="text-classifier-training"):
-        mlflow.log_params(_get_git_info())
-        trained_model, history = train_model(model, train_dl, val_dl, train_config_path, 
-                                             len(label_encoding["classes"]), model_save_path)
+    with mlflow.start_run(run_name="text-training"):
+        mlflow.log_params(get_git_info())
+
+        trained_model, history = train_model(
+            model, train_dl, val_dl, train_config_path,
+            num_classes=len(label_encoding["classes"])
+        )
 
         candidate_metric = max(history["val_macro_f1"])
         mlflow.log_metrics({
@@ -159,21 +174,24 @@ def run_text_training(
             "final_best_val_loss": min(history["val_loss"]),
         })
 
-        # WICHTIG: Als Pyfunc loggen für BentoML Kompatibilität
+        # Vorbereitung für PyFunc Logging
         trained_model.to("cpu")
-        temp_model_path = "models/temp_mlflow_pytorch"
-        if os.path.exists(temp_model_path): shutil.rmtree(temp_model_path)
-        mlflow.pytorch.save_model(trained_model, temp_model_path)
+        tmp = Path("models/_tmp_pytorch")
+        if tmp.exists(): shutil.rmtree(tmp)
+        mlflow.pytorch.save_model(trained_model, tmp)
 
         mlflow.pyfunc.log_model(
             artifact_path="model",
             python_model=RakutenModelWrapper(),
-            artifacts={"pytorch_model": temp_model_path},
+            artifacts={
+                "pytorch_model": str(tmp),
+                "tokenizer_name": model_cfg["name"],
+            },
             registered_model_name=MODEL_NAME,
             pip_requirements=["torch", "transformers", "pandas", "numpy"],
         )
-        
-        if os.path.exists(temp_model_path): shutil.rmtree(temp_model_path)
+
+        shutil.rmtree(tmp)
         run_id = mlflow.active_run().info.run_id
 
     # Promotion Decision
@@ -185,14 +203,19 @@ def run_text_training(
         improvement = candidate_metric - prod_metric
     except RuntimeError:
         prod_metric, improvement = None, float("inf")
+        print("No Production model found (initial deployment)")
+
+    print(f"Candidate {SELECTION_METRIC}: {candidate_metric:.4f}")
+    if prod_metric: print(f"Production {SELECTION_METRIC}: {prod_metric:.4f}")
+    print(f"Improvement: {improvement:.4f}")
 
     if improvement >= IMPROVEMENT_THRESHOLD:
-        print(f"✅ Promoting model. Improvement: {improvement:.4f}")
+        print("✅ Promoting model to Production")
         for v in client.get_latest_versions(MODEL_NAME, stages=["Production"]):
             client.transition_model_version_stage(MODEL_NAME, v.version, stage="Archived")
         client.transition_model_version_stage(MODEL_NAME, candidate_version.version, stage="Production")
     else:
-        print(f"❌ Keeping current model. Improvement ({improvement:.4f}) below threshold.")
+        print("❌ Promotion skipped (threshold not met)")
 
     return history
 
