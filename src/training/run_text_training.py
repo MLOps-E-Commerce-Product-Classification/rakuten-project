@@ -83,17 +83,6 @@ def validate_dataframe_columns(
         raise ValueError(f"{df_name} is missing required columns: {sorted(missing)}")
 
 
-def validate_labels_in_mapping(
-    df: pd.DataFrame, label_col: str, code_to_idx: dict, df_name: str
-) -> None:
-    labels_as_str = df[label_col].astype(str)
-    unknown_labels = sorted(set(labels_as_str) - set(code_to_idx.keys()))
-    if unknown_labels:
-        raise ValueError(
-            f"{df_name} contains labels not present in the predefined label encoding: {unknown_labels[:10]}"
-        )
-
-
 def save_split_ids(split_ids: pd.Index, output_path: str | Path) -> None:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -113,6 +102,60 @@ def _can_use_stratify(labels: pd.Series, min_count: int = 2) -> tuple[bool, list
     class_counts = labels.astype(str).value_counts()
     too_small_classes = class_counts[class_counts < min_count]
     return len(too_small_classes) == 0, too_small_classes.index.tolist()
+
+
+def load_or_create_splits(
+    df: pd.DataFrame,
+    label_col: str,
+    split_ids_dir: str | Path,
+    seed: int,
+    force_new_split: bool,
+    val_size: float,
+    test_size: float,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    from sklearn.model_selection import train_test_split
+
+    split_ids_dir = Path(split_ids_dir)
+    split_ids_dir.mkdir(parents=True, exist_ok=True)
+    train_ids_path = split_ids_dir / "train_ids.csv"
+    val_ids_path = split_ids_dir / "val_ids.csv"
+    test_ids_path = split_ids_dir / "test_ids.csv"
+
+    if (
+        train_ids_path.exists()
+        and val_ids_path.exists()
+        and test_ids_path.exists()
+        and not force_new_split
+    ):
+        return (
+            df.loc[load_split_ids(train_ids_path)].copy(),
+            df.loc[load_split_ids(val_ids_path)].copy(),
+            df.loc[load_split_ids(test_ids_path)].copy(),
+        )
+
+    labels = df[label_col].astype(str)
+    use_stratify, _ = _can_use_stratify(labels)
+    train_ids, temp_ids = train_test_split(
+        df.index,
+        test_size=val_size + test_size,
+        random_state=seed,
+        stratify=labels if use_stratify else None,
+    )
+
+    temp_df = df.loc[temp_ids]
+    temp_labels = temp_df[label_col].astype(str)
+    use_stratify_val, _ = _can_use_stratify(temp_labels)
+    val_ids, test_ids = train_test_split(
+        temp_ids,
+        test_size=test_size / (val_size + test_size),
+        random_state=seed,
+        stratify=temp_labels if use_stratify_val else None,
+    )
+
+    save_split_ids(pd.Index(train_ids), train_ids_path)
+    save_split_ids(pd.Index(val_ids), val_ids_path)
+    save_split_ids(pd.Index(test_ids), test_ids_path)
+    return df.loc[train_ids].copy(), df.loc[val_ids].copy(), df.loc[test_ids].copy()
 
 
 def _get_git_info() -> dict:
@@ -137,41 +180,20 @@ def run_text_training(
         processed_data_dir / "train.csv",
         processed_data_dir / "val.csv",
     )
-
     if not train_csv.exists() or not val_csv.exists():
         raise FileNotFoundError("Processed data not found.")
 
     config = load_config(train_config_path)
     label_encoding = load_label_encoding(label_encoding_path)
-
     training_config, model_config, data_config = (
         config.get("training", {}),
         config.get("model", {}),
         config.get("data", {}),
     )
-    batch_size, seed, subset = (
-        int(training_config.get("batch_size", 32)),
-        int(training_config.get("seed", 42)),
-        int(training_config.get("subset", 0)),
-    )
-    lr, epochs = (
-        float(training_config.get("learning_rate", 2e-5)),
-        int(training_config.get("num_epochs", 5)),
-    )
 
-    model_name = model_config.get("name", "bert-base-multilingual-cased")
-    pretrained, freeze_backbone = (
-        bool(model_config.get("pretrained", True)),
-        bool(model_config.get("freeze_backbone", False)),
-    )
-    label_col, designation_col, description_col = (
-        data_config.get("label_col", "prdtypecode"),
-        data_config.get("designation_col", "designation"),
-        data_config.get("description_col", "description"),
-    )
-
-    set_seed(seed)
+    set_seed(int(training_config.get("seed", 42)))
     train_df, val_df = pd.read_csv(train_csv), pd.read_csv(val_csv)
+    subset = int(training_config.get("subset", 0))
     if subset > 0:
         train_df, val_df = train_df[:subset], val_df[: int(subset * 0.2)]
 
@@ -180,44 +202,41 @@ def run_text_training(
         train_df,
         label_encoding,
         preprocessing_config_path,
-        designation_col,
-        description_col,
-        label_col,
+        data_config.get("designation_col", "designation"),
+        data_config.get("description_col", "description"),
+        data_config.get("label_col", "prdtypecode"),
     )
     val_dataset = RakutenTextDataset(
         val_df,
         label_encoding,
         preprocessing_config_path,
-        designation_col,
-        description_col,
-        label_col,
+        data_config.get("designation_col", "designation"),
+        data_config.get("description_col", "description"),
+        data_config.get("label_col", "prdtypecode"),
     )
 
     train_dataloader = DataLoader(
         train_dataset,
-        batch_size=batch_size,
+        batch_size=int(training_config.get("batch_size", 32)),
         shuffle=True,
         pin_memory=torch.cuda.is_available(),
     )
     val_dataloader = DataLoader(
         val_dataset,
-        batch_size=batch_size,
+        batch_size=int(training_config.get("batch_size", 32)),
         shuffle=False,
         pin_memory=torch.cuda.is_available(),
     )
 
     model = build_text_model(
-        model_name=model_name,
+        model_name=model_config.get("name", "bert-base-multilingual-cased"),
         num_classes=num_classes,
-        pretrained=pretrained,
-        freeze_backbone=freeze_backbone,
+        pretrained=bool(model_config.get("pretrained", True)),
+        freeze_backbone=bool(model_config.get("freeze_backbone", False)),
     )
-    git_info = _get_git_info()
 
     with mlflow.start_run(run_name="text-classifier-training"):
-        mlflow.log_params(git_info)
-        mlflow.log_params({"model_name": model_name, "epochs": epochs, "lr": lr})
-
+        mlflow.log_params(_get_git_info())
         trained_model, history = train_model(
             model=model,
             train_dataloader=train_dataloader,
@@ -226,14 +245,11 @@ def run_text_training(
             num_classes=num_classes,
             model_save_path=model_save_path,
         )
-
-        mlflow.log_metrics({"final_best_val_macro_f1": max(history["val_macro_f1"])})
         trained_model.to("cpu")
 
         temp_pytorch_dir = Path("models/temp_mlflow_pytorch")
         if temp_pytorch_dir.exists():
             shutil.rmtree(temp_pytorch_dir)
-
         mlflow.pytorch.save_model(trained_model, temp_pytorch_dir)
 
         mlflow.pyfunc.log_model(
@@ -243,12 +259,9 @@ def run_text_training(
             registered_model_name="text-classifier",
             pip_requirements=["torch", "transformers", "pandas", "numpy"],
         )
-
         if temp_pytorch_dir.exists():
             shutil.rmtree(temp_pytorch_dir)
-
-        run_id = mlflow.active_run().info.run_id
-        Path("results/mlflow_run_id.txt").write_text(run_id)
+        Path("results/mlflow_run_id.txt").write_text(mlflow.active_run().info.run_id)
 
     return history, label_encoding
 
