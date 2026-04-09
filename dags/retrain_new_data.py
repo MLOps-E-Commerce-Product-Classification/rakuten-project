@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
-import os 
+import os
 
 from docker.types import Mount
 
@@ -28,13 +28,13 @@ MIN_SAMPLES = 200
 
 TRAINING_IMAGE = "rakuten-text-trainer:latest"
 
+
 def get_mlflow_env():
     return {
         "MLFLOW_TRACKING_URI": os.getenv("MLFLOW_TRACKING_URI"),
         "MLFLOW_TRACKING_USERNAME": os.getenv("MLFLOW_TRACKING_USERNAME"),
         "MLFLOW_TRACKING_PASSWORD": os.getenv("MLFLOW_TRACKING_PASSWORD"),
     }
-
 
 
 DEFAULT_ARGS = {
@@ -116,7 +116,6 @@ with DAG(
     max_active_runs=1,
     tags=["rakuten"],
 ):
-
     wait_for_samples = PythonSensor(
         task_id="wait_for_enough_new_samples",
         python_callable=has_enough_samples,
@@ -146,6 +145,5 @@ with DAG(
         environment=get_mlflow_env(),
         auto_remove=True,
     )
-
 
     wait_for_samples >> convert_jsons >> retrain_model
