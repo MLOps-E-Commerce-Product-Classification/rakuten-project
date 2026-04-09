@@ -61,8 +61,8 @@ stages:
       size: 906705
     - path: src/
       hash: md5
-      md5: 0a4cbb0f9588b43a32676279f6d1a108.dir
-      size: 697897
+      md5: e880627c85feb0c1d2165fba39389299.dir
+      size: 697439
       nfiles: 119
     outs:
     - path: artifacts/splits/
