@@ -6,7 +6,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime
 
-NEW_DATA_DIR = Path("data/new_data")
+NEW_DATA_DIR = Path("/app/data/new_data")
 
 
 def sample_data():
@@ -26,7 +26,7 @@ def sample_data():
         filename = output_dir / f"sample_{timestamp}_{idx}.json"
 
         with open(filename, "w") as f:
-            json.dump(row, f)
+            json.dump(row, f, ensure_ascii=False)
 
 
 with DAG(

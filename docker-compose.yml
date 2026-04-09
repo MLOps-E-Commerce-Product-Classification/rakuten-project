@@ -1,3 +1,6 @@
+networks:
+  rakuten-net:
+    external: true
 services:
   train-text:
     image: rakuten-ml/train-text:${DEVICE:-cpu}
@@ -74,11 +77,15 @@ services:
               count: all
               capabilities: [gpu]
   bento-text-service:
-    image: rakuten_text_service:latest
+    image: rakuten_text_service:flczfozud6ujytc7
+
     ports:
       - "3000:3000"
     environment:
       TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD: "1"
+    networks:
+          - rakuten-net
+
 
 volumes:
   dvc-cache:
