@@ -2,10 +2,12 @@ from pathlib import Path
 import json
 import os
 import subprocess
+import shutil
 from datetime import datetime
 
 import mlflow
 import mlflow.pytorch
+import mlflow.pyfunc
 import pandas as pd
 import torch
 import yaml
@@ -18,6 +20,24 @@ from src.training.train_text import train_model
 
 load_dotenv()
 
+class RakutenModelWrapper(mlflow.pyfunc.PythonModel):
+    def load_context(self, context):
+        from transformers import AutoTokenizer
+        self.model = mlflow.pytorch.load_model(context.artifacts["pytorch_model"])
+        self.model.eval()
+        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-multilingual-cased")
+
+    def predict(self, context, model_input):
+        import torch
+        designations = model_input["designation"].astype(str).tolist()
+        descriptions = model_input["description"].astype(str).tolist()
+        texts = [f"{desig} {desc}" for desig, desc in zip(designations, descriptions)]
+        
+        inputs = self.tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=512)
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
+        return probs.numpy()
 
 def load_config(config_path: str | Path) -> dict:
     config_path = Path(config_path)
@@ -224,7 +244,6 @@ def run_text_training(
 
     set_seed(seed)
 
-    # Load preprocessed splits directly
     train_df = pd.read_csv(train_csv)
     val_df = pd.read_csv(val_csv)
 
@@ -333,11 +352,22 @@ def run_text_training(
 
         trained_model.to("cpu")
 
-        mlflow.pytorch.log_model(
-            pytorch_model=trained_model,
+        temp_model_path = "models/temp_mlflow_pytorch"
+        if os.path.exists(temp_model_path):
+            shutil.rmtree(temp_model_path)
+        mlflow.pytorch.save_model(trained_model, temp_model_path)
+
+        mlflow.pyfunc.log_model(
             artifact_path="model",
+            python_model=RakutenModelWrapper(),
+            artifacts={"pytorch_model": temp_model_path},
             registered_model_name="text-classifier",
+            pip_requirements=["torch", "transformers", "pandas", "numpy"]
         )
+        
+        if os.path.exists(temp_model_path):
+            shutil.rmtree(temp_model_path)
+
         run_id = mlflow.active_run().info.run_id
         run_id_path = Path("results/mlflow_run_id.txt")
         run_id_path.parent.mkdir(parents=True, exist_ok=True)
