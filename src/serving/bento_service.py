@@ -7,6 +7,7 @@ from typing import Any
 import bentoml
 import jwt
 import pandas as pd
+import numpy as np
 from bentoml.exceptions import NotFound
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -73,24 +74,12 @@ def _check_model_ready() -> bool:
     return True
 
 
-def _coerce_prediction_rows(result: Any) -> list[dict[str, Any]]:
-    if isinstance(result, pd.DataFrame):
-        return result.to_dict(orient="records")
-    if isinstance(result, dict):
-        return [result]
-    if hasattr(result, "to_dict"):
-        converted = result.to_dict()
-        if isinstance(converted, list):
-            return converted
-    return list(result)
-
-
 @bentoml.service(name="rakuten_text_model_service")
 class TextModelService:
     def __init__(self) -> None:
         self._loaded = False
         self.model_reference = _resolved_model_reference()
-        self.raw_model = None  # Hier speichern wir das entpackte Modell
+        self.raw_model = None
 
     def _load(self) -> None:
         if self._loaded:
@@ -98,43 +87,51 @@ class TextModelService:
 
         import mlflow.pyfunc
 
-        self.model_reference = _resolved_model_reference()
         self.model_ref = bentoml.models.get(self.model_reference["model_tag"])
-
-        base_path = self.model_ref.path
-        model_uri = os.path.join(base_path, "mlflow_model")
-
-        if not os.path.exists(os.path.join(model_uri, "MLmodel")):
-            if os.path.exists(os.path.join(base_path, "MLmodel")):
-                model_uri = base_path
-
-        print(f"Lade MLflow Modell von: {model_uri}")
+        model_uri = os.path.join(self.model_ref.path, "mlflow_model")
 
         try:
-            # 1. MLflow Wrapper laden
-            loaded_pyfunc = mlflow.pyfunc.load_model(model_uri)
-
-            # 2. Den "rohen" Kern finden, um die Float-Konvertierung zu umgehen
-            impl = loaded_pyfunc._model_impl
-
-            if hasattr(impl, "python_model"):
-                # Fall: Es ist ein benutzerdefiniertes MLflow PythonModel
-                self.raw_model = impl.python_model
-            elif hasattr(impl, "pytorch_model"):
-                # Fall: MLflow hat es direkt als PyTorch-Modell erkannt
-                self.raw_model = impl.pytorch_model
-            else:
-                # Fallback: Wir nutzen den Wrapper selbst
-                self.raw_model = loaded_pyfunc
-
+            self.raw_model = mlflow.pyfunc.load_model(model_uri)
             self._loaded = True
-            print(f"Modell erfolgreich geladen (Typ: {type(self.raw_model).__name__})")
+            print("Modell erfolgreich geladen (Typ: MLflow Pyfunc Wrapper)")
         except Exception as e:
             print(f"Kritischer Fehler beim Laden: {e}")
             raise e
 
     def is_ready(self) -> bool:
         return _check_model_ready()
+
+    def _format_output(
+        self, predictions_array: Any, items: list[TextPredictionRequest]
+    ) -> list[dict[str, Any]]:
+        """Konvertiert die Raw-Predictions exakt in das Schema von TextPredictionResponse."""
+        preds = np.array(predictions_array)
+
+        results = []
+        for i, item in enumerate(items):
+            predicted_idx = int(np.argmax(preds[i]))
+
+            all_indices = np.argsort(preds[i])[::-1]
+            top_k_indices = all_indices[: item.top_k]
+
+            top_k_list = [
+                {
+                    "rakuten_code": int(idx),  # Muss laut Schema ein int sein
+                    "probability": float(preds[i][idx]),
+                }
+                for idx in top_k_indices
+            ]
+
+            results.append(
+                {
+                    "predicted_rakuten_code": predicted_idx,
+                    "top_k_predictions": top_k_list,
+                    "probabilities": {
+                        str(idx): float(prob) for idx, prob in enumerate(preds[i])
+                    },
+                }
+            )
+        return results
 
     def _predict_rows(self, items: list[TextPredictionRequest]) -> list[dict[str, Any]]:
         self._load()

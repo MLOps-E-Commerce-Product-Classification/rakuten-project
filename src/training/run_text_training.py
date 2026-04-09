@@ -20,24 +20,30 @@ from src.training.train_text import train_model
 
 load_dotenv()
 
+
 class RakutenModelWrapper(mlflow.pyfunc.PythonModel):
     def load_context(self, context):
         from transformers import AutoTokenizer
+
         self.model = mlflow.pytorch.load_model(context.artifacts["pytorch_model"])
         self.model.eval()
         self.tokenizer = AutoTokenizer.from_pretrained("bert-base-multilingual-cased")
 
     def predict(self, context, model_input):
         import torch
+
         designations = model_input["designation"].astype(str).tolist()
         descriptions = model_input["description"].astype(str).tolist()
         texts = [f"{desig} {desc}" for desig, desc in zip(designations, descriptions)]
-        
-        inputs = self.tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=512)
+
+        inputs = self.tokenizer(
+            texts, return_tensors="pt", padding=True, truncation=True, max_length=512
+        )
         with torch.no_grad():
             outputs = self.model(**inputs)
             probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
         return probs.numpy()
+
 
 def load_config(config_path: str | Path) -> dict:
     config_path = Path(config_path)
@@ -362,9 +368,9 @@ def run_text_training(
             python_model=RakutenModelWrapper(),
             artifacts={"pytorch_model": temp_model_path},
             registered_model_name="text-classifier",
-            pip_requirements=["torch", "transformers", "pandas", "numpy"]
+            pip_requirements=["torch", "transformers", "pandas", "numpy"],
         )
-        
+
         if os.path.exists(temp_model_path):
             shutil.rmtree(temp_model_path)
 
