@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-DEFAULT_MLFLOW_MODEL_NAME = "rakuten_text_classifier"
-DEFAULT_MLFLOW_ALIAS = "champion"
+DEFAULT_MLFLOW_MODEL_NAME = "text-classifier"
+DEFAULT_MLFLOW_ALIAS = "production"
 DEFAULT_PROMOTION_METRIC = "eval_macro_f1"
 DEFAULT_DEPLOYMENT_MANIFEST_PATH = Path("artifacts/deployment_manifest.json")
 DEFAULT_TRAINING_MANIFEST_PATH = Path("artifacts/mlflow_text_model.json")
@@ -17,7 +17,9 @@ DEFAULT_BENTO_FALLBACK_TAG = f"{DEFAULT_MLFLOW_MODEL_NAME}:latest"
 def _import_mlflow():
     try:
         import mlflow
-    except ImportError as exc:  # pragma: no cover - exercised in integration environments
+    except (
+        ImportError
+    ) as exc:  # pragma: no cover - exercised in integration environments
         raise RuntimeError(
             "mlflow is required for the MLflow/BentoML registry workflow. "
             "Install the repository with the 'data' extra or use 'uv sync --all-extras'."
@@ -28,7 +30,9 @@ def _import_mlflow():
 def _import_bentoml():
     try:
         import bentoml
-    except ImportError as exc:  # pragma: no cover - exercised in integration environments
+    except (
+        ImportError
+    ) as exc:  # pragma: no cover - exercised in integration environments
         raise RuntimeError(
             "bentoml is required for the MLflow/BentoML serving workflow. "
             "Install the repository with the 'api' extra or use 'uv sync --all-extras'."
@@ -36,7 +40,9 @@ def _import_bentoml():
     return bentoml
 
 
-def read_json_file(path: str | Path, default: dict[str, Any] | None = None) -> dict[str, Any]:
+def read_json_file(
+    path: str | Path, default: dict[str, Any] | None = None
+) -> dict[str, Any]:
     file_path = Path(path)
     if not file_path.exists():
         return {} if default is None else dict(default)
@@ -116,7 +122,9 @@ def build_metric_candidates(primary_metric: str) -> list[str]:
     return candidates
 
 
-def resolve_metric_value(metrics: dict[str, float], metric_names: Iterable[str]) -> tuple[str | None, float | None]:
+def resolve_metric_value(
+    metrics: dict[str, float], metric_names: Iterable[str]
+) -> tuple[str | None, float | None]:
     for name in metric_names:
         if name in metrics:
             return name, float(metrics[name])
@@ -137,7 +145,9 @@ def find_model_version_by_run_id(client, model_name: str, run_id: str) -> str | 
     return None
 
 
-def resolve_candidate_version(client, model_name: str, current_champion_version: str | None = None) -> Any:
+def resolve_candidate_version(
+    client, model_name: str, current_champion_version: str | None = None
+) -> Any:
     versions = list(client.search_model_versions(f"name='{model_name}'"))
     if not versions:
         raise ValueError(f"No registered versions found for model '{model_name}'.")
@@ -156,11 +166,28 @@ def get_model_version_by_alias(client, model_name: str, alias: str):
     return client.get_model_version_by_alias(name=model_name, alias=alias)
 
 
-def find_existing_bento_model(bentoml_module, bento_model_name: str, mlflow_model_name: str, mlflow_version: str):
+def find_existing_bento_model(
+    bentoml_module, bento_model_name: str, mlflow_model_name: str, mlflow_version: str
+):
+    """
+    Return a bentoml model object if a model with name `bento_model_name` and matching
+    mlflow metadata (mlflow_model_name + mlflow_version) exists in the local BentoML store.
+    If no such model exists, return None. This function safely handles BentoML's NotFound.
+    """
     try:
-        models = bentoml_module.models.list(bento_model_name)
-    except TypeError:
-        models = bentoml_module.models.list()
+        try:
+            models = bentoml_module.models.list(bento_model_name)
+        except TypeError:
+            models = bentoml_module.models.list()
+    except Exception as e:
+        try:
+            from bentoml.exceptions import NotFound as BentoNotFound
+
+            if isinstance(e, BentoNotFound):
+                return None
+        except Exception:
+            pass
+        raise
 
     for model in models:
         tag = str(getattr(model, "tag", ""))
@@ -168,10 +195,9 @@ def find_existing_bento_model(bentoml_module, bento_model_name: str, mlflow_mode
             continue
 
         metadata = dict(getattr(model, "metadata", {}) or {})
-        if (
-            str(metadata.get("mlflow_model_name")) == mlflow_model_name
-            and str(metadata.get("mlflow_version")) == str(mlflow_version)
-        ):
+        if str(metadata.get("mlflow_model_name")) == str(mlflow_model_name) and str(
+            metadata.get("mlflow_version")
+        ) == str(mlflow_version):
             return model
     return None
 
@@ -185,7 +211,9 @@ def resolve_bento_model_reference(
     env = env or os.environ
     manifest_file = Path(env.get("BENTO_DEPLOYMENT_MANIFEST", str(manifest_path)))
     manifest = read_json_file(manifest_file)
-    model_tag = env.get("BENTO_MODEL_TAG") or manifest.get("bentoml_model_tag") or fallback_tag
+    model_tag = (
+        env.get("BENTO_MODEL_TAG") or manifest.get("bentoml_model_tag") or fallback_tag
+    )
 
     return {
         "model_tag": model_tag,

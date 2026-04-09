@@ -9,9 +9,10 @@ GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unkno
 
 PORT ?= 3000
 BENTO_SERVICE ?= src.serving.bento_service:TextBentoService
+BENTO_MODEL_NAME ?= text-classifier
 BASE_URL ?= http://127.0.0.1:$(PORT)
-MLFLOW_MODEL_NAME ?= rakuten_text_classifier
-MLFLOW_ALIAS ?= champion
+MLFLOW_MODEL_NAME ?= text-classifier
+MLFLOW_ALIAS ?= production
 PROMOTION_METRIC ?= eval_macro_f1
 PROMOTION_MARGIN ?= 0.0
 
@@ -162,7 +163,8 @@ promote-mlflow-text-model:
 sync-bento-text-model:
 	uv run python -m src.serving.sync_mlflow_to_bento \
 		--model-name $(MLFLOW_MODEL_NAME) \
-		--alias $(MLFLOW_ALIAS)
+		--alias $(MLFLOW_ALIAS) \
+		--bento-model-name $(BENTO_MODEL_NAME)
 
 .PHONY: token-bento-text
 token-bento-text:

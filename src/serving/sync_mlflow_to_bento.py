@@ -52,24 +52,44 @@ def sync_mlflow_model_to_bento(
     updated = False
     bento_model = existing_model
     if bento_model is None:
-        bento_model = bentoml_module.mlflow.import_model(
-            bento_model_name,
-            source_uri,
-            labels={
-                "registry": "mlflow",
-                "mlflow_model_name": model_name,
-                "mlflow_alias": alias,
-            },
-            metadata={
-                "mlflow_model_name": model_name,
-                "mlflow_alias": alias,
-                "mlflow_version": resolved_version,
-                "mlflow_run_id": getattr(model_version, "run_id", None),
-                "mlflow_model_uri": source_uri,
-                "validation_status": version_tags.get("validation_status"),
-            },
-        )
-        updated = True
+        labels = {
+            "registry": "mlflow",
+            "mlflow_model_name": model_name,
+            "mlflow_alias": alias,
+        }
+
+        raw_metadata = {
+            "mlflow_model_name": model_name,
+            "mlflow_alias": alias,
+            "mlflow_version": resolved_version,
+            "mlflow_run_id": getattr(model_version, "run_id", None),
+            "mlflow_model_uri": source_uri,
+            "validation_status": version_tags.get("validation_status"),
+        }
+
+        metadata = {}
+        for k, v in raw_metadata.items():
+            if v is None:
+                continue
+            if isinstance(v, (str, int, float, complex, bool)):
+                metadata[k] = v
+            else:
+                metadata[k] = str(v)
+
+        try:
+            bento_model = bentoml_module.mlflow.import_model(
+                bento_model_name,
+                source_uri,
+                labels=labels,
+                metadata=metadata,
+            )
+            updated = True
+        except Exception as e:
+            print("Fehler beim BentoML-Import:", type(e), e)
+            print("Import-URI:", source_uri)
+            print("Labels:", labels)
+            print("Metadata (clean):", metadata)
+            raise
 
     manifest = {
         "updated": updated,
@@ -86,17 +106,29 @@ def sync_mlflow_model_to_bento(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Synchronize the champion MLflow model into BentoML.")
+    parser = argparse.ArgumentParser(
+        description="Synchronize the champion MLflow model into BentoML."
+    )
     parser.add_argument("--model-name", default=DEFAULT_MLFLOW_MODEL_NAME)
     parser.add_argument("--alias", default=DEFAULT_MLFLOW_ALIAS)
     parser.add_argument("--bento-model-name", default=None)
-    parser.add_argument("--manifest-path", default=str(DEFAULT_DEPLOYMENT_MANIFEST_PATH))
+    parser.add_argument(
+        "--manifest-path", default=str(DEFAULT_DEPLOYMENT_MANIFEST_PATH)
+    )
     parser.add_argument("--tracking-uri", default=None)
     parser.add_argument("--registry-uri", default=None)
     return parser
 
 
 def main() -> None:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    import dagshub
+
+    dagshub.init(repo_owner="Mlops2026", repo_name="rakuten-project", mlflow=True)
+
     args = build_parser().parse_args()
     manifest = sync_mlflow_model_to_bento(
         model_name=args.model_name,
