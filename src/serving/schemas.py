@@ -6,6 +6,11 @@ from pydantic import BaseModel, Field
 class Credentials(BaseModel):
     username: str
     password: str
+    mlflow_model_name: str | None = None
+    mlflow_alias: str | None = None
+    mlflow_version: str | None = None
+    mlflow_run_id: str | None = None
+    validation_status: str | None = None
 
 
 class LoginResponse(BaseModel):

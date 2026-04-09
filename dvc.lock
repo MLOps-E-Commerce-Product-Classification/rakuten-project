@@ -18,9 +18,9 @@ stages:
       nfiles: 3
     - path: src/
       hash: md5
-      md5: f950da540abffb5b146728ceea0ead00.dir
-      size: 660235
-      nfiles: 112
+      md5: 9b975f860d842856a459f4d4af3b3f93.dir
+      size: 702046
+      nfiles: 119
     params:
       configs/text_train_config.yaml:
         model:
@@ -61,9 +61,9 @@ stages:
       size: 906705
     - path: src/
       hash: md5
-      md5: f950da540abffb5b146728ceea0ead00.dir
-      size: 660235
-      nfiles: 112
+      md5: 9b975f860d842856a459f4d4af3b3f93.dir
+      size: 702046
+      nfiles: 119
     outs:
     - path: artifacts/splits/
       hash: md5
