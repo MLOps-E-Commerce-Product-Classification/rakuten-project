@@ -11,7 +11,7 @@ NEW_DATA_DIR = Path("/app/data/new_data")
 PROCESSED_DIR = Path("/app/data/new_train_data")
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
-BASE_URL = "http://rakuten_service:3000"
+BASE_URL = "http://bentoml:3000"
 LOGIN_URL = f"{BASE_URL}/login"
 PREDICT_URL = f"{BASE_URL}/predict"
 
