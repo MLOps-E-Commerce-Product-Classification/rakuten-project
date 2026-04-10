@@ -1,6 +1,5 @@
 import argparse
 
-BASE_MODEL_URI = "models:/text-classifier/Production"
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -14,7 +13,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--mode",
         type=str,
         required=True,
-        choices=["train", "retrain", "evaluate", "inference", "random_search"],
+        choices=["train", "evaluate", "inference", "random_search"],
         help="Which pipeline step to run.",
     )
 
@@ -194,8 +193,6 @@ def run_train_mode(args: argparse.Namespace) -> None:
         preprocessing_config_path=args.preprocessing_config_path,
         model_save_path=args.model_save_path,
         label_encoding_path=args.label_encoding_path,
-        retrain=(args.mode == "retrain"),
-        base_model_uri=BASE_MODEL_URI
     )
 
     print("Training finished.")
@@ -281,8 +278,6 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.mode == "train":
-        run_train_mode(args)
-    elif args.mode == "retrain":
         run_train_mode(args)
     elif args.mode == "evaluate":
         run_evaluate_mode(args)
