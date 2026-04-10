@@ -55,15 +55,17 @@ stages:
       hash: md5
       md5: c936389910c88bb29bf2c438af3476df
       size: 54129120
+      isexec: true
     - path: data/raw/Y_train_CVw08PX.csv
       hash: md5
       md5: 52d45c998ddc0c10f05987bb233ff5e7
       size: 906705
+      isexec: true
     - path: src/
       hash: md5
-      md5: e1175626f25107088b7b531fc57ba251.dir
-      size: 700898
-      nfiles: 119
+      md5: 8bd9033985224adb8cbfd00e1db48374.dir
+      size: 701628
+      nfiles: 120
     outs:
     - path: artifacts/splits/
       hash: md5
