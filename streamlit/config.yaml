@@ -1,0 +1,36 @@
+api:
+  base_url: "https://rakuten.industry-ai-engineering.com"
+  api_key: ""
+  nginx_user: "nginx"
+  nginx_pass: "Rakuten_2026!"
+  bento_user: "admin"
+  bento_pass: "Mlops2026"
+  timeout_seconds: 30
+
+prediction:
+  default_top_k: 5
+  max_top_k: 27
+  batch_limit: 100
+
+monitoring:
+  grafana_url: ""
+  prometheus_url: "https://rakuten.industry-ai-engineering.com/metrics"
+  refresh_interval_seconds: 30
+
+app:
+  title: "Rakuten Produktklassifikation"
+  session_timeout_minutes: 60
+  max_csv_upload_mb: 10
+
+paths:
+  corrections_csv: "streamlit/data/corrections.csv"
+  demo_selections_csv: "streamlit/data/demo_selections.csv"
+  logs: "streamlit/data/logs"
+
+users:
+  admin:
+    password_hash: ""
+    role: admin
+  demo_user:
+    password_hash: ""
+    role: user

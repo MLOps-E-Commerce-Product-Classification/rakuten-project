@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.lock
+.env
+venv/
+.venv/
+data/*.csv
+data/logs/
+!data/.gitkeep
