@@ -16,6 +16,7 @@ COPY streamlit/ /app/streamlit/
 COPY tests/ /app/tests/
 COPY src/ /app/src/
 COPY configs/ /app/configs/
+COPY pyproject.toml /app/pyproject.toml
 
 # Create data directory
 RUN mkdir -p /app/streamlit/data/logs

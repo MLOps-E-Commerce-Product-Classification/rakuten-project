@@ -18,12 +18,12 @@ def _csv_path(key: str) -> str:
 def _write_csv_row(filepath: str, row: dict) -> None:
     """Thread-safe append to CSV."""
     lock = FileLock(filepath + ".lock", timeout=5)
-    file_exists = os.path.isfile(filepath)
     with lock:
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        file_exists = os.path.isfile(filepath) and os.path.getsize(filepath) > 0
         with open(filepath, "a", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=row.keys())
-            if not file_exists or os.path.getsize(filepath) == 0:
+            if not file_exists:
                 writer.writeheader()
             writer.writerow(row)
 

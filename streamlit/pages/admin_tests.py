@@ -6,7 +6,23 @@ import streamlit as st
 from auth import require_role
 
 
-TESTS_DIR = "/app/tests"
+def _resolve_tests_dir() -> str:
+    """Resolve tests directory: works both in Docker (/app/tests) and locally."""
+    # Docker path
+    docker_path = "/app/tests"
+    if os.path.isdir(docker_path):
+        return docker_path
+    # Local: walk up from this file to project root
+    here = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(4):
+        candidate = os.path.join(here, "tests")
+        if os.path.isdir(candidate):
+            return candidate
+        here = os.path.dirname(here)
+    return docker_path  # fallback
+
+
+TESTS_DIR = _resolve_tests_dir()
 
 
 def _find_test_files(tests_dir: str) -> list[str]:

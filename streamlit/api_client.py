@@ -38,9 +38,12 @@ class RakutenAPIClient:
     def _auth_headers(self) -> dict:
         token = self._ensure_token()
         headers = {"Authorization": f"Bearer {token}"}
-        api_key = self._cfg().get("api_key", "")
+        api_key = self._cfg().get("api_key", "").strip()
         if api_key:
             headers["X-API-Key"] = api_key
+        else:
+            import streamlit as st
+            st.warning("API Key ist nicht konfiguriert. Bitte in den Admin-Einstellungen hinterlegen.")
         return headers
 
     def health_check(self) -> dict:

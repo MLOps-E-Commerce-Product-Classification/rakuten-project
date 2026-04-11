@@ -6,7 +6,7 @@ import streamlit as st
 from settings_manager import load_config, save_config
 
 
-DEFAULT_PASSWORDS = {
+_DEFAULT_PASSWORDS = {
     "admin": "Admin2026!",
     "demo_user": "User2026!",
 }
@@ -32,7 +32,7 @@ def ensure_password_hashes() -> None:
     changed = False
     for username, user_data in users.items():
         if not user_data.get("password_hash"):
-            default_pw = DEFAULT_PASSWORDS.get(username)
+            default_pw = _DEFAULT_PASSWORDS.get(username)
             if default_pw:
                 user_data["password_hash"] = _hash_password(default_pw)
                 changed = True

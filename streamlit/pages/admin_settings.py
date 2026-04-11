@@ -57,6 +57,8 @@ def render():
         submitted = st.form_submit_button("Einstellungen speichern")
 
     if submitted:
+        # Reload fresh config to avoid overwriting concurrent user changes
+        cfg = load_config(force=True)
         cfg["api"] = {
             "base_url": base_url,
             "api_key": api_key,
