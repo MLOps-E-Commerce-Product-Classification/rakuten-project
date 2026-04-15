@@ -112,7 +112,7 @@ jobs:
       - name: Sync MLflow model
         run: |
           uv run python -m src.serving.sync_mlflow_to_bento \
-            --model-name $MLFLOW_MODEL_NAME \
+            --model-name text-classifier \
             --alias production
 
       - name: Build Bento
