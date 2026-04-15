@@ -70,20 +70,20 @@ with st.sidebar:
 page_module_name = pages[page_selection]
 
 if page_module_name == "single_prediction":
-    from pages.single_prediction import render
+    from views.single_prediction import render
     render()
 elif page_module_name == "batch_prediction":
-    from pages.batch_prediction import render
+    from views.batch_prediction import render
     render()
 elif page_module_name == "corrections":
-    from pages.corrections import render
+    from views.corrections import render
     render()
 elif page_module_name == "monitoring":
-    from pages.monitoring import render
+    from views.monitoring import render
     render()
 elif page_module_name == "admin_settings":
-    from pages.admin_settings import render
+    from views.admin_settings import render
     render()
 elif page_module_name == "admin_tests":
-    from pages.admin_tests import render
+    from views.admin_tests import render
     render()
