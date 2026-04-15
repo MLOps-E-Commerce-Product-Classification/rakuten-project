@@ -104,9 +104,10 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras
 
-      - name: Set DagsHub credentials
+      - name: Set DagsHub auth (non-interactive)
         run: |
           echo "DAGSHUB_TOKEN=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV
+          echo "DAGSHUB_FORCE_NONINTERACTIVE=1" >> $GITHUB_ENV
 
       - name: Sync MLflow model
         run: |
