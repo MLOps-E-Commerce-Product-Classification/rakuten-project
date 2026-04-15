@@ -10,8 +10,10 @@ include:
 models:
   - "text-classifier:latest"
 python:
-  pip_options:
-    - "--extra-index-url https://download.pytorch.org/whl/cpu"
+  pip_args:
+    - "--extra-index-url"
+    - "https://download.pytorch.org/whl/cpu
+
 
   packages:
     - "bentoml>=1.4.0,<2.0.0"
