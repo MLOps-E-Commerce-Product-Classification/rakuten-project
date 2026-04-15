@@ -1,289 +1,296 @@
 # ============================================================
+
 # Variables
+
 # ============================================================
 
-# override via: make train-text-build DEVICE=cu121
 DEVICE ?= cpu
+PORT ?= 3000
+TEXT ?= "Jeu vidéo action PS4"
 
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
 
-PORT ?= 3000
-BENTO_SERVICE ?= src.serving.bento_service:TextBentoService
-BENTO_MODEL_NAME ?= text-classifier
-BASE_URL ?= http://127.0.0.1:$(PORT)
+BASE_URL ?= [http://127.0.0.1:$(PORT)](http://127.0.0.1:$%28PORT%29)
+
 MLFLOW_MODEL_NAME ?= text-classifier
 MLFLOW_ALIAS ?= production
 PROMOTION_METRIC ?= eval_macro_f1
 PROMOTION_MARGIN ?= 0.0
 
+BENTO_SERVICE ?= src.serving.bento_service:TextBentoService
+BENTO_MODEL_NAME ?= text-classifier
+
 export DEVICE
 export GIT_BRANCH
+export GIT_COMMIT
 
 # ============================================================
-# Text Training
+
+# Docker Compose Configurations
+
+# ============================================================
+
+COMPOSE_DEV := docker compose -f docker-compose.yml
+COMPOSE_PROD := docker compose -f docker-compose.production.yml
+COMPOSE_AIRFLOW := docker compose -f docker-compose.airflow.yml
+COMPOSE_AIRFLOW_PROD := docker compose -f docker-compose.airflow-production.yml
+
+COMPOSE_FULL_PROD := docker compose 
+-f docker-compose.airflow-production.yml
+
+# ============================================================
+
+# Training
+
 # ============================================================
 
 .PHONY: train-text-build
 train-text-build:
-	docker compose build \
-		--build-arg DEVICE=$(DEVICE) \
-		--build-arg GIT_COMMIT=$(shell git rev-parse HEAD 2>/dev/null || echo "unknown") \
-		--build-arg GIT_BRANCH=$(GIT_BRANCH) \
-		train-text
+$(COMPOSE_DEV) build 
+--build-arg DEVICE=$(DEVICE) 
+--build-arg GIT_COMMIT=$(GIT_COMMIT) 
+--build-arg GIT_BRANCH=$(GIT_BRANCH) 
+train-text
 
 .PHONY: train-text-run
 train-text-run:
-	git add src/ configs/
-	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
-	DEVICE=$(DEVICE) \
-	GIT_COMMIT=`git rev-parse HEAD` \
-	GIT_BRANCH=`git rev-parse --abbrev-ref HEAD` \
-	docker compose run --rm train-text
+git add src/ configs/ || true
+git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
+$(COMPOSE_DEV) run --rm train-text
+
+.PHONY: train-text-logs
+train-text-logs:
+$(COMPOSE_DEV) logs -f train-text
 
 .PHONY: train-text-stop
 train-text-stop:
-	docker compose stop train-text
+$(COMPOSE_DEV) stop train-text
 
 .PHONY: train-text-down
 train-text-down:
-	docker compose down --remove-orphans
+$(COMPOSE_DEV) down --remove-orphans
 
 .PHONY: train-text-clean
 train-text-clean:
-	docker compose down --remove-orphans
-	docker image rm train-text 2>/dev/null || true
+$(COMPOSE_DEV) down --remove-orphans
+docker image rm train-text 2>/dev/null || true
 
 # ============================================================
+
+# Evaluation
+
+# ============================================================
+
+check_defined = 
+$(strip $(foreach 1,$1, 
+$(if $(value $1),,$(error Variable $(1) required. Example: make evaluate-run MLFLOW_ID=abc))))
+
+X_DATA ?= data/processed/val.csv
+Y_DATA ?= data/processed/val.csv
+WEIGHTS ?= models/best_text_model.pt
+ENCODING ?= configs/label_encoding.json
+
+.PHONY: evaluate-build
+evaluate-build:
+$(COMPOSE_DEV) build 
+--build-arg DEVICE=$(DEVICE) 
+--build-arg GIT_COMMIT=$(GIT_COMMIT) 
+--build-arg GIT_BRANCH=$(GIT_BRANCH) 
+evaluate-text
+
+.PHONY: evaluate-run
+evaluate-run:
+$(call check_defined,MLFLOW_ID)
+$(COMPOSE_DEV) run --rm evaluate-text 
+--mlflow_run_id $(MLFLOW_ID) 
+--x_data_csv_path $(X_DATA) 
+--y_data_csv_path $(Y_DATA) 
+--model_weights_path $(WEIGHTS) 
+--label_encoding_path $(ENCODING)
+
+# ============================================================
+
+# Inference
+
+# ============================================================
+
+.PHONY: inference-build
+inference-build:
+$(COMPOSE_DEV) build inference
+
+.PHONY: inference-run
+inference-run:
+$(COMPOSE_DEV) run --rm inference --text $(TEXT)
+
+.PHONY: inference-batch
+inference-batch:
+$(COMPOSE_DEV) run --rm inference --texts "T-shirt" "Console" "Livre"
+
+.PHONY: inference-clean
+inference-clean:
+docker image rm mlops-rakuten-inference 2>/dev/null || true
+
+# ============================================================
+
 # DVC
+
 # ============================================================
 
 .PHONY: dvc-init
 dvc-init:
-	uv run dvc init
-	git add .dvc .dvcignore
-	git commit -m "chore: initialize DVC"
+uv run dvc init
+git add .dvc .dvcignore
+git commit -m "chore: initialize DVC"
 
 .PHONY: dvc-push
 dvc-push:
-	uv run dvc push
-	git push
+uv run dvc push
+git push
 
 .PHONY: dvc-pull
 dvc-pull:
-	git pull
-	uv run dvc pull
+git pull
+uv run dvc pull
 
 .PHONY: dvc-metrics
 dvc-metrics:
-	dvc metrics show
-	dvc metrics diff HEAD~1
-
-
-# ============================================================
-# Evaluation
-# ============================================================
-#
-# Check if a variable is defined; otherwise, exit with an error
-# Usage: $(call check_defined, VARNAME)
-check_defined = \
-    $(strip $(foreach 1,$1, \
-        $(if $(value $1),, $(error Variable $(1) is required. Example: make evaluate-run $(1)=your_run_id))))
-
-X_DATA    ?= data/processed/val.csv
-Y_DATA    ?= data/processed/val.csv
-WEIGHTS   ?= models/best_text_model.pt
-ENCODING  ?= configs/label_encoding.json
-
-.PHONY: evaluate-build
-evaluate-build:
-	docker compose build \
-		--build-arg DEVICE=$(DEVICE) \
-		--build-arg GIT_COMMIT=$(shell git rev-parse HEAD 2>/dev/null || echo "unknown") \
-		--build-arg GIT_BRANCH=$(GIT_BRANCH) \
-		evaluate-text
-
-.PHONY: evaluate-run
-evaluate-run:
-	$(call check_defined, MLFLOW_ID)
-	DEVICE=$(DEVICE) \
-	GIT_COMMIT=$(shell git rev-parse HEAD 2>/dev/null || echo "unknown") \
-	GIT_BRANCH=$(GIT_BRANCH) \
-	docker compose run --rm evaluate-text \
-		--mlflow_run_id $(MLFLOW_ID) \
-		--x_data_csv_path $(X_DATA) \
-		--y_data_csv_path $(Y_DATA) \
-		--model_weights_path $(WEIGHTS) \
-		--label_encoding_path $(ENCODING)
+dvc metrics show
+dvc metrics diff HEAD~1
 
 # ============================================================
-# Inference
-# ============================================================
 
-# Standard text for fast testing
-TEXT ?= "Jeu vidéo action PS4"
+# BentoML
 
-.PHONY: inference-build
-inference-build:
-	docker compose build inference
-
-.PHONY: inference-run
-inference-run:
-	docker compose run --rm inference --text $(TEXT)
-
-.PHONY: inference-batch
-inference-batch:
-	docker compose run --rm inference --texts "T-shirt" "Console" "Livre"
-
-.PHONY: inference-rebuild
-inference-rebuild:
-	$(MAKE) inference-build
-	$(MAKE) inference-run
-
-.PHONY: inference-clean
-inference-clean:
-	docker image rm mlops-rakuten-inference 2>/dev/null || true
-
-# ============================================================
-# Bento serving / packaging
 # ============================================================
 
 .PHONY: prepare-bento-text-assets
 prepare-bento-text-assets:
-	uv run python -m src.serving.prepare_bento_assets
+uv run python -m src.serving.prepare_bento_assets
 
 .PHONY: promote-mlflow-text-model
 promote-mlflow-text-model:
-	uv run python -m src.serving.promote_mlflow_model \
-		--model-name $(MLFLOW_MODEL_NAME) \
-		--alias $(MLFLOW_ALIAS) \
-		--metric-name $(PROMOTION_METRIC) \
-		--min-improvement $(PROMOTION_MARGIN)
+uv run python -m src.serving.promote_mlflow_model 
+--model-name $(MLFLOW_MODEL_NAME) 
+--alias $(MLFLOW_ALIAS) 
+--metric-name $(PROMOTION_METRIC) 
+--min-improvement $(PROMOTION_MARGIN)
 
 .PHONY: sync-bento-text-model
 sync-bento-text-model:
-	uv run python -m src.serving.sync_mlflow_to_bento \
-		--model-name $(MLFLOW_MODEL_NAME) \
-		--alias $(MLFLOW_ALIAS) \
-		--bento-model-name $(BENTO_MODEL_NAME)
-
-.PHONY: token-bento-text
-token-bento-text:
-	@curl -s -X POST "$(BASE_URL)/login" \
-		-H "Content-Type: application/json" \
-		-d '{"credentials":{"username":"user123","password":"password123"}}'
-
-.PHONY: predict-bento-text
-predict-bento-text:
-	@token=$$(curl -s -X POST "$(BASE_URL)/login" \
-		-H "Content-Type: application/json" \
-		-d '{"credentials":{"username":"user123","password":"password123"}}' \
-		| python -c 'import sys,json; print(json.load(sys.stdin)["token"])'); \
-	curl -s -X POST "$(BASE_URL)/predict" \
-		-H "Content-Type: application/json" \
-		-H "Authorization: Bearer $$token" \
-		-d '{"input_data":{"designation":"robe femme","description":"bleu","top_k":3}}'
+uv run python -m src.serving.sync_mlflow_to_bento 
+--model-name $(MLFLOW_MODEL_NAME) 
+--alias $(MLFLOW_ALIAS) 
+--bento-model-name $(BENTO_MODEL_NAME)
 
 .PHONY: build-bento-text
 build-bento-text: sync-bento-text-model
-	uv run bentoml build
+uv run bentoml build
 
 .PHONY: containerize-bento-text
 containerize-bento-text: build-bento-text
-	uv run bentoml containerize rakuten_text_service:latest -t rakuten_text_service:latest
+uv run bentoml containerize rakuten_text_service:latest 
+-t rakuten_text_service:latest
+
+# ============================================================
+
+# Bento Docker
+
+# ============================================================
 
 .PHONY: docker-bento-up
-docker-bento-up: containerize-bento-text
-	docker compose up bento-text-service
+docker-bento-up:
+$(COMPOSE_DEV) up -d bento-text-service
 
 .PHONY: docker-bento-down
 docker-bento-down:
-	docker compose stop bento-text-service
-
-# ============================================================
-# Logs
-# ============================================================
-
-.PHONY: train-text-logs
-train-text-logs:
-	docker compose logs -f train-text
-
+$(COMPOSE_DEV) stop bento-text-service
 
 .PHONY: bento-text-logs
 bento-text-logs:
-	docker compose logs -f bento-text-service
+$(COMPOSE_DEV) logs -f bento-text-service
 
 # ============================================================
-# Help
+
+# Airflow
+
 # ============================================================
+
+.PHONY: airflow-up
+airflow-up:
+$(COMPOSE_AIRFLOW) up -d
+
+.PHONY: airflow-down
+airflow-down:
+$(COMPOSE_AIRFLOW) down
+
+.PHONY: airflow-logs
+airflow-logs:
+$(COMPOSE_AIRFLOW) logs -f
+
+# ============================================================
+
+# Production Environment
+
+# ============================================================
+
+.PHONY: prod-up
+prod-up:
+$(COMPOSE_FULL_PROD) up -d
+
+.PHONY: prod-down
+prod-down:
+$(COMPOSE_FULL_PROD) down
+
+.PHONY: prod-restart
+prod-restart:
+$(COMPOSE_FULL_PROD) down
+$(COMPOSE_FULL_PROD) up -d
+
+.PHONY: prod-logs
+prod-logs:
+$(COMPOSE_FULL_PROD) logs -f
+
+# ============================================================
+
+# Full Production Setup
+
+# ============================================================
+
+.PHONY: setup-production
+setup-production:
+@echo "Starting full production MLOps environment..."
+$(COMPOSE_FULL_PROD) pull
+$(COMPOSE_FULL_PROD) up -d
+
+# ============================================================
+
+# Utilities
+
+# ============================================================
+
+.PHONY: status
+status:
+docker ps
 
 .PHONY: help
 help:
-	@echo ""
-	@echo "╔══════════════════════════════════════════════════════════════╗"
-	@echo "║           MLOps Rakuten — Makefile Reference              ║"
-	@echo "╚══════════════════════════════════════════════════════════════╝"
-	@echo ""
-	@echo "Usage:  make <target> [DEVICE=cpu|cu121] [MLFLOW_ID=...]"
-	@echo ""
-	@echo "────────────────────────── Data & DVC ──────────────────────────"
-	@echo "  dvc-init             Initialize DVC & Git tracking"
-	@echo "  dvc-add-data         Track raw data directory with DVC"
-	@echo "  dvc-repro            Reproduce pipeline & auto-commit lockfile"
-	@echo "  dvc-run              Full flow: dvc-repro + dvc-push"
-	@echo "  dvc-push/pull        Sync data/models with remote storage"
-	@echo "  dvc-metrics          Show performance metrics & diff vs HEAD~1"
-	@echo ""
-	@echo "─────────────────────────── Training ───────────────────────────"
-	@echo "  train-text-build     Build the training Docker image"
-	@echo "  train-text-run       Auto-commit configs + start training run"
-	@echo "  train-text-rebuild   Rebuild image and start training"
-	@echo "  train-text-stop      Stop the training container"
-	@echo "  train-text-down      Stop & remove containers + networks"
-	@echo "  train-text-clean     Remove containers AND Docker images"
-	@echo "  train-text-logs      Follow live training logs"
-	@echo ""
-	@echo "────────────────────────── Evaluation ──────────────────────────"
-	@echo "  evaluate-build       Build the evaluation Docker image"
-	@echo "  evaluate-run         Run evaluation (requires MLFLOW_ID=<id>)"
-	@echo "                       Options: X_DATA=, Y_DATA=, WEIGHTS="
-	@echo ""
-	@echo "─────────────────────────── Inference ──────────────────────────"
-	@echo "  inference-build      Build the inference Docker image"
-	@echo "  inference-run        Single test run (default or TEXT='...')"
-	@echo "  inference-batch      Test with multiple hardcoded samples"
-	@echo "  inference-rebuild    Rebuild and run inference immediately"
-	@echo "  inference-clean      Remove the inference Docker image"
-	@echo "─────────────────────────── Inference Bento ─────────────────────────"
-	@echo "  prepare-bento-text-assets   Cache lightweight Hugging Face assets locally"
-	@echo "  promote-mlflow-text-model   Compare candidate vs champion and set alias"
-	@echo "  sync-bento-text-model       Import MLflow @champion into BentoML + manifest"
-	@echo "  register-bento-text-model   Compatibility alias for sync-bento-text-model"
-	@echo "  serve-bento-text            Run the BentoML text service locally"
-	@echo "  token-bento-text            Get a JWT token from /login"
-	@echo "  predict-bento-text          Call the protected /predict endpoint"
-	@echo "  build-bento-text            Sync champion + build a Bento artifact"
-	@echo "  containerize-bento-text     Build and containerize the latest Bento"
-	@echo "  docker-bento-up             Start Bento service in Docker Compose"
-	@echo "  docker-bento-down           Stop Bento service in Docker Compose"
-	@echo "  bento-text-logs             Follow Bento service logs"
-	@echo ""
-	@echo "────────────────────── BentoML Serving/Deployment ───────────────"
-	@echo "  prepare-bento-assets Download tokenizer/configs for registration"
-	@echo "  register-bento-model Save the trained model to BentoML store"
-	@echo "  serve-bento-text     Run BentoML service locally (Port 3000)"
-	@echo "  predict-bento-text   Test request against running service"
-	@echo "  token-bento-text     Generate JWT token via /login"
-	@echo "  build-bento-text     Build the Bento artifact"
-	@echo "  containerize-bento   Package the Bento into a Docker image"
-	@echo "  docker-bento-up/down Start/Stop Bento service via Docker Compose"
-	@echo "  bento-text-logs      Follow Bento service logs"
-	@echo ""
-	@echo "─────────────────────────── Variables ──────────────────────────"
-	@echo "  DEVICE     Target device: cpu (default) | cu121"
-	@echo "  PORT       Local port for Bento service (default: 3000)"
-	@echo "  MLFLOW_ID  Required ID for 'evaluate-run'"
-	@echo "  TEXT       Custom input string for 'inference-run'"
-	@echo ""
-	@echo "  Example:  make train-text-build DEVICE=cu121"
-	@echo "            make evaluate-run MLFLOW_ID=abc123"
-	@echo ""
+@echo ""
+@echo "MLOps Rakuten Makefile"
+@echo ""
+@echo "Training:"
+@echo "  make train-text-build"
+@echo "  make train-text-run"
+@echo ""
+@echo "Evaluation:"
+@echo "  make evaluate-run MLFLOW_ID=<id>"
+@echo ""
+@echo "Inference:"
+@echo "  make inference-run"
+@echo ""
+@echo "Airflow:"
+@echo "  make airflow-up"
+@echo ""
+@echo "Production:"
+@echo "  make setup-production"
+@echo ""
