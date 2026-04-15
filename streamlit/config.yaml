@@ -1,6 +1,6 @@
 api:
   base_url: "https://rakuten.industry-ai-engineering.com"
-  api_key: ""
+  api_key: "rk_live_57896af0079e6436527c2a421673cd2632a40484e0930a7a"
   nginx_user: "nginx"
   nginx_pass: "Rakuten_2026!"
   bento_user: "admin"
