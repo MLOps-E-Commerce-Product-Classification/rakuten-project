@@ -35,7 +35,15 @@ class RakutenAPIClient:
         self._token_time = time.time()
         return self._jwt_token
 
-    def _auth_headers(self) -> dict:
+    def _predict_headers(self) -> dict:
+        """Build headers for predict endpoints: JWT Bearer + API key.
+
+        NOTE: Do NOT pass auth= (BasicAuth) together with these headers!
+        requests.auth overwrites the Authorization header, replacing
+        'Bearer <jwt>' with 'Basic <creds>' — which causes BentoML to
+        reject the request with 401 'Invalid token'.
+        Nginx protects /predict only via X-API-Key, not auth_basic.
+        """
         token = self._ensure_token()
         headers = {"Authorization": f"Bearer {token}"}
         api_key = self._cfg().get("api_key", "").strip()
@@ -102,8 +110,7 @@ class RakutenAPIClient:
             resp = requests.post(
                 url,
                 json=payload,
-                headers=self._auth_headers(),
-                auth=self._nginx_auth(),
+                headers=self._predict_headers(),
                 timeout=self._timeout(),
             )
             resp.raise_for_status()
@@ -115,8 +122,7 @@ class RakutenAPIClient:
                 resp = requests.post(
                     url,
                     json=payload,
-                    headers=self._auth_headers(),
-                    auth=self._nginx_auth(),
+                    headers=self._predict_headers(),
                     timeout=self._timeout(),
                 )
                 resp.raise_for_status()
@@ -133,8 +139,7 @@ class RakutenAPIClient:
             resp = requests.post(
                 url,
                 json=payload,
-                headers=self._auth_headers(),
-                auth=self._nginx_auth(),
+                headers=self._predict_headers(),
                 timeout=max(self._timeout(), 120),
             )
             resp.raise_for_status()
@@ -145,8 +150,7 @@ class RakutenAPIClient:
                 resp = requests.post(
                     url,
                     json=payload,
-                    headers=self._auth_headers(),
-                    auth=self._nginx_auth(),
+                    headers=self._predict_headers(),
                     timeout=max(self._timeout(), 120),
                 )
                 resp.raise_for_status()
