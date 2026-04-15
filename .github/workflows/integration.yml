@@ -105,12 +105,12 @@ jobs:
         run: uv sync
 
       - name: Build Bento
-        run: |
-          TAG=$(uv run bentoml build | tail -n1)
-          echo "BENTO_TAG=$TAG" >> $GITHUB_ENV
+        run: uv run bentoml build
 
-      - name: Containerize Bento (NO latest tag usage)
-        run: uv run bentoml containerize $BENTO_TAG
+      - name: Containerize Bento
+        run: |
+          BENTO_TAG=$(uv run bentoml list -o json | python -c "import sys,json; print(json.load(sys.stdin)[0]['tag'])")
+          uv run bentoml containerize $BENTO_TAG
 
       - name: Tag image
         run: |
