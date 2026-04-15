@@ -130,6 +130,7 @@ def main() -> None:
 
 
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
+    mlflow.set_registry_uri(os.getenv("MLFLOW_REGISTRY_URI"))
 
     args = build_parser().parse_args()
     manifest = sync_mlflow_model_to_bento(
