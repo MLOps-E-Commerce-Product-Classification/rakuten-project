@@ -133,7 +133,6 @@ def main() -> None:
         repo_owner="Mlops2026",
         repo_name="rakuten-project",
         mlflow=True,
-        token=os.getenv("DAGSHUB_TOKEN")
     )
 
     args = build_parser().parse_args()
