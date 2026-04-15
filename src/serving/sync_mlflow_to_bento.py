@@ -126,8 +126,15 @@ def main() -> None:
     load_dotenv()
 
     import dagshub
+    import os
 
-    dagshub.init(repo_owner="Mlops2026", repo_name="rakuten-project", mlflow=True)
+
+    dagshub.init(
+        repo_owner="Mlops2026",
+        repo_name="rakuten-project",
+        mlflow=True,
+        token=os.getenv("DAGSHUB_TOKEN")
+    )
 
     args = build_parser().parse_args()
     manifest = sync_mlflow_model_to_bento(
