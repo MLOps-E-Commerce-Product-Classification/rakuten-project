@@ -41,7 +41,7 @@ jobs:
   build:
     name: Build & Push Train/Eval/Inference Images
     runs-on: ubuntu-latest
-    #needs: test
+    needs: test
     if: github.event_name == 'push'
 
     strategy:
@@ -109,10 +109,16 @@ jobs:
           echo "MLFLOW_TRACKING_URI=https://dagshub.com/Mlops2026/rakuten-project.mlflow" >> $GITHUB_ENV
           echo "MLFLOW_REGISTRY_URI=https://dagshub.com/Mlops2026/rakuten-project.mlflow" >> $GITHUB_ENV
 
+
       - name: Set DagsHub auth (non-interactive)
         run: |
-          echo "DAGSHUB_TOKEN=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV
-          echo "DAGSHUB_FORCE_NONINTERACTIVE=1" >> $GITHUB_ENV
+          echo "DAGSHUB_USER_TOKEN=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Set MLflow auth
+        run: |
+          echo "MLFLOW_TRACKING_USERNAME=token" >> $GITHUB_ENV
+          echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV
+
 
       - name: Sync MLflow model
         run: |
