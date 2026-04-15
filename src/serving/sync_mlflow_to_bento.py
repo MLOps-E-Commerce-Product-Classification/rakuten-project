@@ -125,12 +125,15 @@ def main() -> None:
 
     load_dotenv()
 
-    import mlflow
+    import dagshub
     import os
 
 
-    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
-    mlflow.set_registry_uri(os.getenv("MLFLOW_REGISTRY_URI"))
+    dagshub.init(
+        repo_owner="Mlops2026",
+        repo_name="rakuten-project",
+        mlflow=True
+    )
 
     args = build_parser().parse_args()
     manifest = sync_mlflow_model_to_bento(
