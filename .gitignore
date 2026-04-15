@@ -11,7 +11,7 @@ __pycache__/
 *.pyo
 
 # data
-data/raw/*
+data/*
 !data/raw/.gitignore
 
 data/processed/*

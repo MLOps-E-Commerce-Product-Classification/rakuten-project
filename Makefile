@@ -189,7 +189,7 @@ build-bento-text: sync-bento-text-model
 
 .PHONY: containerize-bento-text
 containerize-bento-text: build-bento-text
-	uv run bentoml containerize rakuten_text_service:latest
+	uv run bentoml containerize rakuten_text_service:latest -t rakuten_text_service:latest
 
 .PHONY: docker-bento-up
 docker-bento-up: containerize-bento-text
