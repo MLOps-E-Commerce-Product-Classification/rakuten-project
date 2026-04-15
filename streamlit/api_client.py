@@ -157,8 +157,13 @@ class RakutenAPIClient:
 
 
 def get_client() -> RakutenAPIClient:
-    """Get or create a cached API client instance."""
+    """Get or create a cached API client instance. Recreates if API key changed."""
     import streamlit as st
-    if "api_client" not in st.session_state:
+    from settings_manager import load_config
+    cfg = load_config()
+    current_key = cfg.get("api", {}).get("api_key", "")
+    cached_key = st.session_state.get("_api_client_key", None)
+    if "api_client" not in st.session_state or cached_key != current_key:
         st.session_state["api_client"] = RakutenAPIClient()
+        st.session_state["_api_client_key"] = current_key
     return st.session_state["api_client"]
