@@ -104,6 +104,12 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
+      - name: Sync MLflow model
+        run: |
+          uv run python -m src.serving.sync_mlflow_to_bento \
+            --model-name $MLFLOW_MODEL_NAME \
+            --alias production
+
       - name: Build Bento
         run: uv run bentoml build
 
