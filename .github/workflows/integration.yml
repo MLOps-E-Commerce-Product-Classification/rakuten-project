@@ -148,10 +148,10 @@ jobs:
 
       - name: Tag image
         run: |
-          docker tag rakuten_text_service:${{ github.sha }} \
+          docker tag ${BENTO_TAG} \
             ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-          docker tag rakuten_text_service:${{ github.sha }} \
+          docker tag ${BENTO_TAG} \
             ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Push image
