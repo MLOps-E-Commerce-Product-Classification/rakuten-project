@@ -82,6 +82,8 @@ jobs:
     runs-on: ubuntu-latest
     #needs: test
     if: github.event_name == 'push'
+    env:
+        MLFLOW_TRACKING_URI: https://dagshub.com/Mlops2026/rakuten-project.mlflow
 
     steps:
       - name: Checkout repository
