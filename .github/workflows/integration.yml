@@ -110,14 +110,18 @@ jobs:
           echo "MLFLOW_REGISTRY_URI=https://dagshub.com/Mlops2026/rakuten-project.mlflow" >> $GITHUB_ENV
 
 
-      - name: Set DagsHub auth (non-interactive)
-        run: |
-          echo "DAGSHUB_USER_TOKEN=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV
 
-      - name: Set MLflow auth
+      - name: Set DagsHub & MLflow auth
         run: |
+          echo "DAGSHUB_USER_TOKEN=${{ secrets.DAGSHUB_USER_TOKEN }}" >> $GITHUB_ENV
           echo "MLFLOW_TRACKING_USERNAME=token" >> $GITHUB_ENV
-          echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV
+          echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_USER_TOKEN }}" >> $GITHUB_ENV
+
+
+      - name: Debug env (safe)
+        run: |
+          echo "DAGSHUB_USER_TOKEN present? $([[ -n \"$DAGSHUB_USER_TOKEN\" ]] && echo yes || echo no)"
+
 
 
       - name: Sync MLflow model
