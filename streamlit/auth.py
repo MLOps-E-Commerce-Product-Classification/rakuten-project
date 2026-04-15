@@ -1,0 +1,126 @@
+"""Authentication module with bcrypt password hashing and session management."""
+
+import time
+import bcrypt
+import streamlit as st
+from settings_manager import load_config, save_config
+
+
+_DEFAULT_PASSWORDS = {
+    "admin": "Admin2026!",
+    "demo_user": "User2026!",
+}
+
+
+def _hash_password(password: str) -> str:
+    """Hash a password with bcrypt."""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def _check_password(password: str, password_hash: str) -> bool:
+    """Verify password against bcrypt hash."""
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+    except Exception:
+        return False
+
+
+def ensure_password_hashes() -> None:
+    """Generate and store password hashes for users with empty hashes on first start."""
+    cfg = load_config(force=True)
+    users = cfg.get("users", {})
+    changed = False
+    for username, user_data in users.items():
+        if not user_data.get("password_hash"):
+            default_pw = _DEFAULT_PASSWORDS.get(username)
+            if default_pw:
+                user_data["password_hash"] = _hash_password(default_pw)
+                changed = True
+    if changed:
+        cfg["users"] = users
+        save_config(cfg)
+
+
+def check_login(username: str, password: str) -> bool:
+    """Check login credentials against config."""
+    cfg = load_config(force=True)
+    users = cfg.get("users", {})
+    user_data = users.get(username)
+    if not user_data:
+        return False
+    if user_data.get("disabled", False):
+        return False
+    pw_hash = user_data.get("password_hash", "")
+    if not pw_hash:
+        return False
+    return _check_password(password, pw_hash)
+
+
+def get_current_user() -> dict | None:
+    """Get current logged-in user info from session state, or None if not logged in."""
+    if "username" not in st.session_state:
+        return None
+
+    # Check session timeout
+    cfg = load_config()
+    timeout_minutes = cfg.get("app", {}).get("session_timeout_minutes", 60)
+    last_activity = st.session_state.get("last_activity", 0)
+    if time.time() - last_activity > timeout_minutes * 60:
+        logout()
+        return None
+
+    # Update activity timestamp
+    st.session_state["last_activity"] = time.time()
+
+    cfg_users = cfg.get("users", {})
+    user_data = cfg_users.get(st.session_state["username"], {})
+    return {
+        "username": st.session_state["username"],
+        "role": user_data.get("role", "user"),
+    }
+
+
+def require_role(role: str) -> bool:
+    """Check if current user has the required role. Shows error if not."""
+    user = get_current_user()
+    if not user:
+        st.error("Nicht eingeloggt.")
+        return False
+    if role == "admin" and user["role"] != "admin":
+        st.error("Zugriff verweigert. Admin-Rechte erforderlich.")
+        return False
+    return True
+
+
+def logout() -> None:
+    """Clear session state to log out."""
+    for key in ["username", "last_activity", "jwt_token"]:
+        st.session_state.pop(key, None)
+
+
+def login_user(username: str) -> None:
+    """Set session state for logged-in user."""
+    st.session_state["username"] = username
+    st.session_state["last_activity"] = time.time()
+
+
+def render_login_page() -> bool:
+    """Render the login form. Returns True if user is now logged in."""
+    cfg = load_config()
+    title = cfg.get("app", {}).get("title", "Rakuten Produktklassifikation")
+    st.title(title)
+    st.subheader("Anmeldung")
+
+    with st.form("login_form"):
+        username = st.text_input("Benutzername")
+        password = st.text_input("Passwort", type="password")
+        submitted = st.form_submit_button("Anmelden")
+
+    if submitted:
+        if check_login(username, password):
+            login_user(username)
+            st.rerun()
+        else:
+            st.error("Benutzername oder Passwort falsch.")
+
+    return False
