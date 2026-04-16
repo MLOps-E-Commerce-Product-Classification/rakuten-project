@@ -12,6 +12,7 @@ __pycache__/
 
 # data
 data/*
+!data/raw.dvc
 !data/raw/.gitignore
 
 data/processed/*
