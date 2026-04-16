@@ -63,6 +63,15 @@ $(COMPOSE_DEV) run --rm train-text
 train-text-logs:
 $(COMPOSE_DEV) logs -f train-text
 
+.PHONY: finetune-text-run
+finetune-text-run:
+	git add src/ configs/
+	git commit -m "exp: start finetuning run - $(shell date '+%Y-%m-%d %H:%M')" || true
+	DEVICE=$(DEVICE) \
+	GIT_COMMIT=`git rev-parse HEAD` \
+	GIT_BRANCH=`git rev-parse --abbrev-ref HEAD` \
+	docker compose run --rm finetune-text
+
 .PHONY: train-text-stop
 train-text-stop:
 $(COMPOSE_DEV) stop train-text

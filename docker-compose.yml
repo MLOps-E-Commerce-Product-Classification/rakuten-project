@@ -16,6 +16,46 @@ services:
     environment:
       GIT_COMMIT: ${GIT_COMMIT:-unknown}
       GIT_BRANCH: ${GIT_BRANCH:-unknown}
+    entrypoint: ["./entrypoint.sh"]
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./src:/app/src
+      - ./configs:/app/configs
+      - ./artifacts:/app/artifacts
+      - ./results:/app/results
+      - ./.dvc:/app/.dvc
+      - ./dvc.lock:/app/dvc.lock
+      - ./.git:/app/.git
+      - ./dvc.yaml:/app/dvc.yaml
+      - ./params.yaml:/app/params.yaml
+      - ./.dvcignore:/app/.dvcignore
+      - dvc-cache:/home/appuser/.cache/dvc
+      - ~/.gitconfig:/home/appuser/.gitconfig:ro
+      - ~/.ssh:/home/appuser/.ssh:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+  finetune-text:
+    image: rakuten-ml/train-text:${DEVICE:-cpu}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.train-text
+      args:
+        DEVICE: ${DEVICE:-cpu}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+    entrypoint: ["./entrypoint_finetune.sh"]
+    env_file:
+      - .env
+    environment:
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      GIT_BRANCH: ${GIT_BRANCH:-unknown}
+      FINETUNE_MODE: "true"
     volumes:
       - ./data:/app/data
       - ./models:/app/models
