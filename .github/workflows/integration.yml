@@ -144,6 +144,7 @@ jobs:
       - name: Containerize Bento
         run: |
           BENTO_TAG=$(uv run bentoml list -o json | python -c "import sys,json; print(json.load(sys.stdin)[0]['tag'])")
+          echo "BENTO_TAG=$BENTO_TAG" >> $GITHUB_ENV
           uv run bentoml containerize $BENTO_TAG
 
       - name: Tag image
