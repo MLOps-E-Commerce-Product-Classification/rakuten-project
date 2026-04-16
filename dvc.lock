@@ -120,7 +120,7 @@ stages:
     deps:
     - path: configs/text_finetune_config.yaml
       hash: md5
-      md5: 81c8fd89422e2fe3c465db60a601cc9d
+      md5: 154e6ecab86bad992cf6593f5abeef32
       size: 428
     - path: configs/text_preprocessing_config.yaml
       hash: md5
@@ -151,12 +151,12 @@ stages:
           seed: 42
           batch_size: 32
           num_epochs: 1
-          learning_rate: 5e-06
+          learning_rate: 1e-06
           weight_decay: 0.01
           num_workers: 0
           subset: 0
     outs:
     - path: results/dvc_metrics_finetune.json
       hash: md5
-      md5: 70daa6911c8f3f5bb71e975341257290
-      size: 113
+      md5: 5c98b6988df69b3de6c88770aa178dc1
+      size: 111
