@@ -1,12 +1,19 @@
-name: Python Unit Tests (uv)
+name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main"]
   pull_request:
     branches: [ "main" ]
 
+env:
+  PYTHON_VERSION: "3.11"
+  IMAGE_NAME: rakuten_text_service
+  DOCKER_NAMESPACE: ${{ secrets.DOCKER_USERNAME }}
+  UV_LINK_MODE: copy
+
 jobs:
+
   test:
     name: Run Pytest
     runs-on: ubuntu-latest
@@ -19,15 +26,136 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          version: "latest"
 
       - name: Set up Python
-        run: uv python install 3.11
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
         run: uv sync --all-extras --group dev
 
-      - name: Run tests with pytest
+      - name: Run tests
         run: |
           export MPLBACKEND=Agg
           uv run pytest tests/
+
+
+  build:
+    name: Build & Push Train/Eval/Inference Images
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+
+    strategy:
+      matrix:
+        include:
+          - name: train-text
+            dockerfile: docker/Dockerfile.train-text
+          - name: evaluate-text
+            dockerfile: docker/Dockerfile.evaluate-text
+          - name: inference
+            dockerfile: docker/Dockerfile.inference
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build & Push
+        run: |
+          docker build \
+            --cache-from=${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:latest \
+            -f ${{ matrix.dockerfile }} \
+            -t ${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:${{ github.sha }} \
+            -t ${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:latest \
+            .
+          
+
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:latest
+
+
+  bento:
+    name: Build & Push Bento Service
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Install uv + Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --all-extras --group dev
+
+      - name: Set MLflow URIs
+        run: |
+          echo "MLFLOW_TRACKING_URI=https://dagshub.com/Mlops2026/rakuten-project.mlflow" >> $GITHUB_ENV
+          echo "MLFLOW_REGISTRY_URI=https://dagshub.com/Mlops2026/rakuten-project.mlflow" >> $GITHUB_ENV
+
+
+
+      - name: Set DagsHub & MLflow auth
+        run: |
+          echo "DAGSHUB_USER_TOKEN=${{ secrets.DAGSHUB_USER_TOKEN }}" >> $GITHUB_ENV
+          echo "MLFLOW_TRACKING_USERNAME=token" >> $GITHUB_ENV
+          echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_USER_TOKEN }}" >> $GITHUB_ENV
+
+
+      - name: Debug env (safe)
+        run: |
+          echo "DAGSHUB_USER_TOKEN present? $([[ -n \"$DAGSHUB_USER_TOKEN\" ]] && echo yes || echo no)"
+
+
+
+      - name: Sync MLflow model
+        run: |
+          uv run python -m src.serving.sync_mlflow_to_bento \
+            --model-name text-classifier \
+            --alias production
+
+      - name: Build Bento
+        run: uv run bentoml build
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/lib/android
+          docker system prune -af || true
+
+      - name: Containerize Bento
+        run: |
+          BENTO_TAG=$(uv run bentoml list -o json | python -c "import sys,json; print(json.load(sys.stdin)[0]['tag'])")
+          echo "BENTO_TAG=$BENTO_TAG" >> $GITHUB_ENV
+          uv run bentoml containerize $BENTO_TAG
+
+      - name: Tag image
+        run: |
+          docker tag ${BENTO_TAG} \
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+          docker tag ${BENTO_TAG} \
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Push image
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest

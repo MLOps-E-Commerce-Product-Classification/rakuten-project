@@ -126,8 +126,17 @@ def main() -> None:
     load_dotenv()
 
     import dagshub
+    import os
 
+
+    
+    token = os.getenv("DAGSHUB_USER_TOKEN") or os.getenv("DAGSHUB_TOKEN")
+    if not token:
+        raise RuntimeError("Missing DAGSHUB_USER_TOKEN (or DAGSHUB_TOKEN) in CI")
+
+    dagshub.auth.add_app_token(token)  # stores token in client cache
     dagshub.init(repo_owner="Mlops2026", repo_name="rakuten-project", mlflow=True)
+
 
     args = build_parser().parse_args()
     manifest = sync_mlflow_model_to_bento(
