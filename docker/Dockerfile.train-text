@@ -43,6 +43,6 @@ COPY --chown=appuser:appuser results/ ./results/
 RUN git config --global --add safe.directory /app
 
 COPY --chown=appuser:appuser docker/entrypoint.sh ./entrypoint.sh
-RUN chmod +x entrypoint.sh
+COPY --chown=appuser:appuser docker/entrypoint_finetune.sh ./entrypoint_finetune.sh
 
-CMD ["./entrypoint.sh"]
+RUN chmod +x entrypoint.sh entrypoint_finetune.sh

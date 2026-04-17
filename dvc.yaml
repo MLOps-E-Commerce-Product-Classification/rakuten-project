@@ -25,3 +25,36 @@ stages:
     metrics:
       - results/dvc_metrics.json:
           cache: false
+
+  preprocess-text-new:
+    cmd: uv run python -m src.pipeline.preprocess_text_pipeline
+      --x_data_csv_path data/raw/X_train_new.csv
+      --y_data_csv_path data/raw/Y_train_new.csv
+      --output_dir data/processed_new
+      --split_ids_dir artifacts/splits_new
+      --force_new_split
+    deps:
+      - data/raw/X_train_new.csv
+      - data/raw/Y_train_new.csv
+      - configs/text_preprocessing_config.yaml
+      - configs/label_encoding.json
+      - src/
+    outs:
+      - data/processed_new/
+      - artifacts/splits_new/
+
+  finetune-text:
+    cmd: uv run python -m src.pipeline.finetune_pipeline --mode finetune
+    deps:
+      - data/processed/
+      - data/processed_new/
+      - configs/text_finetune_config.yaml
+      - configs/text_preprocessing_config.yaml
+      - src/
+    params:
+      - configs/text_finetune_config.yaml:
+          - training
+          - model
+    metrics:
+      - results/dvc_metrics_finetune.json:
+          cache: false
