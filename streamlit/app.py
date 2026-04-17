@@ -12,7 +12,7 @@ from settings_manager import load_config
 
 # Page config
 st.set_page_config(
-    page_title="Rakuten Produktklassifikation",
+    page_title="Rakuten Product Classification",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -29,19 +29,19 @@ if not user:
 
 # Load config
 cfg = load_config()
-app_title = cfg.get("app", {}).get("title", "Rakuten Produktklassifikation")
+app_title = cfg.get("app", {}).get("title", "Rakuten Product Classification")
 
 # Navigation
 PAGES_USER = {
-    "Einzelvorhersage": "single_prediction",
-    "Batch-Vorhersage": "batch_prediction",
-    "Historie / Korrekturen": "corrections",
+    "Single Prediction": "single_prediction",
+    "Batch Prediction": "batch_prediction",
+    "History / Corrections": "corrections",
     "Monitoring": "monitoring",
 }
 
 PAGES_ADMIN = {
     **PAGES_USER,
-    "Einstellungen": "admin_settings",
+    "Settings": "admin_settings",
     "Unit Tests": "admin_tests",
 }
 
@@ -51,8 +51,8 @@ pages = PAGES_ADMIN if user["role"] == "admin" else PAGES_USER
 with st.sidebar:
     st.title(app_title)
     st.divider()
-    st.text(f"Benutzer: {user['username']}")
-    st.text(f"Rolle: {user['role']}")
+    st.text(f"User: {user['username']}")
+    st.text(f"Role: {user['role']}")
     st.divider()
 
     page_selection = st.radio(
@@ -62,7 +62,7 @@ with st.sidebar:
     )
 
     st.divider()
-    if st.button("Abmelden"):
+    if st.button("Logout"):
         logout()
         st.rerun()
 

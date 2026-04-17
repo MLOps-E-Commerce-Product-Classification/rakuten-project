@@ -8,18 +8,16 @@ from auth import require_role
 
 def _resolve_tests_dir() -> str:
     """Resolve tests directory: works both in Docker (/app/tests) and locally."""
-    # Docker path
     docker_path = "/app/tests"
     if os.path.isdir(docker_path):
         return docker_path
-    # Local: walk up from this file to project root
     here = os.path.dirname(os.path.abspath(__file__))
     for _ in range(4):
         candidate = os.path.join(here, "tests")
         if os.path.isdir(candidate):
             return candidate
         here = os.path.dirname(here)
-    return docker_path  # fallback
+    return docker_path
 
 
 TESTS_DIR = _resolve_tests_dir()
@@ -44,21 +42,19 @@ def render():
     if not require_role("admin"):
         return
 
-    # Check if tests dir exists
     if not os.path.isdir(TESTS_DIR):
-        st.warning(f"Test-Verzeichnis '{TESTS_DIR}' nicht gefunden. "
-                   "Stellen Sie sicher, dass das Verzeichnis im Docker-Container verfuegbar ist.")
+        st.warning(f"Tests directory '{TESTS_DIR}' not found. "
+                   "Make sure the directory is available in the Docker container.")
         return
 
     test_files = _find_test_files(TESTS_DIR)
 
     if not test_files:
-        st.info("Keine Test-Dateien gefunden.")
+        st.info("No test files found.")
         return
 
-    st.subheader("Verfuegbare Tests")
+    st.subheader("Available Tests")
 
-    # Checkboxes for test selection
     selected_tests = []
     for tf in test_files:
         if st.checkbox(tf, value=True, key=f"test_cb_{tf}"):
@@ -66,18 +62,18 @@ def render():
 
     col1, col2 = st.columns(2)
     with col1:
-        run_button = st.button("Tests ausfuehren", key="run_tests")
+        run_button = st.button("Run Tests", key="run_tests")
     with col2:
-        st.text(f"{len(selected_tests)} von {len(test_files)} ausgewaehlt")
+        st.text(f"{len(selected_tests)} of {len(test_files)} selected")
 
     if run_button:
         if not selected_tests:
-            st.warning("Keine Tests ausgewaehlt.")
+            st.warning("No tests selected.")
             return
 
         test_paths = [os.path.join(TESTS_DIR, t) for t in selected_tests]
 
-        st.subheader("Test-Ausgabe")
+        st.subheader("Test Output")
         output_area = st.empty()
 
         cmd = ["python", "-m", "pytest", "-v", "--tb=short"] + test_paths
@@ -97,13 +93,12 @@ def render():
 
             output_area.code(full_output)
 
-            # Summary
             if result.returncode == 0:
-                st.success("Alle Tests bestanden.")
+                st.success("All tests passed.")
             else:
-                st.error(f"Tests fehlgeschlagen (Exit-Code: {result.returncode}).")
+                st.error(f"Tests failed (exit code: {result.returncode}).")
 
         except subprocess.TimeoutExpired:
-            st.error("Test-Ausfuehrung abgebrochen (Timeout: 300 Sekunden).")
+            st.error("Test run aborted (timeout: 300 seconds).")
         except Exception as e:
-            st.error(f"Fehler bei der Test-Ausfuehrung: {e}")
+            st.error(f"Error running tests: {e}")

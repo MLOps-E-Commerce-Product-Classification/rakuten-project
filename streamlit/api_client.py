@@ -51,7 +51,7 @@ class RakutenAPIClient:
             headers["X-API-Key"] = api_key
         else:
             import streamlit as st
-            st.warning("API Key ist nicht konfiguriert. Bitte in den Admin-Einstellungen hinterlegen.")
+            st.warning("API key is not configured. Please set it in the admin settings.")
         return headers
 
     def health_check(self) -> dict:
@@ -89,12 +89,12 @@ class RakutenAPIClient:
             data = resp.json()
             token = data.get("token", "")
             if not token:
-                raise ValueError("Kein Token in der Antwort erhalten.")
+                raise ValueError("No token received in response.")
             return token
         except requests.HTTPError as e:
-            raise ConnectionError(f"Login fehlgeschlagen (HTTP {e.response.status_code}): {e.response.text}") from e
+            raise ConnectionError(f"Login failed (HTTP {e.response.status_code}): {e.response.text}") from e
         except requests.RequestException as e:
-            raise ConnectionError(f"Verbindungsfehler beim Login: {e}") from e
+            raise ConnectionError(f"Connection error during login: {e}") from e
 
     def predict_single(self, designation: str, description: str = "", top_k: int = 5) -> dict:
         """Run a single prediction."""
@@ -127,9 +127,9 @@ class RakutenAPIClient:
                 )
                 resp.raise_for_status()
                 return resp.json()
-            raise ConnectionError(f"Vorhersage fehlgeschlagen (HTTP {e.response.status_code}): {e.response.text}") from e
+            raise ConnectionError(f"Prediction failed (HTTP {e.response.status_code}): {e.response.text}") from e
         except requests.RequestException as e:
-            raise ConnectionError(f"Verbindungsfehler bei Vorhersage: {e}") from e
+            raise ConnectionError(f"Connection error during prediction: {e}") from e
 
     def predict_batch(self, items: list[dict]) -> list[dict]:
         """Run batch prediction. Items: list of {designation, description, top_k}."""
@@ -155,9 +155,9 @@ class RakutenAPIClient:
                 )
                 resp.raise_for_status()
                 return resp.json()
-            raise ConnectionError(f"Batch-Vorhersage fehlgeschlagen (HTTP {e.response.status_code}): {e.response.text}") from e
+            raise ConnectionError(f"Batch prediction failed (HTTP {e.response.status_code}): {e.response.text}") from e
         except requests.RequestException as e:
-            raise ConnectionError(f"Verbindungsfehler bei Batch-Vorhersage: {e}") from e
+            raise ConnectionError(f"Connection error during batch prediction: {e}") from e
 
 
 def get_client() -> RakutenAPIClient:

@@ -54,7 +54,7 @@ def _build_row(user: dict, designation: str, description: str,
 
 def render():
     """Render the single prediction page."""
-    st.header("Einzelvorhersage")
+    st.header("Single Prediction")
     user = get_current_user()
     if not user:
         return
@@ -65,54 +65,52 @@ def render():
     max_top_k = pred_cfg.get("max_top_k", 27)
 
     with st.form("single_pred_form"):
-        designation = st.text_input("Designation (Pflichtfeld)")
+        designation = st.text_input("Designation (required)")
         description = st.text_area("Description (optional)", value="")
         top_k = st.number_input("Top-K", min_value=1, max_value=max_top_k, value=default_top_k)
-        submitted = st.form_submit_button("Vorhersage starten")
+        submitted = st.form_submit_button("Run Prediction")
 
     if submitted:
         if not designation.strip():
-            st.error("Designation ist ein Pflichtfeld.")
+            st.error("Designation is a required field.")
             return
         try:
             client = get_client()
-            with st.spinner("Vorhersage wird durchgefuehrt..."):
+            with st.spinner("Running prediction..."):
                 result = client.predict_single(designation.strip(), description.strip(), int(top_k))
             st.session_state["single_result"] = result
             st.session_state["single_designation"] = designation.strip()
             st.session_state["single_description"] = description.strip()
         except Exception as e:
-            st.error(f"Fehler bei der Vorhersage: {e}")
+            st.error(f"Prediction error: {e}")
             return
 
-    # Show results
     if "single_result" in st.session_state:
         result = st.session_state["single_result"]
         predictions = result.get("top_k_predictions", [])
         if not predictions:
-            st.warning("Keine Vorhersagen erhalten.")
+            st.warning("No predictions received.")
             return
 
-        # Always show top 5
         display_preds = predictions[:5]
-        st.subheader("Vorhersage-Ergebnisse")
+        st.subheader("Prediction Results")
 
         options = []
         for i, pred in enumerate(display_preds):
             rank = i + 1
             code = pred.get("rakuten_code", "?")
             prob = pred.get("probability", 0)
-            label = f"Rang {rank}: Code {code} (Wahrscheinlichkeit: {prob:.2%})"
+            label = f"Rank {rank}: Code {code} (Probability: {prob:.2%})"
             options.append(label)
 
         selected_idx = st.radio(
-            "Welcher Code ist korrekt?",
+            "Which code is correct?",
             range(len(options)),
             format_func=lambda i: options[i],
             key="single_radio",
         )
 
-        if st.button("Auswahl bestaetigen", key="single_confirm"):
+        if st.button("Confirm Selection", key="single_confirm"):
             designation = st.session_state["single_designation"]
             description = st.session_state["single_description"]
             sel_pred = display_preds[selected_idx]
@@ -126,19 +124,16 @@ def render():
                 selected_rank, selected_code,
             )
 
-            # Always write to demo_selections
             demo_path = _csv_path("demo_selections_csv")
             _write_csv_row(demo_path, row)
 
-            # Write to corrections only if rank > 1
             if selected_rank > 1:
                 corr_path = _csv_path("corrections_csv")
                 _write_csv_row(corr_path, row)
 
             st.success(
-                f"Auswahl gespeichert: Code {selected_code} (Rang {selected_rank})"
+                f"Selection saved: Code {selected_code} (Rank {selected_rank})"
             )
 
-            # Clear result
             for k in ["single_result", "single_designation", "single_description"]:
                 st.session_state.pop(k, None)

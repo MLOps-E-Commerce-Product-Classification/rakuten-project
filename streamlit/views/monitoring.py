@@ -15,8 +15,7 @@ def render():
     prometheus_url = mon_cfg.get("prometheus_url", "")
     grafana_url = mon_cfg.get("grafana_url", "")
 
-    # Prometheus Metrics
-    st.subheader("Prometheus Metriken")
+    st.subheader("Prometheus Metrics")
     if prometheus_url:
         try:
             resp = requests.get(
@@ -26,36 +25,33 @@ def render():
             )
             if resp.status_code == 200:
                 metrics_text = resp.text
-                # Show first 5000 chars in a code block
                 if len(metrics_text) > 5000:
-                    st.code(metrics_text[:5000] + "\n\n... (gekuerzt)")
+                    st.code(metrics_text[:5000] + "\n\n... (truncated)")
                 else:
                     st.code(metrics_text)
             else:
-                st.warning(f"Prometheus nicht erreichbar (HTTP {resp.status_code}).")
+                st.warning(f"Prometheus not reachable (HTTP {resp.status_code}).")
         except requests.RequestException as e:
-            st.warning(f"Prometheus nicht erreichbar: {e}")
+            st.warning(f"Prometheus not reachable: {e}")
     else:
-        st.info("Keine Prometheus-URL konfiguriert.")
+        st.info("No Prometheus URL configured.")
 
-    # Grafana Dashboard
     st.subheader("Grafana Dashboard")
     if grafana_url:
         try:
             st.components.v1.iframe(grafana_url, height=600, scrolling=True)
         except Exception as e:
-            st.warning(f"Grafana konnte nicht geladen werden: {e}")
+            st.warning(f"Grafana could not be loaded: {e}")
     else:
-        st.info("Keine Grafana-URL konfiguriert. URL kann in den Admin-Einstellungen hinterlegt werden.")
+        st.info("No Grafana URL configured. The URL can be set in the admin settings.")
 
-    # Health Check
-    st.subheader("Backend-Status")
-    if st.button("Health-Check ausfuehren"):
+    st.subheader("Backend Status")
+    if st.button("Run Health Check"):
         from api_client import get_client
         client = get_client()
         result = client.health_check()
         if result.get("status") == "error":
-            st.error(f"Backend nicht erreichbar: {result.get('detail', 'Unbekannter Fehler')}")
+            st.error(f"Backend not reachable: {result.get('detail', 'Unknown error')}")
         else:
-            st.success("Backend erreichbar.")
+            st.success("Backend reachable.")
             st.json(result)

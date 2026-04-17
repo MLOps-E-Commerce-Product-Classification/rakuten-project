@@ -84,10 +84,10 @@ def require_role(role: str) -> bool:
     """Check if current user has the required role. Shows error if not."""
     user = get_current_user()
     if not user:
-        st.error("Nicht eingeloggt.")
+        st.error("Not logged in.")
         return False
     if role == "admin" and user["role"] != "admin":
-        st.error("Zugriff verweigert. Admin-Rechte erforderlich.")
+        st.error("Access denied. Admin privileges required.")
         return False
     return True
 
@@ -107,20 +107,20 @@ def login_user(username: str) -> None:
 def render_login_page() -> bool:
     """Render the login form. Returns True if user is now logged in."""
     cfg = load_config()
-    title = cfg.get("app", {}).get("title", "Rakuten Produktklassifikation")
+    title = cfg.get("app", {}).get("title", "Rakuten Product Classification")
     st.title(title)
-    st.subheader("Anmeldung")
+    st.subheader("Login")
 
     with st.form("login_form"):
-        username = st.text_input("Benutzername")
-        password = st.text_input("Passwort", type="password")
-        submitted = st.form_submit_button("Anmelden")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Sign in")
 
     if submitted:
         if check_login(username, password):
             login_user(username)
             st.rerun()
         else:
-            st.error("Benutzername oder Passwort falsch.")
+            st.error("Invalid username or password.")
 
     return False

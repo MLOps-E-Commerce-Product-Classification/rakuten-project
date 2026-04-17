@@ -24,7 +24,7 @@ def _load_csv(filepath: str, username: str | None = None) -> pd.DataFrame | None
 
 def render():
     """Render the corrections/history page."""
-    st.header("Vorhersage-Historie und Korrekturen")
+    st.header("Prediction History and Corrections")
     user = get_current_user()
     if not user:
         return
@@ -37,23 +37,22 @@ def render():
     is_admin = user["role"] == "admin"
     filter_user = None if is_admin else user["username"]
 
-    # Tab selection
-    tab1, tab2 = st.tabs(["Korrekturen", "Alle Auswahlen"])
+    tab1, tab2 = st.tabs(["Corrections", "All Selections"])
 
     with tab1:
-        st.subheader("Korrekturen" + (" (alle Benutzer)" if is_admin else ""))
+        st.subheader("Corrections" + (" (all users)" if is_admin else ""))
         df_corr = _load_csv(corrections_path, filter_user)
         if df_corr is not None:
             st.dataframe(df_corr, use_container_width=True)
-            st.text(f"{len(df_corr)} Eintraege")
+            st.text(f"{len(df_corr)} entries")
         else:
-            st.info("Keine Korrekturen vorhanden.")
+            st.info("No corrections available.")
 
     with tab2:
-        st.subheader("Alle Auswahlen (Demo-Selections)" + (" (alle Benutzer)" if is_admin else ""))
+        st.subheader("All Selections (Demo Selections)" + (" (all users)" if is_admin else ""))
         df_demo = _load_csv(demo_path, filter_user)
         if df_demo is not None:
             st.dataframe(df_demo, use_container_width=True)
-            st.text(f"{len(df_demo)} Eintraege")
+            st.text(f"{len(df_demo)} entries")
         else:
-            st.info("Keine Auswahlen vorhanden.")
+            st.info("No selections available.")
