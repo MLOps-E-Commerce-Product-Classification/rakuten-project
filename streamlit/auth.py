@@ -1,15 +1,31 @@
 """Authentication module with bcrypt password hashing and session management."""
 
+import os
 import time
 import bcrypt
 import streamlit as st
 from settings_manager import load_config, save_config
 
+# ── Project root (.env lives there) ──────────────────────────────────────────
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(_HERE)
 
-_DEFAULT_PASSWORDS = {
-    "admin": "Admin2026!",
-    "demo_user": "User2026!",
-}
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(_PROJECT_ROOT, ".env"), override=False)
+except ImportError:
+    pass
+
+
+def _default_passwords() -> dict[str, str]:
+    """
+    Read default passwords from environment variables.
+    Falls back to empty string — user must set a password via admin UI.
+    """
+    return {
+        "admin":     os.environ.get("STREAMLIT_ADMIN_PASSWORD", "").strip(),
+        "demo_user": os.environ.get("STREAMLIT_DEMO_PASSWORD", "").strip(),
+    }
 
 
 def _hash_password(password: str) -> str:
@@ -26,13 +42,19 @@ def _check_password(password: str, password_hash: str) -> bool:
 
 
 def ensure_password_hashes() -> None:
-    """Generate and store password hashes for users with empty hashes on first start."""
+    """Generate and store bcrypt hashes for users without a hash on first start.
+
+    Passwords are sourced from STREAMLIT_ADMIN_PASSWORD / STREAMLIT_DEMO_PASSWORD.
+    If neither env var is set the hash stays empty and the account cannot be used
+    until a password is set via the admin UI.
+    """
     cfg = load_config(force=True)
     users = cfg.get("users", {})
+    defaults = _default_passwords()
     changed = False
     for username, user_data in users.items():
         if not user_data.get("password_hash"):
-            default_pw = _DEFAULT_PASSWORDS.get(username)
+            default_pw = defaults.get(username, "")
             if default_pw:
                 user_data["password_hash"] = _hash_password(default_pw)
                 changed = True
@@ -61,7 +83,6 @@ def get_current_user() -> dict | None:
     if "username" not in st.session_state:
         return None
 
-    # Check session timeout
     cfg = load_config()
     timeout_minutes = cfg.get("app", {}).get("session_timeout_minutes", 60)
     last_activity = st.session_state.get("last_activity", 0)
@@ -69,7 +90,6 @@ def get_current_user() -> dict | None:
         logout()
         return None
 
-    # Update activity timestamp
     st.session_state["last_activity"] = time.time()
 
     cfg_users = cfg.get("users", {})

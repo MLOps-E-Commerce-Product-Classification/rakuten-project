@@ -1,10 +1,18 @@
+# Rakuten Product Classification — Streamlit config
+#
+# Credentials are loaded from the project-root .env file (see .env.example).
+# The following keys are intentionally left blank here:
+#   api.base_url, api.api_key, api.nginx_user, api.nginx_pass,
+#   api.bento_user, api.bento_pass
+# Set them via environment variables instead (STREAMLIT_* prefix).
+
 api:
-  base_url: "https://rakuten.industry-ai-engineering.com"
-  api_key: "rk_live_57896af0079e6436527c2a421673cd2632a40484e0930a7a"
-  nginx_user: "nginx"
-  nginx_pass: "Rakuten_2026!"
-  bento_user: "admin"
-  bento_pass: "Mlops2026"
+  base_url: ""
+  api_key: ""
+  nginx_user: ""
+  nginx_pass: ""
+  bento_user: ""
+  bento_pass: ""
   timeout_seconds: 30
 
 prediction:
@@ -14,11 +22,11 @@ prediction:
 
 monitoring:
   grafana_url: ""
-  prometheus_url: "https://rakuten.industry-ai-engineering.com/metrics"
+  prometheus_url: ""
   refresh_interval_seconds: 30
 
 app:
-  title: "Rakuten Produktklassifikation"
+  title: "Rakuten Product Classification"
   session_timeout_minutes: 60
   max_csv_upload_mb: 10
 
