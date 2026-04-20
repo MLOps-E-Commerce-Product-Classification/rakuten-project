@@ -1,0 +1,16 @@
+services:
+
+  train-text:
+    image: ${DOCKER_USERNAME}/train-text:latest
+
+  finetune-text:
+    image: ${DOCKER_USERNAME}/train-text:latest
+
+  evaluate-text:
+    image: ${DOCKER_USERNAME}/evaluate-text:latest
+
+  bentoml:
+    image: ${DOCKER_USERNAME}/rakuten-text-service:latest
+
+  streamlit:
+    image: ${DOCKER_USERNAME}/rakuten-streamlit:latest

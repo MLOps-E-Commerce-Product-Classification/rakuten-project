@@ -1,0 +1,41 @@
+services:
+
+  bentoml:
+    image: ${BENTOML_IMAGE:-rakutenml/rakuten-text-service:latest}
+    ports:
+      - "3000:3000"
+    networks:
+      - mlops-network
+
+  train-text:
+    image: ${TRAIN_IMAGE:-rakutenml/train-text:latest}
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./configs:/app/configs
+      - ./artifacts:/app/artifacts
+    networks:
+      - mlops-network
+
+  finetune-text:
+    image: ${FINETUNE_IMAGE:-rakutenml/train-text:latest}
+    env_file:
+      - .env
+    environment:
+      FINETUNE_MODE: "true"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./configs:/app/configs
+      - ./artifacts:/app/artifacts
+    networks:
+      - mlops-network
+
+  evaluate-text:
+    image: ${EVAL_IMAGE:-rakutenml/evaluate-text:latest}
+    volumes:
+      - ./results:/app/results
+    networks:
+      - mlops-network

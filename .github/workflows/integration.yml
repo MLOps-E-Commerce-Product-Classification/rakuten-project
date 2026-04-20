@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main"]
+    branches: [ "main", "restructuring"]
   pull_request:
     branches: [ "main" ]
 
@@ -40,7 +40,7 @@ jobs:
 
 
   build:
-    name: Build & Push Train/Eval/Inference Images
+    name: Build & Push Docker Images
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'push'
@@ -50,10 +50,15 @@ jobs:
         include:
           - name: train-text
             dockerfile: docker/Dockerfile.train-text
+
           - name: evaluate-text
             dockerfile: docker/Dockerfile.evaluate-text
+
           - name: inference
             dockerfile: docker/Dockerfile.inference
+
+          - name: streamlit
+            dockerfile: docker/Dockerfile.streamlit
 
     steps:
       - uses: actions/checkout@v4
@@ -72,7 +77,6 @@ jobs:
             -t ${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:${{ github.sha }} \
             -t ${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:latest \
             .
-          
 
           docker push ${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:${{ github.sha }}
           docker push ${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:latest
@@ -110,20 +114,15 @@ jobs:
           echo "MLFLOW_TRACKING_URI=https://dagshub.com/Mlops2026/rakuten-project.mlflow" >> $GITHUB_ENV
           echo "MLFLOW_REGISTRY_URI=https://dagshub.com/Mlops2026/rakuten-project.mlflow" >> $GITHUB_ENV
 
-
-
       - name: Set DagsHub & MLflow auth
         run: |
           echo "DAGSHUB_USER_TOKEN=${{ secrets.DAGSHUB_USER_TOKEN }}" >> $GITHUB_ENV
           echo "MLFLOW_TRACKING_USERNAME=token" >> $GITHUB_ENV
           echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.DAGSHUB_USER_TOKEN }}" >> $GITHUB_ENV
 
-
       - name: Debug env (safe)
         run: |
           echo "DAGSHUB_USER_TOKEN present? $([[ -n \"$DAGSHUB_USER_TOKEN\" ]] && echo yes || echo no)"
-
-
 
       - name: Sync MLflow model
         run: |
