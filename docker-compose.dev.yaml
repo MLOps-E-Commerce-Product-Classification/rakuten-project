@@ -22,5 +22,5 @@ services:
 
   streamlit:
     build:
-      context: streamlit
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/Dockerfile.streamlit
