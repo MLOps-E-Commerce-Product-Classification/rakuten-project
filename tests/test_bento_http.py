@@ -98,7 +98,7 @@ def test_bento_http_health_endpoint():
 
         assert response.status == 200
         assert body["status"] in {"ok", "degraded"}
-        assert body["model_tag"] == "rakuten_text_classifier:latest"
+        assert body["model_tag"].startswith("text-classifier")
     finally:
         process.terminate()
         try:

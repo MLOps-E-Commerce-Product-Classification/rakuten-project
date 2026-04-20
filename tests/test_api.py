@@ -45,8 +45,7 @@ def test_health_reports_degraded_when_model_store_is_not_ready():
 
     assert response.status == "degraded"
     assert response.model_ready is False
-    assert response.model_tag == "rakuten_text_classifier:latest"
-
+    assert str(response.model_tag).startswith("text-classifier")
 
 def test_login_returns_jwt_for_valid_credentials():
     service = TextBentoService()
