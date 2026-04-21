@@ -7,6 +7,29 @@ services:
     networks:
       - mlops-network
 
+  
+  streamlit:
+    image: ${STREAMLIT_IMAGE:-rakutenml/rakuten-streamlit:latest}
+    ports:
+      - "8502:8502"
+    volumes:
+      - ./data:/app/streamlit/data
+    networks:
+      - mlops-network
+    restart: unless-stopped
+
+
+      
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - mlops-network
+
   train-text:
     image: ${TRAIN_IMAGE:-rakutenml/train-text:latest}
     env_file:
