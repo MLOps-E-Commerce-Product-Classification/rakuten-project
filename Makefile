@@ -1,7 +1,5 @@
 # ============================================================
-
 # Variables
-
 # ============================================================
 
 DEVICE ?= cpu
@@ -11,295 +9,263 @@ TEXT ?= "Jeu vidéo action PS4"
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
 
-BASE_URL ?= [http://127.0.0.1:$(PORT)](http://127.0.0.1:$%28PORT%29)
-
 MLFLOW_MODEL_NAME ?= text-classifier
 MLFLOW_ALIAS ?= production
+
 PROMOTION_METRIC ?= eval_macro_f1
 PROMOTION_MARGIN ?= 0.0
 
-BENTO_SERVICE ?= src.serving.bento_service:TextBentoService
 BENTO_MODEL_NAME ?= text-classifier
 
 export DEVICE
 export GIT_BRANCH
 export GIT_COMMIT
 
-# ============================================================
-
-# Docker Compose Configurations
 
 # ============================================================
-
-COMPOSE_DEV := docker compose -f docker-compose.yml
-COMPOSE_PROD := docker compose -f docker-compose.production.yml
-COMPOSE_AIRFLOW := docker compose -f docker-compose.airflow.yml
-COMPOSE_AIRFLOW_PROD := docker compose -f docker-compose.airflow-production.yml
-
-COMPOSE_FULL_PROD := docker compose 
--f docker-compose.airflow-production.yml
-
+# Compose files (3-LAYER ARCHITECTURE)
 # ============================================================
 
-# Training
+COMPOSE_BASE = docker compose
+INFRA = -f docker-compose.infrastructure.yaml
+DEV = -f docker-compose.dev.yaml
+PROD = -f docker-compose.prod.yaml
+
+# Combined stacks
+DEV_STACK = $(COMPOSE_BASE) $(INFRA) $(DEV)
+PROD_STACK = $(COMPOSE_BASE) $(INFRA) $(PROD)
+
 
 # ============================================================
+# INFRASTRUCTURE LAYER
+# ============================================================
 
-.PHONY: train-text-build
-train-text-build:
-$(COMPOSE_DEV) build 
---build-arg DEVICE=$(DEVICE) 
---build-arg GIT_COMMIT=$(GIT_COMMIT) 
---build-arg GIT_BRANCH=$(GIT_BRANCH) 
-train-text
+.PHONY: infra-up
+infra-up:
+	$(COMPOSE_BASE) $(INFRA) up -d
+
+.PHONY: infra-down
+infra-down:
+	$(COMPOSE_BASE) $(INFRA) down
+
+.PHONY: infra-logs
+infra-logs:
+	$(COMPOSE_BASE) $(INFRA) logs -f
+
+.PHONY: infra-restart
+infra-restart:
+	$(COMPOSE_BASE) $(INFRA) down
+	$(COMPOSE_BASE) $(INFRA) up -d
+
+
+# ============================================================
+# DEV ENVIRONMENT (infra + dev overrides + builds)
+# ============================================================
+
+.PHONY: dev-build
+dev-build:
+	$(DEV_STACK) build \
+		--build-arg DEVICE=$(DEVICE) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg GIT_BRANCH=$(GIT_BRANCH)
+
+.PHONY: dev-up
+dev-up:
+	$(DEV_STACK) up
+
+.PHONY: dev-down
+dev-down:
+	$(DEV_STACK) down
+
+.PHONY: dev-restart
+dev-restart:
+	$(DEV_STACK) down
+	$(DEV_STACK) up -d --build
+
+.PHONY: dev-logs
+dev-logs:
+	$(DEV_STACK) logs -f
 
 .PHONY: train-text-run
 train-text-run:
-git add src/ configs/ || true
-git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
-$(COMPOSE_DEV) run --rm train-text
-
-.PHONY: train-text-logs
-train-text-logs:
-$(COMPOSE_DEV) logs -f train-text
-
-.PHONY: finetune-text-run
-finetune-text-run:
-	git add src/ configs/
-	git commit -m "exp: start finetuning run - $(shell date '+%Y-%m-%d %H:%M')" || true
-	DEVICE=$(DEVICE) \
-	GIT_COMMIT=`git rev-parse HEAD` \
-	GIT_BRANCH=`git rev-parse --abbrev-ref HEAD` \
-	docker compose run --rm finetune-text
-
-.PHONY: train-text-stop
-train-text-stop:
-$(COMPOSE_DEV) stop train-text
-
-.PHONY: train-text-down
-train-text-down:
-$(COMPOSE_DEV) down --remove-orphans
-
-.PHONY: train-text-clean
-train-text-clean:
-$(COMPOSE_DEV) down --remove-orphans
-docker image rm train-text 2>/dev/null || true
+	git add src/ configs/ || true
+	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
+	$(DEV_STACK) --profile train run --rm train-text
 
 # ============================================================
-
-# Evaluation
-
+# TRAINING (DEV only)
 # ============================================================
 
-check_defined = 
-$(strip $(foreach 1,$1, 
-$(if $(value $1),,$(error Variable $(1) required. Example: make evaluate-run MLFLOW_ID=abc))))
+.PHONY: train
+train:
+	git add src/ configs/ || true
+	git commit -m "exp: training run $(shell date '+%Y-%m-%d %H:%M')" || true
+	$(DEV_STACK) run --rm train-text
+
+.PHONY: finetune
+finetune:
+	git add src/ configs/ || true
+	git commit -m "exp: finetuning run $(shell date '+%Y-%m-%d %H:%M')" || true
+	$(DEV_STACK) run --rm finetune-text
+
+.PHONY: train-logs
+train-logs:
+	$(DEV_STACK) logs -f train-text
+
+
+# ============================================================
+# EVALUATION
+# ============================================================
+
+check_defined = \
+$(strip $(foreach 1,$1,$(if $(value $1),,$(error Variable $(1) required))))
 
 X_DATA ?= data/processed/val.csv
 Y_DATA ?= data/processed/val.csv
 WEIGHTS ?= models/best_text_model.pt
 ENCODING ?= configs/label_encoding.json
 
-.PHONY: evaluate-build
-evaluate-build:
-$(COMPOSE_DEV) build 
---build-arg DEVICE=$(DEVICE) 
---build-arg GIT_COMMIT=$(GIT_COMMIT) 
---build-arg GIT_BRANCH=$(GIT_BRANCH) 
-evaluate-text
+.PHONY: evaluate
+evaluate:
+	$(call check_defined,MLFLOW_ID)
+	$(DEV_STACK) run --rm evaluate-text \
+	--mlflow_run_id $(MLFLOW_ID) \
+	--x_data_csv_path $(X_DATA) \
+	--y_data_csv_path $(Y_DATA) \
+	--model_weights_path $(WEIGHTS) \
+	--label_encoding_path $(ENCODING)
 
-.PHONY: evaluate-run
-evaluate-run:
-$(call check_defined,MLFLOW_ID)
-$(COMPOSE_DEV) run --rm evaluate-text 
---mlflow_run_id $(MLFLOW_ID) 
---x_data_csv_path $(X_DATA) 
---y_data_csv_path $(Y_DATA) 
---model_weights_path $(WEIGHTS) 
---label_encoding_path $(ENCODING)
 
 # ============================================================
-
-# Inference
-
+# SERVING (DEV)
 # ============================================================
 
-.PHONY: inference-build
-inference-build:
-$(COMPOSE_DEV) build inference
+.PHONY: serve
+serve:
+	$(DEV_STACK) up -d bentoml
 
-.PHONY: inference-run
-inference-run:
-$(COMPOSE_DEV) run --rm inference --text $(TEXT)
+.PHONY: serve-stop
+serve-stop:
+	$(DEV_STACK) stop bentoml
+
+.PHONY: serve-logs
+serve-logs:
+	$(DEV_STACK) logs -f bentoml
+
+.PHONY: inference
+inference:
+	$(DEV_STACK) run --rm bentoml --text $(TEXT)
 
 .PHONY: inference-batch
 inference-batch:
-$(COMPOSE_DEV) run --rm inference --texts "T-shirt" "Console" "Livre"
+	$(DEV_STACK) run --rm bentoml --texts "T-shirt" "Console" "Livre"
 
-.PHONY: inference-clean
-inference-clean:
-docker image rm mlops-rakuten-inference 2>/dev/null || true
 
 # ============================================================
-
-# DVC
-
+# BENTO / ML OPS
 # ============================================================
 
-.PHONY: dvc-init
-dvc-init:
-uv run dvc init
-git add .dvc .dvcignore
-git commit -m "chore: initialize DVC"
+.PHONY: prepare-bento
+prepare-bento:
+	uv run python -m src.serving.prepare_bento_assets
 
-.PHONY: dvc-push
-dvc-push:
-uv run dvc push
-git push
+.PHONY: promote-model
+promote-model:
+	uv run python -m src.serving.promote_mlflow_model \
+	--model-name $(MLFLOW_MODEL_NAME) \
+	--alias $(MLFLOW_ALIAS) \
+	--metric-name $(PROMOTION_METRIC) \
+	--min-improvement $(PROMOTION_MARGIN)
 
-.PHONY: dvc-pull
-dvc-pull:
-git pull
-uv run dvc pull
+.PHONY: sync-bento
+sync-bento:
+	uv run python -m src.serving.sync_mlflow_to_bento \
+	--model-name $(MLFLOW_MODEL_NAME) \
+	--alias $(MLFLOW_ALIAS) \
+	--bento-model-name $(BENTO_MODEL_NAME)
 
-.PHONY: dvc-metrics
-dvc-metrics:
-dvc metrics show
-dvc metrics diff HEAD~1
+.PHONY: build-bento
+build-bento: sync-bento
+	uv run bentoml build
 
-# ============================================================
+.PHONY: containerize-bento
+containerize-bento: build-bento
+	uv run bentoml containerize rakuten-text-service:latest -t rakuten-ml/rakuten-text-service:latest
 
-# BentoML
-
-# ============================================================
-
-.PHONY: prepare-bento-text-assets
-prepare-bento-text-assets:
-uv run python -m src.serving.prepare_bento_assets
-
-.PHONY: promote-mlflow-text-model
-promote-mlflow-text-model:
-uv run python -m src.serving.promote_mlflow_model 
---model-name $(MLFLOW_MODEL_NAME) 
---alias $(MLFLOW_ALIAS) 
---metric-name $(PROMOTION_METRIC) 
---min-improvement $(PROMOTION_MARGIN)
-
-.PHONY: sync-bento-text-model
-sync-bento-text-model:
-uv run python -m src.serving.sync_mlflow_to_bento 
---model-name $(MLFLOW_MODEL_NAME) 
---alias $(MLFLOW_ALIAS) 
---bento-model-name $(BENTO_MODEL_NAME)
-
-.PHONY: build-bento-text
-build-bento-text: sync-bento-text-model
-uv run bentoml build
-
-.PHONY: containerize-bento-text
-containerize-bento-text: build-bento-text
-uv run bentoml containerize rakuten_text_service:latest 
--t rakuten_text_service:latest
 
 # ============================================================
-
-# Bento Docker
-
-# ============================================================
-
-.PHONY: docker-bento-up
-docker-bento-up:
-$(COMPOSE_DEV) up -d bento-text-service
-
-.PHONY: docker-bento-down
-docker-bento-down:
-$(COMPOSE_DEV) stop bento-text-service
-
-.PHONY: bento-text-logs
-bento-text-logs:
-$(COMPOSE_DEV) logs -f bento-text-service
-
-# ============================================================
-
-# Airflow
-
-# ============================================================
-
-.PHONY: airflow-up
-airflow-up:
-$(COMPOSE_AIRFLOW) up -d
-
-.PHONY: airflow-down
-airflow-down:
-$(COMPOSE_AIRFLOW) down
-
-.PHONY: airflow-logs
-airflow-logs:
-$(COMPOSE_AIRFLOW) logs -f
-
-# ============================================================
-
-# Production Environment
-
+# PRODUCTION (infra + prod images)
 # ============================================================
 
 .PHONY: prod-up
 prod-up:
-$(COMPOSE_FULL_PROD) up -d
+	$(PROD_STACK) pull
+	$(PROD_STACK) up -d
 
 .PHONY: prod-down
 prod-down:
-$(COMPOSE_FULL_PROD) down
+	$(PROD_STACK) down
 
 .PHONY: prod-restart
 prod-restart:
-$(COMPOSE_FULL_PROD) down
-$(COMPOSE_FULL_PROD) up -d
+	$(PROD_STACK) down
+	$(PROD_STACK) up -d
 
 .PHONY: prod-logs
 prod-logs:
-$(COMPOSE_FULL_PROD) logs -f
+	$(PROD_STACK) logs -f
+
 
 # ============================================================
-
-# Full Production Setup
-
+# MONITORING
 # ============================================================
 
-.PHONY: setup-production
-setup-production:
-@echo "Starting full production MLOps environment..."
-$(COMPOSE_FULL_PROD) pull
-$(COMPOSE_FULL_PROD) up -d
+.PHONY: monitoring
+monitoring:
+	@echo "Grafana: http://localhost:3001"
+	@echo "Prometheus: http://localhost:9090"
+
 
 # ============================================================
-
-# Utilities
-
+# UTILITIES
 # ============================================================
 
 .PHONY: status
 status:
-docker ps
+	docker ps
+
+.PHONY: clean
+clean:
+	docker system prune -f
+
+
+# ============================================================
+# HELP
+# ============================================================
 
 .PHONY: help
 help:
-@echo ""
-@echo "MLOps Rakuten Makefile"
-@echo ""
-@echo "Training:"
-@echo "  make train-text-build"
-@echo "  make train-text-run"
-@echo ""
-@echo "Evaluation:"
-@echo "  make evaluate-run MLFLOW_ID=<id>"
-@echo ""
-@echo "Inference:"
-@echo "  make inference-run"
-@echo ""
-@echo "Airflow:"
-@echo "  make airflow-up"
-@echo ""
-@echo "Production:"
-@echo "  make setup-production"
-@echo ""
+	@echo ""
+	@echo "Rakuten MLOps Makefile"
+	@echo ""
+	@echo "Infrastructure:"
+	@echo "  make infra-up"
+	@echo "  make infra-down"
+	@echo ""
+	@echo "Development:"
+	@echo "  make dev-up"
+	@echo "  make dev-down"
+	@echo ""
+	@echo "Training:"
+	@echo "  make train"
+	@echo "  make finetune"
+	@echo ""
+	@echo "Evaluation:"
+	@echo "  make evaluate MLFLOW_ID=<id>"
+	@echo ""
+	@echo "Serving:"
+	@echo "  make serve"
+	@echo ""
+	@echo "Production:"
+	@echo "  make prod-up"
+	@echo "  make prod-down"

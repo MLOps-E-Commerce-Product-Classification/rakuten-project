@@ -1,0 +1,12 @@
+- make dev-build und make dev-up getrennt und args hinzugefügt
+- ```DEVICE=cu121 make dev-build``` ausgeführt (Dauer bei einer 250 Mbits Leitung = 534s)
+- profiles to docker-compose.dev.yaml (training, finetune, evaluation will be startet by airflow)
+- run ```make dev-up```
+    - nginx folder und config fehlte noch im main (config manuell hinzugefügt)
+    - monitoring/prometheus.yml gibt es nicht mit yml sondern nur mit yaml (dockerompose angepasst)
+    - bentoml kann nicht gestartet werden, da dieser noch mit ```make containerize-bento``` erstmal gebaut werden muss. Dieses muss in den build process?!
+        - Bindestriche statt Unterstriche. Anpassung von Bentomlfile und docker-compose, sowie bento-service.py file
+        - makefile ohne latest tag für bentoml container. Wurde korrigiert. Jetzt rakuten-text-service:latest -t rakuten-ml/rakuten-text-service:latest
+- Probleme mit der aktuellen docker-compose.infrastructure.yaml. Airflow startet nicht richtig. Alte version genommen. Dort wichtig: AIRFLOW_CONN_FS_DEFAULT: 'fs://?path=%2F' in die env hinzuzufügen!
+- mismatch bei bentoml.yaml und pyproject! bentoml, wurde korrigiert!! pyproject.toml wurde bereinigt und image wurde entfernt
+- wichtig wenn raw/ daten sich geändert haben und noch nicht gepushed sind, dann schlägt der train-text-run fehl!
