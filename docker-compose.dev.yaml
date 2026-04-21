@@ -1,0 +1,26 @@
+services:
+
+  train-text:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.train-text
+
+  finetune-text:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.train-text
+
+  evaluate-text:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.evaluate-text
+
+  bentoml:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.inference
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.streamlit

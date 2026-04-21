@@ -1,210 +1,80 @@
-# Rakuten Multimodal Classifier
+# Rakuten Multimodal Product Classifier
 
-This project addresses a multimodal e-commerce classification task: predicting the Rakuten product category (`prdtypecode`) for catalog items from product **text** and product **images**.
+Multimodal e-commerce classification pipeline for predicting the
+**Rakuten product category (`prdtypecode`)** using product **text**.
+Product **images** are available but not used, as they provided limited
+additional predictive power while significantly increasing computational
+requirements.
 
-The repository currently implements **two unimodal baseline pipelines**:
+The repository includes:
 
--   **Text classification** using Hugging Face Transformer models
--   **Image classification** using `torchvision` backbones
-
-Text inputs are derived from:
-
--   `designation`
--   `description`
-
-Image inputs are linked via:
-
--   `imageid`
--   `productid`
-
-> **Note**\
-> This repository is currently under active development. Monitoring and CI coverage are still evolving, while the text serving layer is now implemented with BentoML.
+-   Text classification with Hugging Face Transformers
+-   Experiment tracking with MLflow / DagsHub
+-   Reproducible pipelines with DVC
+-   Model serving via BentoML
+-   UI with Streamlit
+-   Containerized workflows using Docker Compose
+-   Workflow automation with Airflow
+-   Monitoring with Prometheus, Grafana, and Evidently
 
 ------------------------------------------------------------------------
 
-## Key Features
+# Project Goal
 
--   Config-driven experiments managed via YAML files in `configs/`
--   Text baseline built on Transformer encoders such as:
-    -   `bert-base-multilingual-cased`
-    -   `xlm-roberta-base`
-    -   `camembert-base`
--   Image baseline built on `torchvision` backbones such as:
-    -   `efficientnet_b0`
-    -   `resnet18`
--   Multiclass classification target: Rakuten `prdtypecode` across **27 classes**
--   Reproducible train/validation/test splits persisted as row IDs in `artifacts/splits/`
--   Random search modules for text and image hyperparameter tuning
+The objective is to classify Rakuten products into **27 product
+categories**.
 
-------------------------------------------------------------------------
+Input features:
 
-## Problem Statement
+-   product **designation**
+-   product **description**
 
-Given a product record, the goal is to assign the correct Rakuten category code. Specifically, the project aims to answer the following questions:
+Output:
 
--   Based on a product title and description, which category should this item belong to?
--   Based on a product image, which Rakuten class is most likely?
--   Which alternative classes remain plausible when the model is uncertain?
+-   predicted **prdtypecode**
+-   probability scores
+-   top-k predictions
 
 ------------------------------------------------------------------------
 
-## Data
+# Repository Structure
 
-The project follows the original Rakuten challenge structure, where feature data and target labels are provided separately.
+    rakuten-project/
 
-### 1. Text Inputs
+    artifacts/            # DVC artifacts (splits, models)
+    configs/              # experiment configurations
+    dags/                 # Airflow DAGs
+    docker/               # Docker & Compose setup
+    monitoring/           # Prometheus / Grafana / Evidently
 
-The text pipeline uses the following columns:
+    src/
+      data/
+      evaluation/
+      inference/
+      models/
+      pipeline/
+      serving/
+      training/
 
--   `designation`
--   `description`
--   `prdtypecode`
+    streamlit/            # UI
+    tests/
 
-According to the preprocessing configuration, the text pipeline:
-
--   optionally removes HTML
--   preserves original casing (`lowercase: false`)
--   combines `designation` and `description` into a single model input
--   inserts `[SEP]` as a field separator
--   tokenizes using the configured Hugging Face tokenizer
--   truncates and pads to `max_length = 128`
-
-### 2. Image Inputs
-
-The image pipeline uses the following columns:
-
--   `imageid`
--   `productid`
--   `prdtypecode`
-
-Image filenames follow this pattern:
-
-``` text
-image_<imageid>_product<productid>.jpg
-```
-
-According to the preprocessing configuration, images are:
-
--   converted to RGB
--   resized to `224 x 224`
--   optionally normalized (e.g. `zero_one`)
--   passed to the selected `torchvision` backbone
-
-### 3. Target
-
-Both pipelines predict the same target:
-
--   `prdtypecode` = Rakuten product category code
-
-The repository currently supports **27 target classes**, defined in `configs/label_encoding.json`.
+    Makefile
+    pyproject.toml
+    README.md
 
 ------------------------------------------------------------------------
 
-## Output
+# Environment Setup
 
-For each item, the inference pipeline is expected to produce:
-
--   predicted class index
--   predicted Rakuten category code
--   top-k ranked candidate classes
--   probability score for each candidate class
-
-------------------------------------------------------------------------
-
-## Evaluation Metrics
-
-The project reports the following metrics:
-
--   **Macro F1** (primary classification metric)
--   **Accuracy**
--   **Loss**
--   **Per-class F1**
--   **Confusion matrix**
--   **Latency**
--   **Throughput**
-
-------------------------------------------------------------------------
-
-## Repository Structure
-
-``` text
-rakuten-project-text/
-├── artifacts/
-│   └── splits/                  # Persisted train/val/test row IDs
-├── configs/                     # Training, preprocessing, evaluation, and search configs
-├── docker/                      # Docker scaffolding (currently empty)
-├── monitoring/                  # Monitoring scaffolding
-├── pipelines/
-│   └── dags/                    # Orchestration scaffolding
-├── src/
-│   ├── data/                    # Datasets and preprocessing
-│   ├── evaluation/              # Evaluation logic
-│   ├── inference/               # Inference utilities
-│   ├── models/                  # Model builders
-│   ├── pipeline/                # CLI entry points
-│   ├── serving/                 # API scaffolding
-│   └── training/                # Training and hyperparameter search
-├── tests/                       # Test scaffolding (currently empty)
-├── pyproject.toml               # Project metadata and dependencies
-├── requirements_image.txt
-└── README.md
-```
-
-------------------------------------------------------------------------
-
-## Getting Started
-
-### 1. Clone the repository
-
-``` bash
-git clone https://github.com/MLOps-E-Commerce-Product-Classification/rakuten-project.git
-cd rakuten-project
-```
-
-### 2. Create the environment
+Install dependencies:
 
 ``` bash
 uv lock
-
-```
-
-API only (no PyTorch)
-``` bash
-uv sync --extra api
-
-```
-
-Text pipeline
-``` bash
-uv sync --extra text
-
-```
-
-Image pipeline
-``` bash
-uv sync --extra image
-
-```
-
-Training (Image + Text)
-``` bash
-uv sync --extra training
-
-```
-
-Everything (Image + Text + API)
-``` bash
 uv sync --all-extras
-
 ```
 
-For BentoML packaging, vendor the Hugging Face text backbone locally before building the Bento:
-
-``` bash
-make prepare-bento-text-assets
-```
-
-### 3. Activate the environment
+Activate environment:
 
 ``` bash
 source .venv/bin/activate
@@ -212,499 +82,230 @@ source .venv/bin/activate
 
 ------------------------------------------------------------------------
 
-## Run Image Pipeline
+# Development Environment
 
-### 1. Requirements
-
-Install the image pipeline dependencies from:
-
-``` text
-requirements_image.txt
-```
-
-### 2. Training
+Start development stack:
 
 ``` bash
-python -m src.pipeline.image_pipeline --mode train
+make dev-up
 ```
 
-The number of samples used for training can be configured in:
-
-``` text
-configs/image_train_config.yaml
-```
-
-### 3. Hyperparameter Search
+Stop development services:
 
 ``` bash
-python -m src.pipeline.image_pipeline --mode random_search
+make dev-down
 ```
 
-### 4. Evaluation
+Restart development environment:
 
 ``` bash
-python -m src.pipeline.image_pipeline --mode evaluate
+make dev-restart
 ```
 
-### 5. Inference
+View logs:
 
 ``` bash
-python -m src.pipeline.image_pipeline --mode inference --image_path data/raw/images/image_train/image_1263597046_product_3804725264.jpg
+make dev-logs
 ```
 
 ------------------------------------------------------------------------
 
-## Text Training Pipeline
+# Infrastructure
 
-### 1. Running Training
-
-Start text model training with the following command:
+Start infrastructure services:
 
 ``` bash
-uv run python -m src.pipeline.text_pipeline --mode train
+make infra-up
 ```
 
-### 2. Configuration
+Stop infrastructure services:
 
-Training parameters and paths are configured in:
-
--   `configs/text_train_config.yaml` - training hyperparameters such as epochs, batch size, and learning rate
--   `configs/label_encoding.json` - label-to-index mapping
--   `artifacts/splits/` - directory for persisted train/val/test split ID files (auto-created or loaded)
-
-Adjust these files to customize training behavior. After training, the best model is saved to:
-
-``` text
-models/best_text_model.pt
+``` bash
+make infra-down
 ```
 
-Logs are saved in:
+View infrastructure logs:
 
-``` text
-logs/text_training.log
+``` bash
+make infra-logs
 ```
 
 ------------------------------------------------------------------------
 
-## To Do
+# Training
 
--   [ ] train the final image model via random search and save `best_model.pt`, `best_train_config.yaml`, and `random_search_results.csv` to Google Drive
--   [ ] dockerize the project
--   [ ] add unit tests
+Run training experiment:
+
+``` bash
+make train
+```
+
+Run finetuning:
+
+``` bash
+make finetune
+```
+
+View training logs:
+
+``` bash
+make train-logs
+```
 
 ------------------------------------------------------------------------
 
-## Limitations
+# Evaluation
 
--   tbd
-## MLOps Rakuten — Training Infrastructure
+Evaluate a trained model:
 
-## Prerequisites
-
-#### 1. Docker & Docker Compose
-
-The project runs inside Docker containers. Make sure Docker and Docker Compose are installed on your host system.
-
-Check installation:
-
-```bash
-docker --version
-docker compose version
+``` bash
+make evaluate MLFLOW_ID=<run_id>
 ```
 
-#### 2. NVIDIA Driver (only for GPU training)
+Optional parameters:
 
-If you want to run with GPU support, the NVIDIA driver must be installed on the **host machine**. CUDA itself is now provided through the Docker image when `DEVICE=cu121` is used.
+-   X_DATA: data/processed/val.csv
+-   Y_DATA: data/processed/val.csv
+-   WEIGHTS: models/best_text_model.pt
+-   ENCODING: configs/label_encoding.json
 
-Check if your driver is available:
+------------------------------------------------------------------------
 
-```bash
-nvidia-smi
+# Inference
+
+Single prediction:
+
+``` bash
+make inference TEXT="Jeu vidéo action PS4"
 ```
 
-If not installed:
+Batch prediction:
 
-##### Ubuntu/Debian
-
-```bash
-sudo apt-get install -y nvidia-driver-535
-sudo reboot
-```
-
-#### 3. NVIDIA Container Toolkit (only for GPU training)
-
-Allows Docker to access the GPU on the host.
-
-##### Add NVIDIA package repository
-
-```bash
-curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey |   sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-
-curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list |   sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' |   sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-```
-
-##### Install
-
-```bash
-sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
-```
-
-##### Restart Docker
-
-```bash
-sudo nvidia-ctk runtime configure --runtime=docker
-sudo systemctl restart docker
-```
-
-Verify GPU is accessible inside Docker:
-
-```bash
-docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
-```
-
-### Device Selection
-
-The Makefile supports different execution targets via `DEVICE`:
-
-```bash
-make train-text-build DEVICE=cpu
-make train-text-build DEVICE=cu121
-```
-
-- `DEVICE=cpu`: builds and runs the CPU image
-- `DEVICE=cu121`: builds and runs the CUDA 12.1 image inside Docker
-
-> CUDA is no longer expected to be installed manually on the host. For GPU runs, only the NVIDIA driver and NVIDIA Container Toolkit are required on the host system.
-
-### Environment Setup
-
-Create a `.env` file in the project root:
-
-```env
-DAGSHUB_USER_TOKEN=your_token_here
-MLFLOW_TRACKING_URI=https://dagshub.com/<USERNAME>/<REPO>.mlflow
-MLFLOW_TRACKING_USERNAME=your_dagshub_username
-MLFLOW_TRACKING_PASSWORD=your_dagshub_token
-```
-
-> ⚠️ Never commit `.env` to Git. It is already listed in `.gitignore`.
-
-### Makefile Commands
-
-#### Text Training
-
-- `make train-text-build [DEVICE=cpu|cu121]`: Build the training image
-- `make train-text-run [DEVICE=cpu|cu121]`: Commit config changes if needed and run training
-- `make train-text-rebuild [DEVICE=cpu|cu121]`: Build image and run training
-- `make train-text-stop`: Stop the training container
-- `make train-text-down`: Stop and remove containers
-- `make train-text-clean`: Stop containers and remove the training image
-- `make train-text-logs`: Follow live training logs
-
-#### When to use which command?
-
-- **Config changed** (e.g. learning rate, batch size):
-
-```bash
-make train-text-run DEVICE=cpu
-```
-
-or for GPU:
-
-```bash
-make train-text-run DEVICE=cu121
-```
-
-→ No rebuild needed. Config changes are committed automatically before the run.
-
-- **Code changed** (e.g. training pipeline, Docker dependencies, source files):
-
-```bash
-make train-text-rebuild DEVICE=cpu
-```
-
-or:
-
-```bash
-make train-text-rebuild DEVICE=cu121
-```
-
-→ Rebuilds the image and then starts training.
-
-> `make train-text-run` automatically commits changes in `configs/` before starting the run if there are uncommitted config changes.
-
-> `GIT_COMMIT`, `GIT_BRANCH`, and `DEVICE` are injected into the container runtime so experiment metadata stays aligned with the executed run.
-
-## DVC — Data & Model Versioning
-
-Data, models, and pipeline outputs are tracked with DVC.
-
-#### Initialize DVC
-
-```bash
-make dvc-init
-```
-
-#### Track raw data
-
-```bash
-make dvc-add-data
-```
-
-#### Pull data and artifacts
-
-```bash
-make dvc-pull
-```
-
-This will:
-- run `git pull`
-- run `uv run dvc pull`
-
-#### Reproduce the training pipeline with DVC
-
-```bash
-make dvc-repro DEVICE=cpu
-```
-
-or:
-
-```bash
-make dvc-repro DEVICE=cu121
-```
-
-What happens during `dvc-repro`:
-- config changes in `configs/` are committed automatically if needed
-- DVC checks whether dependencies changed
-- DVC executes the `train-text` stage if required
-- `dvc.lock` is updated and committed
-
-#### Push DVC artifacts
-
-```bash
-make dvc-push
-```
-
-This will:
-- push DVC artifacts to remote storage
-- push Git commits
-
-#### Full DVC run
-
-```bash
-make dvc-run DEVICE=cu121
-```
-
-This is equivalent to:
-- `make dvc-repro`
-- `make dvc-push`
-
-#### Compare metrics
-
-```bash
-make dvc-metrics
-```
-
-Shows current metrics and the difference to `HEAD~1`.
-
-### MLflow — Experiment Tracking
-
-Experiments are tracked automatically during training and pushed to DagsHub / MLflow.
-
-View experiments at:
-
-```text
-https://dagshub.com/<USERNAME>/<REPO>/experiments
-```
-
-Each run can log:
-- parameters (learning rate, batch size, epochs, ...)
-- metrics (accuracy, macro-f1, loss, ...)
-- Git commit hash and branch
-- config files and artifacts
-- runtime device information
-
-## Evaluation
-
-Evaluation is now supported via dedicated Make targets.
-
-Default paths:
-- `X_DATA=data/processed/val.csv`
-- `Y_DATA=data/processed/val.csv`
-- `WEIGHTS=models/best_text_model.pt`
-- `ENCODING=configs/label_encoding.json`
-
-#### Build evaluation image
-
-```bash
-make evaluate-build DEVICE=cpu
-```
-
-or:
-
-```bash
-make evaluate-build DEVICE=cu121
-```
-
-#### Run evaluation
-
-```bash
-make evaluate-run MLFLOW_ID=<your_run_id> DEVICE=cpu
-```
-
-Example with custom paths:
-
-```bash
-make evaluate-run   MLFLOW_ID=<your_run_id>   DEVICE=cu121   X_DATA=data/processed/val_features.csv   Y_DATA=data/processed/val_labels.csv   WEIGHTS=models/best_text_model.pt   ENCODING=configs/label_encoding.json
-```
-
-`MLFLOW_ID` is required. The Makefile will stop with an error if it is missing.
-
-## Inference
-
-Inference is available through separate targets.
-
-#### Build inference image
-
-```bash
-make inference-build
-```
-
-#### Run single-text inference
-
-```bash
-make inference-run TEXT="Jeu vidéo action PS4"
-```
-
-#### Run batch inference
-
-```bash
+``` bash
 make inference-batch
 ```
 
-#### Rebuild and run inference
+------------------------------------------------------------------------
 
-```bash
-make inference-rebuild
+# Model Promotion & BentoML
+
+Prepare Bento assets:
+
+``` bash
+make prepare-bento
 ```
 
-#### Clean inference image
+Promote best MLflow model:
 
-```bash
-make inference-clean
+``` bash
+make promote-model
 ```
 
-## Reproducibility
+Sync MLflow model to BentoML:
 
-Every training run is reproducible via the following anchors:
-
-- **Code**: Git commit hash (`GIT_COMMIT`)
-- **Branch**: Git branch (`GIT_BRANCH`)
-- **Config**: committed `configs/` state
-- **Device**: exported via `DEVICE`
-- **Data & Artifacts**: tracked through DVC
-
-To reproduce a run:
-
-```bash
-git checkout <commit-hash>
-make dvc-pull
-make train-text-run DEVICE=cpu
+``` bash
+make sync-bento
 ```
 
-or for GPU:
+Build Bento:
 
-```bash
-git checkout <commit-hash>
-make dvc-pull
-make train-text-run DEVICE=cu121
+``` bash
+make build-bento
 ```
 
+Containerize Bento service:
+
+``` bash
+make containerize-bento
+```
 
 ------------------------------------------------------------------------
 
-## BentoML Serving
+# Serving
 
-FastAPI is no longer the primary serving layer in this repository. The supported serving path follows the BentoML workflow from the course material more closely:
-
-1. prepare lightweight tokenizer/config assets
-2. register the trained PyTorch model in the BentoML Model Store
-3. serve a JWT-protected BentoML API
-4. build and containerize the Bento artifact
-
-Prepare assets and register the model in the BentoML Model Store:
+Start BentoML service:
 
 ``` bash
-make prepare-bento-text-assets
-make register-bento-text-model
+make serve
 ```
 
-This step requires a local `models/best_text_model.pt`. If the weight file is tracked via DVC, pull it before registration.
-
-Run the local BentoML service:
+Stop service:
 
 ``` bash
-make serve-bento-text
+make serve-stop
 ```
 
-`make serve-bento-text` now performs a preflight check and stops early with a clear error if `rakuten_text_classifier:latest` has not been registered in the local BentoML Model Store yet.
-
-Available endpoints:
-
-- `GET /health`
-- `POST /login`
-- `POST /predict`
-- `POST /predict_batch`
-- `GET /metrics` (enabled by BentoML by default)
-
-Get a JWT and call the protected prediction endpoint:
+View logs:
 
 ``` bash
-make token-bento-text
-make predict-bento-text
+make serve-logs
 ```
 
-Example request shapes:
+------------------------------------------------------------------------
 
-``` json
-{
-  "credentials": {
-    "username": "user123",
-    "password": "password123"
-  }
-}
-```
+# Production
 
-``` json
-{
-  "input_data": {
-    "designation": "robe femme",
-    "description": "bleu",
-    "top_k": 3
-  }
-}
-```
-
-Build and package the Bento through the supported Makefile path:
+Start production stack:
 
 ``` bash
-make build-bento-text
-make containerize-bento-text
+make prod-up
 ```
 
-Start the packaged Bento container through Docker Compose:
+Stop production services:
 
 ``` bash
-make docker-bento-up
+make prod-down
 ```
 
-`make build-bento-text` first prepares the local Hugging Face tokenizer assets, then registers `rakuten_text_classifier:latest` in the BentoML Model Store, and finally builds the Bento. The Bento itself references the registered model via the `models:` section in `bentofile.yaml` instead of bundling the raw `.pt` file directly.
+View logs:
 
-Dependency note: `pyproject.toml` and `bentofile.yaml` are the authoritative sources for BentoML serving and packaging. `requirements.txt` is a broader exported development snapshot and is not used by the Bento build itself.
-
-## Pre-commit setup
-
+``` bash
+make prod-logs
 ```
-uv sync
-uv run pre-commit install
+
+Restart production:
+
+``` bash
+make prod-restart
+```
+
+------------------------------------------------------------------------
+
+# Monitoring
+
+Show monitoring endpoints:
+
+``` bash
+make monitoring
+```
+
+Services:
+
+-   Grafana → http://localhost:3001
+-   Prometheus → http://localhost:9090
+
+------------------------------------------------------------------------
+
+# Utilities
+
+Check running containers:
+
+``` bash
+make status
+```
+
+Clean Docker resources:
+
+``` bash
+make clean
+```
+
+------------------------------------------------------------------------
+
+# Help
+
+Show all commands:
+
+``` bash
+make help
 ```
