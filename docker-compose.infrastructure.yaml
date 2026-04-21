@@ -1,0 +1,119 @@
+version: "3.9"
+
+networks:
+  mlops-network:
+    name: mlops-rakuten
+
+volumes:
+  postgres-db-volume:
+  prometheus-data:
+  grafana-data:
+
+services:
+
+  # ============================================================
+  # POSTGRES (Airflow metadata DB)
+  # ============================================================
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    networks:
+      - mlops-network
+
+
+  # ============================================================
+  # REDIS (Airflow broker)
+  # ============================================================
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    networks:
+      - mlops-network
+
+
+  # ============================================================
+  # AIRFLOW
+  # ============================================================
+  airflow-webserver:
+    image: apache/airflow:2.8.1
+    command: webserver
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    networks:
+      - mlops-network
+
+  airflow-scheduler:
+    image: apache/airflow:2.8.1
+    command: scheduler
+    env_file:
+      - .env
+    networks:
+      - mlops-network
+
+  airflow-worker:
+    image: apache/airflow:2.8.1
+    command: celery worker
+    env_file:
+      - .env
+    networks:
+      - mlops-network
+
+  airflow-init:
+    image: apache/airflow:2.8.1
+    env_file:
+      - .env
+    command: version
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      _AIRFLOW_DB_UPGRADE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: airflow
+      _AIRFLOW_WWW_USER_PASSWORD: airflow
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - mlops-network
+
+  flower:
+    image: apache/airflow:2.8.1
+    command: celery flower
+    env_file:
+      - .env
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    networks:
+      - mlops-network
+
+
+  # ============================================================
+  # MONITORING
+  # ============================================================
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - mlops-network
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - mlops-network

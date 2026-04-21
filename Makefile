@@ -9,8 +9,6 @@ TEXT ?= "Jeu vidéo action PS4"
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
 
-BASE_URL ?= http://127.0.0.1:$(PORT)
-
 MLFLOW_MODEL_NAME ?= text-classifier
 MLFLOW_ALIAS ?= production
 
@@ -23,76 +21,88 @@ export DEVICE
 export GIT_BRANCH
 export GIT_COMMIT
 
-# ============================================================
-# Compose files (SIMPLIFIED)
-# ============================================================
-
-COMPOSE_DEV_FULL = docker compose -f docker/compose/docker-compose.dev.yaml
-COMPOSE_PROD_FULL = docker compose -f docker/compose/docker-compose.prod.yaml
-
 
 # ============================================================
-# Development Environment
+# Compose files (3-LAYER ARCHITECTURE)
 # ============================================================
 
-.PHONY: dev-up
-dev-up:
-	$(COMPOSE_DEV_FULL) up -d --build
+COMPOSE_BASE = docker compose
+INFRA = -f docker-compose.infrastructure.yaml
+DEV = -f docker-compose.dev.yaml
+PROD = -f docker-compose.prod.yaml
 
-.PHONY: dev-down
-dev-down:
-	$(COMPOSE_DEV_FULL) down
-
-.PHONY: dev-restart
-dev-restart:
-	$(COMPOSE_DEV_FULL) down
-	$(COMPOSE_DEV_FULL) up -d --build
-
-.PHONY: dev-logs
-dev-logs:
-	$(COMPOSE_DEV_FULL) logs -f
+# Combined stacks
+DEV_STACK = $(COMPOSE_BASE) $(INFRA) $(DEV)
+PROD_STACK = $(COMPOSE_BASE) $(INFRA) $(PROD)
 
 
 # ============================================================
-# Infrastructure (now part of dev compose)
+# INFRASTRUCTURE LAYER
 # ============================================================
 
 .PHONY: infra-up
 infra-up:
-	$(COMPOSE_DEV_FULL) up -d postgres redis prometheus grafana
+	$(COMPOSE_BASE) $(INFRA) up -d
 
 .PHONY: infra-down
 infra-down:
-	$(COMPOSE_DEV_FULL) stop postgres redis prometheus grafana
+	$(COMPOSE_BASE) $(INFRA) down
 
 .PHONY: infra-logs
 infra-logs:
-	$(COMPOSE_DEV_FULL) logs -f postgres redis prometheus grafana
+	$(COMPOSE_BASE) $(INFRA) logs -f
+
+.PHONY: infra-restart
+infra-restart:
+	$(COMPOSE_BASE) $(INFRA) down
+	$(COMPOSE_BASE) $(INFRA) up -d
 
 
 # ============================================================
-# Training
+# DEV ENVIRONMENT (infra + dev overrides + builds)
+# ============================================================
+
+.PHONY: dev-up
+dev-up:
+	$(DEV_STACK) up -d --build
+
+.PHONY: dev-down
+dev-down:
+	$(DEV_STACK) down
+
+.PHONY: dev-restart
+dev-restart:
+	$(DEV_STACK) down
+	$(DEV_STACK) up -d --build
+
+.PHONY: dev-logs
+dev-logs:
+	$(DEV_STACK) logs -f
+
+
+# ============================================================
+# TRAINING (DEV only)
 # ============================================================
 
 .PHONY: train
 train:
 	git add src/ configs/ || true
 	git commit -m "exp: training run $(shell date '+%Y-%m-%d %H:%M')" || true
-	$(COMPOSE_DEV_FULL) run --rm train-text
+	$(DEV_STACK) run --rm train-text
 
 .PHONY: finetune
 finetune:
 	git add src/ configs/ || true
 	git commit -m "exp: finetuning run $(shell date '+%Y-%m-%d %H:%M')" || true
-	$(COMPOSE_DEV_FULL) run --rm finetune-text
+	$(DEV_STACK) run --rm finetune-text
 
 .PHONY: train-logs
 train-logs:
-	$(COMPOSE_DEV_FULL) logs -f train-text
+	$(DEV_STACK) logs -f train-text
 
 
 # ============================================================
-# Evaluation
+# EVALUATION
 # ============================================================
 
 check_defined = \
@@ -106,7 +116,7 @@ ENCODING ?= configs/label_encoding.json
 .PHONY: evaluate
 evaluate:
 	$(call check_defined,MLFLOW_ID)
-	$(COMPOSE_DEV_FULL) run --rm evaluate-text \
+	$(DEV_STACK) run --rm evaluate-text \
 	--mlflow_run_id $(MLFLOW_ID) \
 	--x_data_csv_path $(X_DATA) \
 	--y_data_csv_path $(Y_DATA) \
@@ -115,20 +125,32 @@ evaluate:
 
 
 # ============================================================
-# Inference (DEV only if needed)
+# SERVING (DEV)
 # ============================================================
+
+.PHONY: serve
+serve:
+	$(DEV_STACK) up -d bentoml
+
+.PHONY: serve-stop
+serve-stop:
+	$(DEV_STACK) stop bentoml
+
+.PHONY: serve-logs
+serve-logs:
+	$(DEV_STACK) logs -f bentoml
 
 .PHONY: inference
 inference:
-	$(COMPOSE_DEV_FULL) run --rm bentoml --text $(TEXT)
+	$(DEV_STACK) run --rm bentoml --text $(TEXT)
 
 .PHONY: inference-batch
 inference-batch:
-	$(COMPOSE_DEV_FULL) run --rm bentoml --texts "T-shirt" "Console" "Livre"
+	$(DEV_STACK) run --rm bentoml --texts "T-shirt" "Console" "Livre"
 
 
 # ============================================================
-# BentoML
+# BENTO / ML OPS
 # ============================================================
 
 .PHONY: prepare-bento
@@ -160,47 +182,30 @@ containerize-bento: build-bento
 
 
 # ============================================================
-# Serving
-# ============================================================
-
-.PHONY: serve
-serve:
-	$(COMPOSE_DEV_FULL) up -d bentoml
-
-.PHONY: serve-stop
-serve-stop:
-	$(COMPOSE_DEV_FULL) stop bentoml
-
-.PHONY: serve-logs
-serve-logs:
-	$(COMPOSE_DEV_FULL) logs -f bentoml
-
-
-# ============================================================
-# Production
+# PRODUCTION (infra + prod images)
 # ============================================================
 
 .PHONY: prod-up
 prod-up:
-	$(COMPOSE_PROD_FULL) pull
-	$(COMPOSE_PROD_FULL) up -d
+	$(PROD_STACK) pull
+	$(PROD_STACK) up -d
 
 .PHONY: prod-down
 prod-down:
-	$(COMPOSE_PROD_FULL) down
-
-.PHONY: prod-logs
-prod-logs:
-	$(COMPOSE_PROD_FULL) logs -f
+	$(PROD_STACK) down
 
 .PHONY: prod-restart
 prod-restart:
-	$(COMPOSE_PROD_FULL) down
-	$(COMPOSE_PROD_FULL) up -d
+	$(PROD_STACK) down
+	$(PROD_STACK) up -d
+
+.PHONY: prod-logs
+prod-logs:
+	$(PROD_STACK) logs -f
 
 
 # ============================================================
-# Monitoring
+# MONITORING
 # ============================================================
 
 .PHONY: monitoring
@@ -210,7 +215,7 @@ monitoring:
 
 
 # ============================================================
-# Utilities
+# UTILITIES
 # ============================================================
 
 .PHONY: status
@@ -223,13 +228,17 @@ clean:
 
 
 # ============================================================
-# Help
+# HELP
 # ============================================================
 
 .PHONY: help
 help:
 	@echo ""
 	@echo "Rakuten MLOps Makefile"
+	@echo ""
+	@echo "Infrastructure:"
+	@echo "  make infra-up"
+	@echo "  make infra-down"
 	@echo ""
 	@echo "Development:"
 	@echo "  make dev-up"
@@ -248,4 +257,3 @@ help:
 	@echo "Production:"
 	@echo "  make prod-up"
 	@echo "  make prod-down"
-	@echo ""
