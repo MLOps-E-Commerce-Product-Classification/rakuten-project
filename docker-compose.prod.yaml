@@ -9,6 +9,9 @@ services:
   evaluate-text:
     image: ${DOCKER_USERNAME}/evaluate-text:latest
 
+  inference:
+    image: ${DOCKER_USERNAME}/inference:latest
+
   bentoml:
     image: ${DOCKER_USERNAME}/rakuten-text-service:latest
 

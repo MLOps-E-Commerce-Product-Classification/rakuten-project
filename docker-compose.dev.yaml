@@ -15,6 +15,11 @@ services:
       context: .
       dockerfile: docker/Dockerfile.evaluate-text
 
+  inference:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.inference
+
   bentoml:
     build:
       context: .
