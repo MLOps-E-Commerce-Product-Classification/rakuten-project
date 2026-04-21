@@ -17,7 +17,6 @@ MLFLOW_ALIAS ?= production
 PROMOTION_METRIC ?= eval_macro_f1
 PROMOTION_MARGIN ?= 0.0
 
-BENTO_SERVICE ?= src.serving.bento_service:TextBentoService
 BENTO_MODEL_NAME ?= text-classifier
 
 export DEVICE
@@ -25,18 +24,12 @@ export GIT_BRANCH
 export GIT_COMMIT
 
 # ============================================================
-# Compose files
+# Compose files (SIMPLIFIED)
 # ============================================================
 
-COMPOSE_BASE = -f docker/compose/docker-compose.base.yaml
-COMPOSE_INFRA = -f docker/compose/docker-compose.infrastructure.yaml
-COMPOSE_ML = -f docker/compose/docker-compose.ml-services.yaml
-COMPOSE_UI = -f docker/compose/docker-compose.ui.yaml
-COMPOSE_DEV = -f docker/compose/docker-compose.dev.yaml
-COMPOSE_PROD = -f docker/compose/docker-compose.prod.yaml
+COMPOSE_DEV_FULL = docker compose -f docker/compose/docker-compose.dev.yaml
+COMPOSE_PROD_FULL = docker compose -f docker/compose/docker-compose.prod.yaml
 
-COMPOSE_DEV_FULL = docker compose $(COMPOSE_BASE) $(COMPOSE_INFRA) $(COMPOSE_ML) $(COMPOSE_UI) $(COMPOSE_DEV)
-COMPOSE_PROD_FULL = docker compose $(COMPOSE_BASE) $(COMPOSE_INFRA) $(COMPOSE_ML) $(COMPOSE_UI) $(COMPOSE_PROD)
 
 # ============================================================
 # Development Environment
@@ -59,21 +52,23 @@ dev-restart:
 dev-logs:
 	$(COMPOSE_DEV_FULL) logs -f
 
+
 # ============================================================
-# Infrastructure
+# Infrastructure (now part of dev compose)
 # ============================================================
 
 .PHONY: infra-up
 infra-up:
-	docker compose $(COMPOSE_BASE) $(COMPOSE_INFRA) up -d
+	$(COMPOSE_DEV_FULL) up -d postgres redis prometheus grafana
 
 .PHONY: infra-down
 infra-down:
-	docker compose $(COMPOSE_BASE) $(COMPOSE_INFRA) down
+	$(COMPOSE_DEV_FULL) stop postgres redis prometheus grafana
 
 .PHONY: infra-logs
 infra-logs:
-	docker compose $(COMPOSE_BASE) $(COMPOSE_INFRA) logs -f
+	$(COMPOSE_DEV_FULL) logs -f postgres redis prometheus grafana
+
 
 # ============================================================
 # Training
@@ -94,6 +89,7 @@ finetune:
 .PHONY: train-logs
 train-logs:
 	$(COMPOSE_DEV_FULL) logs -f train-text
+
 
 # ============================================================
 # Evaluation
@@ -117,17 +113,19 @@ evaluate:
 	--model_weights_path $(WEIGHTS) \
 	--label_encoding_path $(ENCODING)
 
+
 # ============================================================
-# Inference
+# Inference (DEV only if needed)
 # ============================================================
 
 .PHONY: inference
 inference:
-	$(COMPOSE_DEV_FULL) run --rm inference --text $(TEXT)
+	$(COMPOSE_DEV_FULL) run --rm bentoml --text $(TEXT)
 
 .PHONY: inference-batch
 inference-batch:
-	$(COMPOSE_DEV_FULL) run --rm inference --texts "T-shirt" "Console" "Livre"
+	$(COMPOSE_DEV_FULL) run --rm bentoml --texts "T-shirt" "Console" "Livre"
+
 
 # ============================================================
 # BentoML
@@ -160,6 +158,7 @@ build-bento: sync-bento
 containerize-bento: build-bento
 	uv run bentoml containerize rakuten_text_service:latest
 
+
 # ============================================================
 # Serving
 # ============================================================
@@ -175,6 +174,7 @@ serve-stop:
 .PHONY: serve-logs
 serve-logs:
 	$(COMPOSE_DEV_FULL) logs -f bentoml
+
 
 # ============================================================
 # Production
@@ -198,6 +198,7 @@ prod-restart:
 	$(COMPOSE_PROD_FULL) down
 	$(COMPOSE_PROD_FULL) up -d
 
+
 # ============================================================
 # Monitoring
 # ============================================================
@@ -206,6 +207,7 @@ prod-restart:
 monitoring:
 	@echo "Grafana: http://localhost:3001"
 	@echo "Prometheus: http://localhost:9090"
+
 
 # ============================================================
 # Utilities
@@ -218,6 +220,7 @@ status:
 .PHONY: clean
 clean:
 	docker system prune -f
+
 
 # ============================================================
 # Help
@@ -232,9 +235,6 @@ help:
 	@echo "  make dev-up"
 	@echo "  make dev-down"
 	@echo ""
-	@echo "Infrastructure:"
-	@echo "  make infra-up"
-	@echo ""
 	@echo "Training:"
 	@echo "  make train"
 	@echo "  make finetune"
@@ -242,12 +242,10 @@ help:
 	@echo "Evaluation:"
 	@echo "  make evaluate MLFLOW_ID=<id>"
 	@echo ""
-	@echo "Inference:"
-	@echo "  make inference"
-	@echo ""
-	@echo "Serving (BentoML Inference API):"
+	@echo "Serving:"
 	@echo "  make serve"
 	@echo ""
 	@echo "Production:"
 	@echo "  make prod-up"
+	@echo "  make prod-down"
 	@echo ""

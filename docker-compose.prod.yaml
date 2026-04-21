@@ -1,19 +1,93 @@
+version: "3.9"
+
+networks:
+  mlops-network:
+    name: mlops-rakuten
+
+volumes:
+  dvc-cache:
+
 services:
 
+  # ============================================================
+  # TRAINING (NO BUILD, NO GIT MOUNT)
+  # ============================================================
   train-text:
     image: ${DOCKER_USERNAME}/train-text:latest
+
+    env_file:
+      - .env
+
+    environment:
+      DEVICE: ${DEVICE:-cpu}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      GIT_BRANCH: ${GIT_BRANCH:-unknown}
+
+    networks:
+      - mlops-network
+
 
   finetune-text:
     image: ${DOCKER_USERNAME}/train-text:latest
 
+    env_file:
+      - .env
+
+    environment:
+      FINETUNE_MODE: "true"
+      DEVICE: ${DEVICE:-cpu}
+
+    networks:
+      - mlops-network
+
+
   evaluate-text:
     image: ${DOCKER_USERNAME}/evaluate-text:latest
 
-  inference:
-    image: ${DOCKER_USERNAME}/inference:latest
+    env_file:
+      - .env
 
+    networks:
+      - mlops-network
+
+
+  # ============================================================
+  # SERVING
+  # ============================================================
   bentoml:
     image: ${DOCKER_USERNAME}/rakuten-text-service:latest
 
+    ports:
+      - "3000:3000"
+
+    env_file:
+      - .env
+
+    restart: unless-stopped
+
+    networks:
+      - mlops-network
+
+
   streamlit:
     image: ${DOCKER_USERNAME}/rakuten-streamlit:latest
+
+    ports:
+      - "8502:8502"
+
+    restart: unless-stopped
+
+    networks:
+      - mlops-network
+
+
+  nginx:
+    image: nginx:latest
+
+    ports:
+      - "80:80"
+
+    restart: unless-stopped
+
+    networks:
+      - mlops-network

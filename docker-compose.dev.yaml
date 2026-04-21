@@ -1,31 +1,209 @@
+version: "3.9"
+
+networks:
+  mlops-network:
+    name: mlops-rakuten
+
+volumes:
+  dvc-cache:
+  postgres-db-volume:
+  prometheus-data:
+  grafana-data:
+
 services:
 
+  # ============================================================
+  # TRAINING
+  # ============================================================
   train-text:
     build:
       context: .
       dockerfile: docker/Dockerfile.train-text
+      args:
+        DEVICE: ${DEVICE:-cpu}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
 
+    image: rakuten-ml/train-text:${DEVICE:-cpu}
+
+    env_file:
+      - .env
+
+    environment:
+      DEVICE: ${DEVICE:-cpu}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      GIT_BRANCH: ${GIT_BRANCH:-unknown}
+
+    entrypoint: ["./entrypoint.sh"]
+
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./src:/app/src
+      - ./configs:/app/configs
+      - ./artifacts:/app/artifacts
+      - ./results:/app/results
+
+      # DVC + reproducibility
+      - ./.dvc:/app/.dvc
+      - ./dvc.lock:/app/dvc.lock
+      - ./dvc.yaml:/app/dvc.yaml
+      - ./params.yaml:/app/params.yaml
+      - ./.dvcignore:/app/.dvcignore
+
+      # Git (DEV ONLY)
+      - ./.git:/app/.git
+      - ~/.gitconfig:/home/appuser/.gitconfig:ro
+
+      # cache
+      - dvc-cache:/home/appuser/.cache/dvc
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    networks:
+      - mlops-network
+
+
+  # ============================================================
+  # FINETUNING (same image, different execution mode)
+  # ============================================================
   finetune-text:
     build:
       context: .
       dockerfile: docker/Dockerfile.train-text
+      args:
+        DEVICE: ${DEVICE:-cpu}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
 
+    image: rakuten-ml/train-text:${DEVICE:-cpu}
+
+    env_file:
+      - .env
+
+    environment:
+      DEVICE: ${DEVICE:-cpu}
+      FINETUNE_MODE: "true"
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      GIT_BRANCH: ${GIT_BRANCH:-unknown}
+
+    entrypoint: ["./entrypoint_finetune.sh"]
+
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./src:/app/src
+      - ./configs:/app/configs
+      - ./artifacts:/app/artifacts
+      - ./results:/app/results
+
+      - ./.dvc:/app/.dvc
+      - ./dvc.lock:/app/dvc.lock
+      - ./dvc.yaml:/app/dvc.yaml
+      - ./params.yaml:/app/params.yaml
+      - ./.dvcignore:/app/.dvcignore
+
+      - ./.git:/app/.git
+      - ~/.gitconfig:/home/appuser/.gitconfig:ro
+
+      - dvc-cache:/home/appuser/.cache/dvc
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    networks:
+      - mlops-network
+
+
+  # ============================================================
+  # EVALUATION
+  # ============================================================
   evaluate-text:
     build:
       context: .
       dockerfile: docker/Dockerfile.evaluate-text
 
-  inference:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.inference
+    image: rakuten-ml/evaluate-text:latest
 
+    env_file:
+      - .env
+
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./configs:/app/configs
+      - ./results:/app/results
+
+      - ./.git:/app/.git
+      - ./dvc.lock:/app/dvc.lock
+      - ./params.yaml:/app/params.yaml
+
+    networks:
+      - mlops-network
+
+
+  # ============================================================
+  # SERVING
+  # ============================================================
   bentoml:
     build:
       context: .
       dockerfile: docker/Dockerfile.inference
 
+    image: rakuten-ml/rakuten-text-service:latest
+
+    ports:
+      - "3000:3000"
+
+    env_file:
+      - .env
+
+    networks:
+      - mlops-network
+
+    restart: unless-stopped
+
+
   streamlit:
     build:
       context: .
       dockerfile: docker/Dockerfile.streamlit
+
+    image: rakuten-ml/rakuten-streamlit:latest
+
+    ports:
+      - "8502:8502"
+
+    volumes:
+      - ./data:/app/data
+
+    networks:
+      - mlops-network
+
+    restart: unless-stopped
+
+
+  nginx:
+    image: nginx:latest
+
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+
+    networks:
+      - mlops-network
+
+    restart: unless-stopped
