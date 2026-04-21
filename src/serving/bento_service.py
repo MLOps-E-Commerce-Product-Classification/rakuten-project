@@ -74,7 +74,7 @@ def _check_model_ready() -> bool:
     return True
 
 
-@bentoml.service(name="rakuten_text_model_service")
+@bentoml.service(name="rakuten-text-model-service")
 class TextModelService:
     def __init__(self) -> None:
         self._loaded = False
@@ -156,7 +156,7 @@ class TextModelService:
         return self._predict_rows(items)
 
 
-@bentoml.service(name="rakuten_text_service")
+@bentoml.service(name="rakuten-text-service")
 class TextBentoService:
     model_service = bentoml.depends(TextModelService)
 
