@@ -31,9 +31,9 @@ def test_obsolete_source_serving_dockerfile_removed():
 
 def test_makefile_syncs_model_before_building_bento():
     makefile = Path("Makefile").read_text()
-    assert "build-bento-text: sync-bento-text-model" in makefile
-    assert "promote-mlflow-text-model:" in makefile
-    assert "sync-bento-text-model:" in makefile
+    assert "build-bento: sync-bento" in makefile
+    assert "promote-model:" in makefile
+    assert "sync-bento:" in makefile
 
 
 def test_backbone_vendoring_is_restricted_to_lightweight_assets():
