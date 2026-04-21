@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main"]
+    branches: [ "main", "restructuring"]
   pull_request:
     branches: [ "main"]
 
@@ -36,7 +36,7 @@ jobs:
       - name: Run tests
         run: |
           export MPLBACKEND=Agg
-          uv run pytest tests/
+          uv run pytest -vv --disable-warnings
 
 
   build:
