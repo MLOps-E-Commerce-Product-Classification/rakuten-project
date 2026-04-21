@@ -34,6 +34,7 @@ services:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 5s
       retries: 5
+    restart: always
 
   redis:
     image: redis:7
@@ -41,20 +42,25 @@ services:
       - "6379:6379"
     networks:
       - mlops-network
+    restart: always
+
 
   airflow-webserver:
     <<: *airflow-common
     command: webserver
     ports:
       - "8080:8080"
+    restart: always
 
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
+    restart: always
 
   airflow-worker:
     <<: *airflow-common
     command: celery worker
+    restart: always
 
   airflow-init:
     <<: *airflow-common
@@ -65,6 +71,7 @@ services:
     command: celery flower
     ports:
       - "5555:5555"
+    restart: always
 
   prometheus:
     image: prom/prometheus
@@ -75,6 +82,7 @@ services:
       - "9090:9090"
     networks:
       - mlops-network
+    restart: always
 
   grafana:
     image: grafana/grafana
@@ -84,3 +92,4 @@ services:
       - grafana-data:/var/lib/grafana
     networks:
       - mlops-network
+    restart: always
