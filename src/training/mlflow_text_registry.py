@@ -36,9 +36,13 @@ def register_text_model_in_mlflow(
         import mlflow as mlflow_module
 
     active_run = mlflow_module.active_run()
-    resolved_run_id = run_id or (active_run.info.run_id if active_run is not None else None)
+    resolved_run_id = run_id or (
+        active_run.info.run_id if active_run is not None else None
+    )
     if not resolved_run_id:
-        raise RuntimeError("register_text_model_in_mlflow requires an active MLflow run or an explicit run_id.")
+        raise RuntimeError(
+            "register_text_model_in_mlflow requires an active MLflow run or an explicit run_id."
+        )
 
     client = client or make_mlflow_client(
         tracking_uri=tracking_uri,
@@ -48,9 +52,13 @@ def register_text_model_in_mlflow(
 
     train_config_path = Path(train_config_path)
     preprocessing_config_path = Path(preprocessing_config_path)
-    backbone_dir = Path(backbone_dir) if backbone_dir is not None else ensure_local_text_backbone(
-        train_config_path=train_config_path,
-        preprocessing_config_path=preprocessing_config_path,
+    backbone_dir = (
+        Path(backbone_dir)
+        if backbone_dir is not None
+        else ensure_local_text_backbone(
+            train_config_path=train_config_path,
+            preprocessing_config_path=preprocessing_config_path,
+        )
     )
 
     artifacts = {
@@ -61,13 +69,15 @@ def register_text_model_in_mlflow(
         "backbone": str(Path(backbone_dir).resolve()),
     }
 
-    input_example = pd.DataFrame([
-        {
-            "designation": "robe femme",
-            "description": "bleu",
-            "top_k": 3,
-        }
-    ])
+    input_example = pd.DataFrame(
+        [
+            {
+                "designation": "robe femme",
+                "description": "bleu",
+                "top_k": 3,
+            }
+        ]
+    )
 
     model_info = mlflow_module.pyfunc.log_model(
         artifact_path="text_classifier_model",
@@ -112,11 +122,15 @@ def register_text_model_in_mlflow(
 
     manifest = {
         "mlflow_model_name": registered_model_name,
-        "mlflow_model_uri": model_version_uri(registered_model_name, registered_model_version)
+        "mlflow_model_uri": model_version_uri(
+            registered_model_name, registered_model_version
+        )
         if registered_model_version is not None
         else None,
         "mlflow_run_id": resolved_run_id,
-        "mlflow_version": str(registered_model_version) if registered_model_version is not None else None,
+        "mlflow_version": str(registered_model_version)
+        if registered_model_version is not None
+        else None,
         "model_artifact_path": getattr(model_info, "model_uri", None),
         "validation_status": "pending",
     }

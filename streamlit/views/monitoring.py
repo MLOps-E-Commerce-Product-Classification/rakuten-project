@@ -48,6 +48,7 @@ def render():
     st.subheader("Backend Status")
     if st.button("Run Health Check"):
         from api_client import get_client
+
         client = get_client()
         result = client.health_check()
         if result.get("status") == "error":

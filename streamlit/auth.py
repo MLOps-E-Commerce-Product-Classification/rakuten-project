@@ -12,6 +12,7 @@ _PROJECT_ROOT = os.path.dirname(_HERE)
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv(os.path.join(_PROJECT_ROOT, ".env"), override=False)
 except ImportError:
     pass
@@ -23,7 +24,7 @@ def _default_passwords() -> dict[str, str]:
     Falls back to empty string — user must set a password via admin UI.
     """
     return {
-        "admin":     os.environ.get("STREAMLIT_ADMIN_PASSWORD", "").strip(),
+        "admin": os.environ.get("STREAMLIT_ADMIN_PASSWORD", "").strip(),
         "demo_user": os.environ.get("STREAMLIT_DEMO_PASSWORD", "").strip(),
     }
 

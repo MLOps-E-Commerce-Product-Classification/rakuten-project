@@ -29,9 +29,15 @@ def _write_csv_row(filepath: str, row: dict) -> None:
             writer.writerow(row)
 
 
-def _build_row(user: dict, designation: str, description: str,
-               top1_code: int, top1_prob: float,
-               selected_rank: int, selected_code: int) -> dict:
+def _build_row(
+    user: dict,
+    designation: str,
+    description: str,
+    top1_code: int,
+    top1_prob: float,
+    selected_rank: int,
+    selected_code: int,
+) -> dict:
     is_correction = selected_rank > 1
     escaped_des = designation.replace("'", "''")
     escaped_desc = description.replace("'", "''")
@@ -96,11 +102,13 @@ def render():
         if st.button("Start Batch Prediction", key="batch_start"):
             items = []
             for _, row in df.iterrows():
-                items.append({
-                    "designation": str(row["designation"]),
-                    "description": str(row.get("description", "")),
-                    "top_k": default_top_k,
-                })
+                items.append(
+                    {
+                        "designation": str(row["designation"]),
+                        "description": str(row.get("description", "")),
+                        "top_k": default_top_k,
+                    }
+                )
 
             try:
                 client = get_client()
@@ -111,8 +119,10 @@ def render():
                 all_results = []
 
                 for i in range(0, len(items), chunk_size):
-                    chunk = items[i:i + chunk_size]
-                    status_text.text(f"Processing {i + 1} to {min(i + chunk_size, len(items))} of {len(items)}...")
+                    chunk = items[i : i + chunk_size]
+                    status_text.text(
+                        f"Processing {i + 1} to {min(i + chunk_size, len(items))} of {len(items)}..."
+                    )
                     results = client.predict_batch(chunk)
                     if isinstance(results, list):
                         all_results.extend(results)
@@ -142,7 +152,9 @@ def render():
                 "Description": item["description"],
             }
             for j, pred in enumerate(top_k_preds):
-                row_data[f"Rank {j+1}"] = f"{pred.get('rakuten_code', '?')} ({pred.get('probability', 0):.2%})"
+                row_data[f"Rank {j + 1}"] = (
+                    f"{pred.get('rakuten_code', '?')} ({pred.get('probability', 0):.2%})"
+                )
             table_data.append(row_data)
 
         result_df = pd.DataFrame(table_data)
@@ -158,10 +170,10 @@ def render():
             for j, pred in enumerate(top_k_preds):
                 code = pred.get("rakuten_code", "?")
                 prob = pred.get("probability", 0)
-                options.append(f"Rank {j+1}: Code {code} ({prob:.2%})")
+                options.append(f"Rank {j + 1}: Code {code} ({prob:.2%})")
 
             sel = st.radio(
-                f"Row {i+1}: {item['designation'][:50]}",
+                f"Row {i + 1}: {item['designation'][:50]}",
                 range(len(options)),
                 format_func=lambda idx, opts=options: opts[idx],
                 key=f"batch_radio_{i}",
@@ -203,7 +215,9 @@ def render():
 
                 count_total += 1
 
-            st.success(f"{count_total} selections saved, {count_corrections} of which are corrections.")
+            st.success(
+                f"{count_total} selections saved, {count_corrections} of which are corrections."
+            )
 
         if result_df is not None:
             csv_buffer = io.StringIO()

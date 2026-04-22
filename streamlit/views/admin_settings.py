@@ -2,7 +2,7 @@
 
 import bcrypt
 import streamlit as st
-from auth import require_role, get_current_user
+from auth import require_role
 from settings_manager import load_config, save_config
 
 
@@ -20,33 +20,73 @@ def render():
         base_url = st.text_input("Base URL", value=api.get("base_url", ""))
         api_key = st.text_input("API Key", value=api.get("api_key", ""))
         nginx_user = st.text_input("Nginx User", value=api.get("nginx_user", ""))
-        nginx_pass = st.text_input("Nginx Password", value=api.get("nginx_pass", ""), type="password")
+        nginx_pass = st.text_input(
+            "Nginx Password", value=api.get("nginx_pass", ""), type="password"
+        )
         bento_user = st.text_input("Bento User", value=api.get("bento_user", ""))
-        bento_pass = st.text_input("Bento Password", value=api.get("bento_pass", ""), type="password")
-        timeout = st.number_input("Timeout (seconds)", value=api.get("timeout_seconds", 30), min_value=5, max_value=300)
+        bento_pass = st.text_input(
+            "Bento Password", value=api.get("bento_pass", ""), type="password"
+        )
+        timeout = st.number_input(
+            "Timeout (seconds)",
+            value=api.get("timeout_seconds", 30),
+            min_value=5,
+            max_value=300,
+        )
 
         st.subheader("Prediction Settings")
         pred = cfg.get("prediction", {})
-        default_top_k = st.number_input("Default Top-K", value=pred.get("default_top_k", 5), min_value=1, max_value=27)
-        max_top_k = st.number_input("Max Top-K", value=pred.get("max_top_k", 27), min_value=1, max_value=27)
-        batch_limit = st.number_input("Batch Limit", value=pred.get("batch_limit", 100), min_value=1, max_value=1000)
+        default_top_k = st.number_input(
+            "Default Top-K",
+            value=pred.get("default_top_k", 5),
+            min_value=1,
+            max_value=27,
+        )
+        max_top_k = st.number_input(
+            "Max Top-K", value=pred.get("max_top_k", 27), min_value=1, max_value=27
+        )
+        batch_limit = st.number_input(
+            "Batch Limit",
+            value=pred.get("batch_limit", 100),
+            min_value=1,
+            max_value=1000,
+        )
 
         st.subheader("Monitoring")
         mon = cfg.get("monitoring", {})
         grafana_url = st.text_input("Grafana URL", value=mon.get("grafana_url", ""))
-        prometheus_url = st.text_input("Prometheus URL", value=mon.get("prometheus_url", ""))
-        refresh_interval = st.number_input("Refresh Interval (seconds)", value=mon.get("refresh_interval_seconds", 30), min_value=5)
+        prometheus_url = st.text_input(
+            "Prometheus URL", value=mon.get("prometheus_url", "")
+        )
+        refresh_interval = st.number_input(
+            "Refresh Interval (seconds)",
+            value=mon.get("refresh_interval_seconds", 30),
+            min_value=5,
+        )
 
         st.subheader("App Settings")
         app = cfg.get("app", {})
         app_title = st.text_input("App Title", value=app.get("title", ""))
-        session_timeout = st.number_input("Session Timeout (minutes)", value=app.get("session_timeout_minutes", 60), min_value=5)
-        max_csv_mb = st.number_input("Max CSV Upload (MB)", value=app.get("max_csv_upload_mb", 10), min_value=1, max_value=100)
+        session_timeout = st.number_input(
+            "Session Timeout (minutes)",
+            value=app.get("session_timeout_minutes", 60),
+            min_value=5,
+        )
+        max_csv_mb = st.number_input(
+            "Max CSV Upload (MB)",
+            value=app.get("max_csv_upload_mb", 10),
+            min_value=1,
+            max_value=100,
+        )
 
         st.subheader("Paths")
         paths = cfg.get("paths", {})
-        corr_path = st.text_input("Corrections CSV", value=paths.get("corrections_csv", ""))
-        demo_path = st.text_input("Demo Selections CSV", value=paths.get("demo_selections_csv", ""))
+        corr_path = st.text_input(
+            "Corrections CSV", value=paths.get("corrections_csv", "")
+        )
+        demo_path = st.text_input(
+            "Demo Selections CSV", value=paths.get("demo_selections_csv", "")
+        )
         logs_path = st.text_input("Logs Path", value=paths.get("logs", ""))
 
         submitted = st.form_submit_button("Save Settings")
@@ -134,7 +174,9 @@ def render():
         elif new_uname in cfg.get("users", {}):
             st.error(f"User '{new_uname}' already exists.")
         else:
-            hashed = bcrypt.hashpw(new_upw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            hashed = bcrypt.hashpw(new_upw.encode("utf-8"), bcrypt.gensalt()).decode(
+                "utf-8"
+            )
             if "users" not in cfg:
                 cfg["users"] = {}
             cfg["users"][new_uname] = {

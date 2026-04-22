@@ -132,8 +132,12 @@ def test_register_text_model_in_mlflow_logs_pyfunc_and_manifest(tmp_path):
     backbone.mkdir()
 
     train_config.write_text("model:\n  name: dummy-backbone\n", encoding="utf-8")
-    preprocessing_config.write_text("preprocessing:\n  tokenizer_model: dummy-backbone\n", encoding="utf-8")
-    label_encoding.write_text('{"classes": ["100"], "code_to_idx": {"100": 0}}', encoding="utf-8")
+    preprocessing_config.write_text(
+        "preprocessing:\n  tokenizer_model: dummy-backbone\n", encoding="utf-8"
+    )
+    label_encoding.write_text(
+        '{"classes": ["100"], "code_to_idx": {"100": 0}}', encoding="utf-8"
+    )
     weights.write_bytes(b"fake-weights")
 
     manifest = register_text_model_in_mlflow(
@@ -157,13 +161,22 @@ def test_register_text_model_in_mlflow_logs_pyfunc_and_manifest(tmp_path):
     assert call["registered_model_name"] == "rakuten_text_classifier"
     assert Path(call["artifacts"]["weights"]) == weights.resolve()
     assert Path(call["artifacts"]["backbone"]) == backbone.resolve()
-    assert fake_client.model_version_tags[("rakuten_text_classifier", "12", "validation_status")] == "pending"
+    assert (
+        fake_client.model_version_tags[
+            ("rakuten_text_classifier", "12", "validation_status")
+        ]
+        == "pending"
+    )
 
 
 def test_promote_model_uses_metric_margin_and_alias_update():
     client = FakeMlflowClient()
-    candidate = SimpleNamespace(version="12", run_id="run-12", tags={"validation_status": "approved"})
-    champion = SimpleNamespace(version="11", run_id="run-11", tags={"validation_status": "approved"})
+    candidate = SimpleNamespace(
+        version="12", run_id="run-12", tags={"validation_status": "approved"}
+    )
+    champion = SimpleNamespace(
+        version="11", run_id="run-11", tags={"validation_status": "approved"}
+    )
     client.versions[("rakuten_text_classifier", "12")] = candidate
     client.versions[("rakuten_text_classifier", "11")] = champion
     client.aliases[("rakuten_text_classifier", "champion")] = "11"
@@ -215,7 +228,10 @@ def test_sync_mlflow_model_to_bento_is_idempotent_and_writes_manifest(tmp_path):
     assert first["updated"] is True
     assert second["updated"] is False
     assert first["bentoml_model_tag"] == second["bentoml_model_tag"]
-    assert bentoml_module.mlflow.import_calls[0][1] == "models:/rakuten_text_classifier@champion"
+    assert (
+        bentoml_module.mlflow.import_calls[0][1]
+        == "models:/rakuten_text_classifier@champion"
+    )
     manifest_payload = mb.read_json_file(manifest_path)
     assert manifest_payload["mlflow_version"] == "12"
     assert manifest_payload["validation_status"] == "approved"

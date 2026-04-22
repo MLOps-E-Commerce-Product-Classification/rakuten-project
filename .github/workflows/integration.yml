@@ -14,9 +14,21 @@ env:
 
 jobs:
 
+  precommit:
+    name: Run pre-commit checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+
   test:
     name: Run Pytest
     runs-on: ubuntu-latest
+    needs: precommit
 
     steps:
       - name: Checkout repository

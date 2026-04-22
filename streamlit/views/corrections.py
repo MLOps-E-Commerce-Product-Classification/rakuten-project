@@ -49,7 +49,9 @@ def render():
             st.info("No corrections available.")
 
     with tab2:
-        st.subheader("All Selections (Demo Selections)" + (" (all users)" if is_admin else ""))
+        st.subheader(
+            "All Selections (Demo Selections)" + (" (all users)" if is_admin else "")
+        )
         df_demo = _load_csv(demo_path, filter_user)
         if df_demo is not None:
             st.dataframe(df_demo, use_container_width=True)

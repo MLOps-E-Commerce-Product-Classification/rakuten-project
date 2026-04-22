@@ -28,9 +28,15 @@ def _write_csv_row(filepath: str, row: dict) -> None:
             writer.writerow(row)
 
 
-def _build_row(user: dict, designation: str, description: str,
-               top1_code: int, top1_prob: float,
-               selected_rank: int, selected_code: int) -> dict:
+def _build_row(
+    user: dict,
+    designation: str,
+    description: str,
+    top1_code: int,
+    top1_prob: float,
+    selected_rank: int,
+    selected_code: int,
+) -> dict:
     is_correction = selected_rank > 1
     escaped_des = designation.replace("'", "''")
     escaped_desc = description.replace("'", "''")
@@ -67,7 +73,9 @@ def render():
     with st.form("single_pred_form"):
         designation = st.text_input("Designation (required)")
         description = st.text_area("Description (optional)", value="")
-        top_k = st.number_input("Top-K", min_value=1, max_value=max_top_k, value=default_top_k)
+        top_k = st.number_input(
+            "Top-K", min_value=1, max_value=max_top_k, value=default_top_k
+        )
         submitted = st.form_submit_button("Run Prediction")
 
     if submitted:
@@ -77,7 +85,9 @@ def render():
         try:
             client = get_client()
             with st.spinner("Running prediction..."):
-                result = client.predict_single(designation.strip(), description.strip(), int(top_k))
+                result = client.predict_single(
+                    designation.strip(), description.strip(), int(top_k)
+                )
             st.session_state["single_result"] = result
             st.session_state["single_designation"] = designation.strip()
             st.session_state["single_description"] = description.strip()
@@ -119,9 +129,13 @@ def render():
             selected_code = sel_pred["rakuten_code"]
 
             row = _build_row(
-                user, designation, description,
-                top1["rakuten_code"], top1.get("probability", 0),
-                selected_rank, selected_code,
+                user,
+                designation,
+                description,
+                top1["rakuten_code"],
+                top1.get("probability", 0),
+                selected_rank,
+                selected_code,
             )
 
             demo_path = _csv_path("demo_selections_csv")
@@ -131,9 +145,7 @@ def render():
                 corr_path = _csv_path("corrections_csv")
                 _write_csv_row(corr_path, row)
 
-            st.success(
-                f"Selection saved: Code {selected_code} (Rank {selected_rank})"
-            )
+            st.success(f"Selection saved: Code {selected_code} (Rank {selected_rank})")
 
             for k in ["single_result", "single_designation", "single_description"]:
                 st.session_state.pop(k, None)
