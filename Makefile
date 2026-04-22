@@ -106,7 +106,10 @@ train:
 finetune:
 	git add src/ configs/ || true
 	git commit -m "exp: finetuning run $(shell date '+%Y-%m-%d %H:%M')" || true
-	$(DEV_STACK) run --rm finetune-text
+	DEVICE=$(DEVICE) \
+	GIT_COMMIT=`git rev-parse HEAD` \
+	GIT_BRANCH=`git rev-parse --abbrev-ref HEAD` \
+	$(DEV_STACK) run --profile finetune --rm finetune-text
 
 .PHONY: train-logs
 train-logs:
@@ -128,13 +131,12 @@ ENCODING ?= configs/label_encoding.json
 .PHONY: evaluate
 evaluate:
 	$(call check_defined,MLFLOW_ID)
-	$(DEV_STACK) run --rm evaluate-text \
+	$(DEV_STACK) --profile evaluate run --rm evaluate-text \
 	--mlflow_run_id $(MLFLOW_ID) \
 	--x_data_csv_path $(X_DATA) \
 	--y_data_csv_path $(Y_DATA) \
 	--model_weights_path $(WEIGHTS) \
 	--label_encoding_path $(ENCODING)
-
 
 # ============================================================
 # SERVING (DEV)

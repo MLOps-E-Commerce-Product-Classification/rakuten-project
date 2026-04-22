@@ -10,3 +10,12 @@
 - Probleme mit der aktuellen docker-compose.infrastructure.yaml. Airflow startet nicht richtig. Alte version genommen. Dort wichtig: AIRFLOW_CONN_FS_DEFAULT: 'fs://?path=%2F' in die env hinzuzufügen!
 - mismatch bei bentoml.yaml und pyproject! bentoml, wurde korrigiert!! pyproject.toml wurde bereinigt und image wurde entfernt
 - wichtig wenn raw/ daten sich geändert haben und noch nicht gepushed sind, dann schlägt der train-text-run fehl!
+- airflow permissions fehlten. Es wird ein setup script benötigt. 
+    - Permissionprobleme lösen (dirty): sudo chown -R 1000:0 ./data ./configs ; sudo chmod -R 775 ./data ./configs
+    - oben ist keine Lösung (Siehe lokal bei Eduard welche Ordner 50000 als ownder haben!)
+    - um docker auszuführen muss   group_add: -> "${DOCKER_GID}" hinzugefügt werden. siehe setup.sh datei 
+    - ganz wichtig: in der .env befindet sich die config für airflow DEVICE. Wir müssen airflow sagen mit welchen Device das retraining starten soll
+    - Airflow /app existiert im Airflow-Container aber Docker mountet vom HOST, nicht aus dem Container. Daher PROJECT_ROOT=. in .env
+    - siehe dags/retrain_new_data.py
+
+- eventuell ist die .env nicht ganz richtig, da ich ausversehen diese überschrieben habe (wenn alles läuft, dann kein Problem)
