@@ -78,9 +78,9 @@ stages:
       size: 152507972
       nfiles: 3
   preprocess-text-new:
-    cmd: uv run python -m src.pipeline.preprocess_text_pipeline
-      --x_data_csv_path data/raw/X_train_new.csv --y_data_csv_path
-      data/raw/Y_train_new.csv --output_dir data/processed_new --split_ids_dir
+    cmd: uv run python -m src.pipeline.preprocess_text_pipeline 
+      --x_data_csv_path data/raw/X_train_new.csv --y_data_csv_path 
+      data/raw/Y_train_new.csv --output_dir data/processed_new --split_ids_dir 
       artifacts/splits_new --force_new_split
     deps:
     - path: configs/label_encoding.json
@@ -133,14 +133,14 @@ stages:
       nfiles: 3
     - path: data/processed_new/
       hash: md5
-      md5: db9b6bb4465861c7ebb3bec988d87cbf.dir
-      size: 32904
+      md5: 836c157bfa7c8057a3a0275da486edd5.dir
+      size: 29460
       nfiles: 3
     - path: src/
       hash: md5
-      md5: 4652485ae4cdd8e45317f6d003a8d9a1.dir
-      size: 728868
-      nfiles: 123
+      md5: 7d4176c5b4787d2a531028b25f985599.dir
+      size: 734866
+      nfiles: 124
     params:
       configs/text_finetune_config.yaml:
         model:
@@ -158,5 +158,5 @@ stages:
     outs:
     - path: results/dvc_metrics_finetune.json
       hash: md5
-      md5: b7ebe877c24108a4c1cb41099ed1464a
+      md5: 013543157e90fd6061146715ead0c52d
       size: 112
