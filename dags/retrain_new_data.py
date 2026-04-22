@@ -12,7 +12,7 @@ from airflow.exceptions import AirflowSkipException
 from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.sensors.python import PythonSensor
-from docker.types import Mount
+from docker.types import Mount, DeviceRequest
 
 # ---------------------------------------------------------------------
 # Configuration
@@ -27,9 +27,22 @@ LABEL_ENCODING_PATH = Path("/app/configs/label_encoding.json")
 MIN_SAMPLES = 10
 
 # Dynamic Image Selection based on .env / environment
-DEVICE = os.getenv("DEVICE", "cpu")
+# DEVICE = os.getenv("DEVICE", "cpu")
+DEVICE = os.environ["DEVICE"]
 TRAINING_IMAGE = f"rakuten-ml/train-text:{DEVICE}"
 PROJECT_ROOT = os.getenv("PROJECT_ROOT")  # Needs to be absolute host path (from .env)
+print(f"DEBUG DEVICE={DEVICE}")
+print(f"DEBUG TRAINING_IMAGE={TRAINING_IMAGE}")
+print(f"DEBUG DEVICE={DEVICE}")
+print(f"DEBUG TRAINING_IMAGE={TRAINING_IMAGE}")
+print(f"DEBUG DEVICE={DEVICE}")
+print(f"DEBUG TRAINING_IMAGE={TRAINING_IMAGE}")
+print(f"DEBUG DEVICE={DEVICE}")
+print(f"DEBUG TRAINING_IMAGE={TRAINING_IMAGE}")
+print(f"DEBUG DEVICE={DEVICE}")
+print(f"DEBUG TRAINING_IMAGE={TRAINING_IMAGE}")
+print(f"DEBUG DEVICE={DEVICE}")
+print(f"DEBUG TRAINING_IMAGE={TRAINING_IMAGE}")
 
 
 def get_training_env():
@@ -165,6 +178,7 @@ with DAG(
             ),
         ],
         working_dir="/app",
+        device_requests=[DeviceRequest(count=-1, capabilities=[["gpu"]])],
         command=[
             "/bin/bash",
             "-lc",
@@ -191,6 +205,7 @@ with DAG(
         ],
         environment={
             **get_training_env(),
+            "GIT_TOKEN": os.getenv("GIT_TOKEN"),
             "GIT_AUTHOR_NAME": "Airflow MLOps",
             "GIT_AUTHOR_EMAIL": "mlops@rakuten.com",
             "GIT_COMMITTER_NAME": "Airflow MLOps",

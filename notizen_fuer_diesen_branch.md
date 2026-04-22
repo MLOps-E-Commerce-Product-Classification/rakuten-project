@@ -29,3 +29,9 @@
 
 ### Sonstiges
 - Die `.env` wurde eventuell versehentlich überschrieben. Falls das System stabil läuft, ist dies kein Problem.
+
+
+
+
+- Wichtig make dev-build und dev-up beiden mit DEVICE=cu121 starten, wenn auf GPU trainiert werden soll.
+- GIT_TOKEN wurde hinzugefügt damit airflow user aus dem airflow pushen kann (dvc/git/dagshub)

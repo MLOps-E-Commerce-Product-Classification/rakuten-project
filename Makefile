@@ -68,6 +68,7 @@ dev-build:
 		--build-arg DEVICE=$(DEVICE) \
 		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
 		--build-arg GIT_BRANCH=$(GIT_BRANCH)
+	$(MAKE) containerize-bento
 
 .PHONY: dev-up
 dev-up:
