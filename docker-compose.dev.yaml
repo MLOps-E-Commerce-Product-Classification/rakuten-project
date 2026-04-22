@@ -182,6 +182,10 @@ services:
     ports:
       - "8502:8502"
 
+    environment:
+      - STREAMLIT_ADMIN_PASSWORD=${STREAMLIT_ADMIN_PASSWORD}
+      - STREAMLIT_DEMO_PASSWORD=${STREAMLIT_DEMO_PASSWORD}
+
     volumes:
       - ./data:/app/data
 

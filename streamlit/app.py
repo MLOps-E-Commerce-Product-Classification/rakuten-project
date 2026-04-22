@@ -1,11 +1,5 @@
 """Main Streamlit application for Rakuten product classification."""
 
-import sys
-import os
-
-# Ensure the streamlit directory is on the path for imports
-sys.path.insert(0, os.path.dirname(__file__))
-
 import streamlit as st
 from auth import get_current_user, render_login_page, logout, ensure_password_hashes
 from settings_manager import load_config
@@ -71,19 +65,25 @@ page_module_name = pages[page_selection]
 
 if page_module_name == "single_prediction":
     from views.single_prediction import render
+
     render()
 elif page_module_name == "batch_prediction":
     from views.batch_prediction import render
+
     render()
 elif page_module_name == "corrections":
     from views.corrections import render
+
     render()
 elif page_module_name == "monitoring":
     from views.monitoring import render
+
     render()
 elif page_module_name == "admin_settings":
     from views.admin_settings import render
+
     render()
 elif page_module_name == "admin_tests":
     from views.admin_tests import render
+
     render()
