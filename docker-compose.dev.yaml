@@ -166,6 +166,11 @@ services:
     ports:
       - "3000:3000"
 
+    environment:
+    - BENTO_USER=${BENTO_USER}
+    - BENTO_PASS=${BENTO_PASS}
+    - BENTO_JWT_SECRET=${BENTO_JWT_SECRET}
+
     networks:
       - mlops-network
 
@@ -185,6 +190,10 @@ services:
     environment:
       - STREAMLIT_ADMIN_PASSWORD=${STREAMLIT_ADMIN_PASSWORD}
       - STREAMLIT_DEMO_PASSWORD=${STREAMLIT_DEMO_PASSWORD}
+      - STREAMLIT_BASE_URL=${STREAMLIT_BASE_URL}
+      - STREAMLIT_BENTO_USER=${STREAMLIT_BENTO_USER}
+      - STREAMLIT_BENTO_PASS=${STREAMLIT_BENTO_PASS}
+      - STREAMLIT_API_KEY=${STREAMLIT_API_KEY}
 
     volumes:
       - ./data:/app/data

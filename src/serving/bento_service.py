@@ -21,12 +21,44 @@ from src.serving.schemas import (
     TextPredictionResponse,
 )
 
-JWT_SECRET_KEY = "rakuten_text_service_secret_key_2026"
+JWT_SECRET_KEY = os.environ.get(
+    "BENTO_JWT_SECRET", "rakuten_text_service_secret_key_2026"
+)
 JWT_ALGORITHM = "HS256"
-USERS = {
-    "user123": "password123",
-    "user456": "password456",
-}
+
+
+def _load_users() -> dict[str, str]:
+    """Load users from environment variables.
+
+    Supports multiple users via:
+      BENTO_USER_1=username:password
+      BENTO_USER_2=username:password
+      ...
+    Or a single user via BENTO_USER / BENTO_PASS.
+    """
+    users: dict[str, str] = {}
+
+    # Single user via BENTO_USER / BENTO_PASS
+    single_user = os.environ.get("BENTO_USER", "").strip()
+    single_pass = os.environ.get("BENTO_PASS", "").strip()
+    if single_user and single_pass:
+        users[single_user] = single_pass
+
+    # Multiple users via BENTO_USER_1=user:pass, BENTO_USER_2=user:pass, ...
+    i = 1
+    while True:
+        entry = os.environ.get(f"BENTO_USER_{i}", "").strip()
+        if not entry:
+            break
+        if ":" in entry:
+            username, password = entry.split(":", 1)
+            users[username.strip()] = password.strip()
+        i += 1
+
+    return users
+
+
+USERS = _load_users()
 
 
 class JWTAuthMiddleware(BaseHTTPMiddleware):
