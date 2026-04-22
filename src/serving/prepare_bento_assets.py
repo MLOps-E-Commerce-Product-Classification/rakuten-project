@@ -48,7 +48,9 @@ def _model_name_from_configs(
     train_config = _load_yaml(Path(train_config_path))
     preprocessing_config = _load_yaml(Path(preprocessing_config_path))
     model_name = train_config.get("model", {}).get("name")
-    tokenizer_name = preprocessing_config.get("preprocessing", {}).get("tokenizer_model")
+    tokenizer_name = preprocessing_config.get("preprocessing", {}).get(
+        "tokenizer_model"
+    )
     if tokenizer_name and model_name and tokenizer_name != model_name:
         raise ValueError(
             f"Tokenizer/model mismatch for Bento packaging: {tokenizer_name!r} != {model_name!r}"
@@ -108,18 +110,29 @@ def ensure_local_text_backbone(
     )
 
     if not _validate_local_backbone_assets(output_dir):
-        missing_required = [name for name in REQUIRED_BACKBONE_FILES if not (output_dir / name).exists()]
-        has_tokenizer_assets = any((output_dir / name).exists() for name in TOKENIZER_ASSET_CANDIDATES)
+        missing_required = [
+            name for name in REQUIRED_BACKBONE_FILES if not (output_dir / name).exists()
+        ]
+        has_tokenizer_assets = any(
+            (output_dir / name).exists() for name in TOKENIZER_ASSET_CANDIDATES
+        )
         detail_parts = []
         if missing_required:
-            detail_parts.append("missing required files: " + ", ".join(missing_required))
+            detail_parts.append(
+                "missing required files: " + ", ".join(missing_required)
+            )
         if not has_tokenizer_assets:
             detail_parts.append(
-                "missing tokenizer asset; expected one of: " + ", ".join(TOKENIZER_ASSET_CANDIDATES)
+                "missing tokenizer asset; expected one of: "
+                + ", ".join(TOKENIZER_ASSET_CANDIDATES)
             )
         if not detail_parts:
-            detail_parts.append("downloaded assets could not be loaded via AutoConfig/AutoTokenizer")
-        raise FileNotFoundError("Backbone asset preparation failed: " + "; ".join(detail_parts))
+            detail_parts.append(
+                "downloaded assets could not be loaded via AutoConfig/AutoTokenizer"
+            )
+        raise FileNotFoundError(
+            "Backbone asset preparation failed: " + "; ".join(detail_parts)
+        )
 
     return output_dir
 

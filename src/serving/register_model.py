@@ -22,4 +22,3 @@ def register_text_model(
 if __name__ == "__main__":
     manifest = register_text_model()
     print(json.dumps(manifest, indent=2, sort_keys=True))
-

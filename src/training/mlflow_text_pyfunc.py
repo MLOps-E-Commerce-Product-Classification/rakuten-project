@@ -14,6 +14,7 @@ from src.models.text_classifier import build_text_model
 
 try:  # pragma: no cover - exercised in environments where mlflow is installed
     import mlflow
+
     _PythonModelBase = mlflow.pyfunc.PythonModel
 except ImportError:  # pragma: no cover - unit tests import this module without mlflow
     _PythonModelBase = object
@@ -22,7 +23,9 @@ except ImportError:  # pragma: no cover - unit tests import this module without 
 class TextClassifierPyFuncModel(_PythonModelBase):
     """MLflow pyfunc wrapper around the existing PyTorch + tokenizer inference stack."""
 
-    def load_context(self, context) -> None:  # pragma: no cover - covered via integration once mlflow exists
+    def load_context(
+        self, context
+    ) -> None:  # pragma: no cover - covered via integration once mlflow exists
         weights_path = Path(context.artifacts["weights"])
         train_config_path = Path(context.artifacts["train_config"])
         preprocessing_config_path = Path(context.artifacts["preprocessing_config"])
@@ -42,8 +45,12 @@ class TextClassifierPyFuncModel(_PythonModelBase):
             local_model_dir=backbone_path if backbone_path.exists() else None,
         )
 
-        model_name = train_config.get("model", {}).get("name", "bert-base-multilingual-cased")
-        model_name_or_path = str(backbone_path) if backbone_path.exists() else model_name
+        model_name = train_config.get("model", {}).get(
+            "name", "bert-base-multilingual-cased"
+        )
+        model_name_or_path = (
+            str(backbone_path) if backbone_path.exists() else model_name
+        )
         self.model = build_text_model(
             model_name=model_name_or_path,
             num_classes=len(label_encoding["classes"]),
@@ -55,7 +62,9 @@ class TextClassifierPyFuncModel(_PythonModelBase):
         self.model = self.model.to(self.device)
         self.model.eval()
 
-    def predict(self, context, model_input, params=None):  # pragma: no cover - covered in integration once mlflow exists
+    def predict(
+        self, context, model_input, params=None
+    ):  # pragma: no cover - covered in integration once mlflow exists
         if isinstance(model_input, pd.DataFrame):
             records = model_input.to_dict(orient="records")
         elif isinstance(model_input, dict):

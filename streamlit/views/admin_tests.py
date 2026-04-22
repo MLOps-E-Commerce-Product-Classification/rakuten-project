@@ -43,8 +43,10 @@ def render():
         return
 
     if not os.path.isdir(TESTS_DIR):
-        st.warning(f"Tests directory '{TESTS_DIR}' not found. "
-                   "Make sure the directory is available in the Docker container.")
+        st.warning(
+            f"Tests directory '{TESTS_DIR}' not found. "
+            "Make sure the directory is available in the Docker container."
+        )
         return
 
     test_files = _find_test_files(TESTS_DIR)

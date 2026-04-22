@@ -23,12 +23,13 @@ import yaml
 from filelock import FileLock
 
 # ── Locate project root (.env lives next to docker-compose.yml) ──────────────
-_HERE = os.path.dirname(os.path.abspath(__file__))          # …/streamlit/
-_PROJECT_ROOT = os.path.dirname(_HERE)                       # …/rakuten-project/
+_HERE = os.path.dirname(os.path.abspath(__file__))  # …/streamlit/
+_PROJECT_ROOT = os.path.dirname(_HERE)  # …/rakuten-project/
 
 # Load .env from project root (silent if missing)
 try:
     from dotenv import load_dotenv
+
     load_dotenv(os.path.join(_PROJECT_ROOT, ".env"), override=False)
 except ImportError:
     pass  # python-dotenv not installed — fall back to real env vars only
@@ -64,12 +65,12 @@ def load_config(force: bool = False) -> dict:
 
     # ── Overlay credentials from environment ─────────────────────────────────
     api = data.setdefault("api", {})
-    _env_override(api, "base_url",        "STREAMLIT_BASE_URL")
-    _env_override(api, "api_key",         "STREAMLIT_API_KEY")
-    _env_override(api, "nginx_user",      "STREAMLIT_NGINX_USER")
-    _env_override(api, "nginx_pass",      "STREAMLIT_NGINX_PASS")
-    _env_override(api, "bento_user",      "STREAMLIT_BENTO_USER")
-    _env_override(api, "bento_pass",      "STREAMLIT_BENTO_PASS")
+    _env_override(api, "base_url", "STREAMLIT_BASE_URL")
+    _env_override(api, "api_key", "STREAMLIT_API_KEY")
+    _env_override(api, "nginx_user", "STREAMLIT_NGINX_USER")
+    _env_override(api, "nginx_pass", "STREAMLIT_NGINX_PASS")
+    _env_override(api, "bento_user", "STREAMLIT_BENTO_USER")
+    _env_override(api, "bento_pass", "STREAMLIT_BENTO_PASS")
 
     _cache = data
     _cache_mtime = mtime
@@ -94,8 +95,10 @@ def save_config(data: dict) -> None:
     lock = FileLock(CONFIG_LOCK, timeout=5)
     with lock:
         with open(path, "w", encoding="utf-8") as f:
-            yaml.dump(safe, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-    _cache = data          # keep full (incl. env values) in memory cache
+            yaml.dump(
+                safe, f, default_flow_style=False, allow_unicode=True, sort_keys=False
+            )
+    _cache = data  # keep full (incl. env values) in memory cache
     try:
         _cache_mtime = os.path.getmtime(path)
     except OSError:
@@ -105,11 +108,12 @@ def save_config(data: dict) -> None:
 def _strip_env_credentials(data: dict) -> dict:
     """Return a copy of data with env-controlled credential fields cleared."""
     import copy
+
     safe = copy.deepcopy(data)
     api = safe.get("api", {})
     env_keys = {
-        "base_url":   "STREAMLIT_BASE_URL",
-        "api_key":    "STREAMLIT_API_KEY",
+        "base_url": "STREAMLIT_BASE_URL",
+        "api_key": "STREAMLIT_API_KEY",
         "nginx_user": "STREAMLIT_NGINX_USER",
         "nginx_pass": "STREAMLIT_NGINX_PASS",
         "bento_user": "STREAMLIT_BENTO_USER",
@@ -117,7 +121,7 @@ def _strip_env_credentials(data: dict) -> dict:
     }
     for key, env_var in env_keys.items():
         if os.environ.get(env_var, "").strip():
-            api[key] = ""   # clear in YAML — value comes from env
+            api[key] = ""  # clear in YAML — value comes from env
     return safe
 
 

@@ -43,7 +43,9 @@ def promote_model(
     champion_metric_name = None
     try:
         champion_version = get_model_version_by_alias(client, model_name, alias)
-        champion_metrics = load_run_metrics(client, getattr(champion_version, "run_id", None))
+        champion_metrics = load_run_metrics(
+            client, getattr(champion_version, "run_id", None)
+        )
         champion_metric_name, champion_metric_value = resolve_metric_value(
             champion_metrics,
             build_metric_candidates(metric_name),
@@ -58,7 +60,9 @@ def promote_model(
             current_champion_version=getattr(champion_version, "version", None),
         )
     else:
-        candidate = client.get_model_version(name=model_name, version=str(candidate_version))
+        candidate = client.get_model_version(
+            name=model_name, version=str(candidate_version)
+        )
 
     candidate_tags = extract_model_version_tags(candidate)
     if required_tag is not None:
@@ -71,7 +75,8 @@ def promote_model(
                 "mlflow_model_name": model_name,
                 "mlflow_alias": alias,
                 "candidate_version": str(candidate.version),
-                "champion_version": str(getattr(champion_version, 'version', '')) or None,
+                "champion_version": str(getattr(champion_version, "version", ""))
+                or None,
             }
             if output_path:
                 write_json_file(output_path, result)
@@ -88,7 +93,10 @@ def promote_model(
             f"{build_metric_candidates(metric_name)}"
         )
 
-    should_promote = champion_metric_value is None or candidate_metric_value >= champion_metric_value + float(min_improvement)
+    should_promote = (
+        champion_metric_value is None
+        or candidate_metric_value >= champion_metric_value + float(min_improvement)
+    )
     if should_promote:
         client.set_registered_model_alias(
             name=model_name,
@@ -118,16 +126,24 @@ def promote_model(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Promote a registered MLflow model version to the chosen alias.")
+    parser = argparse.ArgumentParser(
+        description="Promote a registered MLflow model version to the chosen alias."
+    )
     parser.add_argument("--model-name", default=DEFAULT_MLFLOW_MODEL_NAME)
     parser.add_argument("--alias", default=DEFAULT_MLFLOW_ALIAS)
     parser.add_argument("--candidate-version", default=None)
     parser.add_argument("--metric-name", default=DEFAULT_PROMOTION_METRIC)
     parser.add_argument("--min-improvement", type=float, default=0.0)
-    parser.add_argument("--required-tag", default=None, help="Optional gate like validation_status=approved")
+    parser.add_argument(
+        "--required-tag",
+        default=None,
+        help="Optional gate like validation_status=approved",
+    )
     parser.add_argument("--tracking-uri", default=None)
     parser.add_argument("--registry-uri", default=None)
-    parser.add_argument("--output-path", default="artifacts/mlflow_promotion_manifest.json")
+    parser.add_argument(
+        "--output-path", default="artifacts/mlflow_promotion_manifest.json"
+    )
     return parser
 
 

@@ -105,7 +105,9 @@ def test_run_train_mode_forwards_arguments_and_prints_summary(
         label_encoding = {"classes": [10, 20]}
         return history, label_encoding
 
-    monkeypatch.setattr("src.training.run_text_training.run_text_training", fake_run_text_training)
+    monkeypatch.setattr(
+        "src.training.run_text_training.run_text_training", fake_run_text_training
+    )
 
     pipeline.run_train_mode(base_args)
     output = capsys.readouterr().out
@@ -135,7 +137,10 @@ def test_run_evaluate_mode_forwards_arguments_and_prints_summary(
         captured.update(kwargs)
         return {"main_metric": "macro_f1", "main_metric_value": 0.61}
 
-    monkeypatch.setattr("src.evaluation.run_text_evaluation.run_text_evaluation", fake_run_text_evaluation)
+    monkeypatch.setattr(
+        "src.evaluation.run_text_evaluation.run_text_evaluation",
+        fake_run_text_evaluation,
+    )
 
     pipeline.run_evaluate_mode(base_args)
     output = capsys.readouterr().out
@@ -176,7 +181,9 @@ def test_run_inference_mode_forwards_single_text_and_prints_prediction(
         captured.update(kwargs)
         return {"predicted_rakuten_code": "100"}
 
-    monkeypatch.setattr("src.inference.run_text_inference.run_text_inference", fake_run_text_inference)
+    monkeypatch.setattr(
+        "src.inference.run_text_inference.run_text_inference", fake_run_text_inference
+    )
 
     pipeline.run_inference_mode(base_args)
     output = capsys.readouterr().out
@@ -207,7 +214,9 @@ def test_run_inference_mode_prefers_text_over_texts(
         captured.update(kwargs)
         return {"predicted_rakuten_code": "100"}
 
-    monkeypatch.setattr("src.inference.run_text_inference.run_text_inference", fake_run_text_inference)
+    monkeypatch.setattr(
+        "src.inference.run_text_inference.run_text_inference", fake_run_text_inference
+    )
 
     pipeline.run_inference_mode(base_args)
 
@@ -229,7 +238,9 @@ def test_run_inference_mode_forwards_multiple_texts_without_single_prediction_li
             {"predicted_rakuten_code": "200"},
         ]
 
-    monkeypatch.setattr("src.inference.run_text_inference.run_text_inference", fake_run_text_inference)
+    monkeypatch.setattr(
+        "src.inference.run_text_inference.run_text_inference", fake_run_text_inference
+    )
 
     pipeline.run_inference_mode(base_args)
     output = capsys.readouterr().out
@@ -266,7 +277,10 @@ def test_run_random_search_mode_forwards_arguments_and_prints_summary(
             },
         }
 
-    monkeypatch.setattr("src.training.text_random_search_hyperparameters.run_random_search", fake_run_random_search)
+    monkeypatch.setattr(
+        "src.training.text_random_search_hyperparameters.run_random_search",
+        fake_run_random_search,
+    )
 
     pipeline.run_random_search_mode(base_args)
     output = capsys.readouterr().out
@@ -299,7 +313,10 @@ def test_run_random_search_mode_handles_missing_best_trial(
     def fake_run_random_search(**kwargs):
         return {"best_score": 0.55, "best_trial": None}
 
-    monkeypatch.setattr("src.training.text_random_search_hyperparameters.run_random_search", fake_run_random_search)
+    monkeypatch.setattr(
+        "src.training.text_random_search_hyperparameters.run_random_search",
+        fake_run_random_search,
+    )
 
     pipeline.run_random_search_mode(base_args)
     output = capsys.readouterr().out

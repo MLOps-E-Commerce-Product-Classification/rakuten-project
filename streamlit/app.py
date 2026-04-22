@@ -71,19 +71,25 @@ page_module_name = pages[page_selection]
 
 if page_module_name == "single_prediction":
     from views.single_prediction import render
+
     render()
 elif page_module_name == "batch_prediction":
     from views.batch_prediction import render
+
     render()
 elif page_module_name == "corrections":
     from views.corrections import render
+
     render()
 elif page_module_name == "monitoring":
     from views.monitoring import render
+
     render()
 elif page_module_name == "admin_settings":
     from views.admin_settings import render
+
     render()
 elif page_module_name == "admin_tests":
     from views.admin_tests import render
+
     render()

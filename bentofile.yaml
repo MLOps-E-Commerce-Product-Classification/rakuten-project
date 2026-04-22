@@ -26,4 +26,3 @@ python:
     - "huggingface_hub>=0.23.0"
     - "PyJWT>=2.10.1"
     - "boto3"
-
