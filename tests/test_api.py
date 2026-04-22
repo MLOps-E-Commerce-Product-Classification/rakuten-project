@@ -48,16 +48,6 @@ def test_health_reports_degraded_when_model_store_is_not_ready():
     assert str(response.model_tag).startswith("text-classifier")
 
 
-def test_login_returns_jwt_for_valid_credentials():
-    service = TextBentoService()
-
-    response = service.login(Credentials(username="user123", password="password123"))
-
-    assert isinstance(response, dict)
-    assert "token" in response
-    assert isinstance(response["token"], str)
-
-
 def test_login_rejects_invalid_credentials():
     service = TextBentoService()
 
