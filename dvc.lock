@@ -93,11 +93,11 @@ stages:
       size: 216
     - path: data/raw/X_train_new.csv
       hash: md5
-      md5: a59ea3efc05d2003f018d0b7c00601ff
-      size: 10681
+      md5: 2985c3db94f5407c0c39f79865919eb0
+      size: 11988
     - path: data/raw/Y_train_new.csv
       hash: md5
-      md5: 269e81c9add0000cdfaa4dda1c0f2f24
+      md5: 4353af69e0c958ec32fe521ec6e296f4
       size: 81
     - path: src/
       hash: md5
@@ -107,13 +107,13 @@ stages:
     outs:
     - path: artifacts/splits_new/
       hash: md5
-      md5: 6b1c86ab1497aeda45c577dcdacca9ae.dir
+      md5: 421f8d035dd9e06e758d1883564a9a76.dir
       size: 41
       nfiles: 3
     - path: data/processed_new/
       hash: md5
-      md5: 836c157bfa7c8057a3a0275da486edd5.dir
-      size: 29460
+      md5: e105ce63dc0745e08bd97dee0434f1df.dir
+      size: 33355
       nfiles: 3
   finetune-text:
     cmd: uv run python -m src.pipeline.finetune_pipeline --mode finetune
@@ -133,8 +133,8 @@ stages:
       nfiles: 3
     - path: data/processed_new/
       hash: md5
-      md5: 836c157bfa7c8057a3a0275da486edd5.dir
-      size: 29460
+      md5: e105ce63dc0745e08bd97dee0434f1df.dir
+      size: 33355
       nfiles: 3
     - path: src/
       hash: md5
@@ -158,5 +158,5 @@ stages:
     outs:
     - path: results/dvc_metrics_finetune.json
       hash: md5
-      md5: 013543157e90fd6061146715ead0c52d
+      md5: ea4d84dfdf2bb61fc2f62078b9e88533
       size: 112
