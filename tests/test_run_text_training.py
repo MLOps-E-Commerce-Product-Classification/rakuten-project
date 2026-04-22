@@ -219,8 +219,6 @@ def test_load_or_create_splits_falls_back_to_non_stratified_when_class_count_is_
         test_size=0.2,
     )
 
-    captured = capsys.readouterr()
-
     assert len(train_df) + len(val_df) + len(test_df) == len(rare_label_dataframe)
     assert len(train_df) > 0
     assert len(val_df) > 0
@@ -260,7 +258,11 @@ def test_run_text_training_orchestrates_pipeline_and_returns_expected_outputs(
 
     config = {
         "training": {"batch_size": 4, "num_workers": 2, "seed": 123, "subset": 0},
-        "model": {"name": "dummy-backbone", "pretrained": False, "freeze_backbone": True},
+        "model": {
+            "name": "dummy-backbone",
+            "pretrained": False,
+            "freeze_backbone": True,
+        },
         "data": {
             "label_col": "prdtypecode",
             "designation_col": "designation",
@@ -282,22 +284,31 @@ def test_run_text_training_orchestrates_pipeline_and_returns_expected_outputs(
 
     import torch
     import pandas as pd
+
     monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
 
     if hasattr(rtt, "mlflow"):
         import unittest.mock
+
         mock_mlflow = unittest.mock.MagicMock()
         mock_mlflow.active_run.return_value.info.run_id = "mock-run-id"
         monkeypatch.setattr(rtt, "mlflow", mock_mlflow)
 
     # 2. Mock data loading
-    fake_df = pd.DataFrame({"designation": ["a"], "description": ["b"], "prdtypecode": ["100"]})
+    fake_df = pd.DataFrame(
+        {"designation": ["a"], "description": ["b"], "prdtypecode": ["100"]}
+    )
     monkeypatch.setattr(pd, "read_csv", lambda *args, **kwargs: fake_df.copy())
 
     class DummyDataset:
-        def __init__(self, *args, **kwargs): pass
-        def __len__(self): return 2
-        def __getitem__(self, idx): return idx
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __len__(self):
+            return 2
+
+        def __getitem__(self, idx):
+            return idx
 
     monkeypatch.setattr(rtt, "RakutenTextDataset", DummyDataset)
     monkeypatch.setattr(rtt, "DataLoader", lambda *args, **kwargs: ["dummy_batch"])
