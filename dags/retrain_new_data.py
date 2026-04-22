@@ -29,7 +29,8 @@ MIN_SAMPLES = 10
 # Dynamic Image Selection based on .env / environment
 DEVICE = os.getenv("DEVICE", "cpu")
 TRAINING_IMAGE = f"rakuten-ml/train-text:{DEVICE}"
-PROJECT_ROOT = os.getenv("PROJECT_ROOT") # Needs to be absolute host path (from .env)
+PROJECT_ROOT = os.getenv("PROJECT_ROOT")  # Needs to be absolute host path (from .env)
+
 
 def get_training_env():
     """Returns essential environment variables for the training container."""
@@ -50,6 +51,7 @@ DEFAULT_ARGS = {
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
 }
+
 
 # ---------------------------------------------------------------------
 # Helpers
@@ -90,7 +92,7 @@ def jsons_to_csv():
             sample = json.load(f)
         all_data.append(sample)
         shutil.copy2(fp, archive_run_dir / fp.name)
-        fp.unlink() # Delete original after processing
+        fp.unlink()  # Delete original after processing
 
     df = pd.DataFrame(all_data).drop_duplicates()
 
@@ -110,11 +112,14 @@ def jsons_to_csv():
 
     # Save metadata for archival purposes
     (archive_run_dir / "manifest.json").write_text(
-        json.dumps({
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "row_count": len(df),
-        }, indent=2),
-        encoding="utf-8"
+        json.dumps(
+            {
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "row_count": len(df),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
     )
     print(f"Success! Processed {len(df)} samples.")
 
@@ -126,12 +131,11 @@ with DAG(
     dag_id="retrain_text_classifier",
     default_args=DEFAULT_ARGS,
     start_date=datetime(2024, 1, 1),
-    schedule="*/10 * * * *", 
+    schedule="*/10 * * * *",
     catchup=False,
     max_active_runs=1,
     tags=["rakuten"],
 ) as dag:
-
     wait_for_samples = PythonSensor(
         task_id="wait_for_enough_new_samples",
         python_callable=has_enough_samples,
@@ -154,7 +158,11 @@ with DAG(
         auto_remove=True,
         mounts=[
             Mount(source=PROJECT_ROOT, target="/app", type="bind"),
-            Mount(source="/var/run/docker.sock", target="/var/run/docker.sock", type="bind"),
+            Mount(
+                source="/var/run/docker.sock",
+                target="/var/run/docker.sock",
+                type="bind",
+            ),
         ],
         working_dir="/app",
         command=[
