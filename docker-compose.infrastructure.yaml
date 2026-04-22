@@ -1,5 +1,51 @@
-version: "3.9"
+# ============================================================
+# AIRFLOW COMMON
+# ============================================================
+x-airflow-common: &airflow-common
+  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.8.1}
+  environment: &airflow-common-env
+    DEVICE: ${DEVICE:-cpu}
+    PROJECT_ROOT: ${PROJECT_ROOT}
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    AIRFLOW__CORE__FERNET_KEY: ""
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__API__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
+    AIRFLOW__SMTP__SMTP_HOST: "smtp.gmail.com"
+    AIRFLOW__SMTP__SMTP_PORT: 587
+    AIRFLOW__SMTP__SMTP_USER: "de.airflow@gmail.com"
+    AIRFLOW__SMTP__SMTP_PASSWORD: "cfsrvkongsobheta"
+    AIRFLOW__SMTP__SMTP_MAIL_FROM: "de.airflow@gmail.com"
+    AIRFLOW_CONN_FS_DEFAULT: 'fs://?path=%2F'
+    MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}
+    MLFLOW_TRACKING_USERNAME: ${MLFLOW_TRACKING_USERNAME}
+    MLFLOW_TRACKING_PASSWORD: ${MLFLOW_TRACKING_PASSWORD}
+    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL}
+  volumes:
+    - .:/app
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - /var/run/docker.sock:/var/run/docker.sock
+  user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"
+  group_add:
+    - "${DOCKER_GID}"
+  networks:
+    - mlops-network
+  depends_on:
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
 
+# ============================================================
+# NETWORKS & VOLUMES
+# ============================================================
 networks:
   mlops-network:
     name: mlops-rakuten
@@ -10,10 +56,6 @@ volumes:
   grafana-data:
 
 services:
-
-  # ============================================================
-  # POSTGRES (Airflow metadata DB)
-  # ============================================================
   postgres:
     image: postgres:16
     environment:
@@ -22,92 +64,92 @@ services:
       POSTGRES_DB: airflow
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
     networks:
       - mlops-network
+    restart: always
 
-
-  # ============================================================
-  # REDIS (Airflow broker)
-  # ============================================================
   redis:
     image: redis:7
     ports:
-      - "6379:6379"
+      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 30s
+      retries: 50
     networks:
       - mlops-network
+    restart: always
 
-
-  # ============================================================
-  # AIRFLOW
-  # ============================================================
   airflow-webserver:
-    image: apache/airflow:2.8.1
+    <<: *airflow-common
     command: webserver
-    env_file:
-      - .env
     ports:
-      - "8080:8080"
-    networks:
-      - mlops-network
+      - 8080:8080
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
 
   airflow-scheduler:
-    image: apache/airflow:2.8.1
+    <<: *airflow-common
     command: scheduler
-    env_file:
-      - .env
-    networks:
-      - mlops-network
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
 
   airflow-worker:
-    image: apache/airflow:2.8.1
+    <<: *airflow-common
     command: celery worker
-    env_file:
-      - .env
-    networks:
-      - mlops-network
+    healthcheck:
+      test: ["CMD-SHELL", 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
 
   airflow-init:
-    image: apache/airflow:2.8.1
-    env_file:
-      - .env
+    <<: *airflow-common
     command: version
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      <<: *airflow-common-env
       _AIRFLOW_DB_UPGRADE: "true"
       _AIRFLOW_WWW_USER_CREATE: "true"
-      _AIRFLOW_WWW_USER_USERNAME: airflow
-      _AIRFLOW_WWW_USER_PASSWORD: airflow
-    depends_on:
-      - postgres
-      - redis
-    networks:
-      - mlops-network
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
 
   flower:
-    image: apache/airflow:2.8.1
+    <<: *airflow-common
     command: celery flower
-    env_file:
-      - .env
     ports:
-      - "5555:5555"
-    depends_on:
-      - redis
-    networks:
-      - mlops-network
+      - 5555:5555
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
 
-
-  # ============================================================
-  # MONITORING
-  # ============================================================
+  # --- Monitoring (Neu hinzugefügt) ---
   prometheus:
     image: prom/prometheus
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
     ports:
       - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yaml:/etc/prometheus/prometheus.yaml
+      - prometheus-data:/prometheus
     networks:
       - mlops-network
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana
@@ -117,3 +159,4 @@ services:
       - grafana-data:/var/lib/grafana
     networks:
       - mlops-network
+    restart: unless-stopped

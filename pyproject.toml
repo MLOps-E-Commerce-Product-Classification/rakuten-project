@@ -13,57 +13,38 @@ dependencies = [
   "python-dateutil==2.9.0.post0",
   "typing-extensions>=4.10.0",
   "tzdata>=2025.0",
-  "bentoml>=1.4.0,<2.0.0",
   "PyJWT>=2.10.1",
   "huggingface-hub>=0.23.0",
-  "transformers>=5.3.0",
-  "torch>=2.5.1",
   "mlflow>=3.11.1",
 ]
 
 [project.optional-dependencies]
 
-# Shared ML base (avoids redundancy across image/text extras)
-ml-core = [
-  "torch",
-  "scikit-learn>=1.5.2",
-  "tqdm>=4.66.0",
-]
-
-# Image training + inference
-image = [
-  "rakuten-multimodal-classifier[ml-core]",
-  "torchvision",
-  "pillow==10.4.0",
-]
-
 # Text training + inference
 text = [
-  "rakuten-multimodal-classifier[ml-core]",
-  "transformers>=4.35.0",
   "accelerate>=0.23.0",
+  "scikit-learn>=1.5.2",
+  "torch>=2.5.1",
+  "transformers>=5.3.0",
 ]
 
 # API / serving
 api = [
-  "torch",
-  "transformers>=4.35.0",
   "bentoml>=1.4.0,<2.0.0",
   "pillow==10.4.0",
+  "torch>=2.5.1",
+  "transformers>=5.3.0",
 ]
 
 # Data versioning + experiment tracking (was lost in V2 during the merge)
 data = [
   "dvc[s3]>=3.0.0",
   "dagshub>=0.3.0",
-  "mlflow>=2.22.1",
 ]
 
 # Convenience meta-extras
-training = ["rakuten-multimodal-classifier[image,text,data]"]
 training-text = ["rakuten-multimodal-classifier[text,data]"]
-training-image = ["rakuten-multimodal-classifier[image,data]"]
-all = ["rakuten-multimodal-classifier[image,text,api,data]"]
+all = ["rakuten-multimodal-classifier[text,api,data]"]
 
 # -----------------------------------------------------------------------------
 [dependency-groups]

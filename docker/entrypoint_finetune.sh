@@ -35,7 +35,7 @@ EOF
     fi
 
     echo ">>> Pushing to Git remote..."
-    git push
+    git push origin HEAD
 fi
 
 echo ">>> Pushing results to DVC remote..."

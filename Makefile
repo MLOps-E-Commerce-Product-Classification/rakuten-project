@@ -62,9 +62,16 @@ infra-restart:
 # DEV ENVIRONMENT (infra + dev overrides + builds)
 # ============================================================
 
+.PHONY: dev-build
+dev-build:
+	$(DEV_STACK) build \
+		--build-arg DEVICE=$(DEVICE) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg GIT_BRANCH=$(GIT_BRANCH)
+
 .PHONY: dev-up
 dev-up:
-	$(DEV_STACK) up -d --build
+	$(DEV_STACK) up
 
 .PHONY: dev-down
 dev-down:
@@ -79,6 +86,11 @@ dev-restart:
 dev-logs:
 	$(DEV_STACK) logs -f
 
+.PHONY: train-text-run
+train-text-run:
+	git add src/ configs/ || true
+	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
+	$(DEV_STACK) --profile train run --rm train-text
 
 # ============================================================
 # TRAINING (DEV only)
@@ -94,7 +106,10 @@ train:
 finetune:
 	git add src/ configs/ || true
 	git commit -m "exp: finetuning run $(shell date '+%Y-%m-%d %H:%M')" || true
-	$(DEV_STACK) run --rm finetune-text
+	DEVICE=$(DEVICE) \
+	GIT_COMMIT=`git rev-parse HEAD` \
+	GIT_BRANCH=`git rev-parse --abbrev-ref HEAD` \
+	$(DEV_STACK) run --profile finetune --rm finetune-text
 
 .PHONY: train-logs
 train-logs:
@@ -116,13 +131,12 @@ ENCODING ?= configs/label_encoding.json
 .PHONY: evaluate
 evaluate:
 	$(call check_defined,MLFLOW_ID)
-	$(DEV_STACK) run --rm evaluate-text \
+	$(DEV_STACK) --profile evaluate run --rm evaluate-text \
 	--mlflow_run_id $(MLFLOW_ID) \
 	--x_data_csv_path $(X_DATA) \
 	--y_data_csv_path $(Y_DATA) \
 	--model_weights_path $(WEIGHTS) \
 	--label_encoding_path $(ENCODING)
-
 
 # ============================================================
 # SERVING (DEV)
@@ -178,7 +192,7 @@ build-bento: sync-bento
 
 .PHONY: containerize-bento
 containerize-bento: build-bento
-	uv run bentoml containerize rakuten_text_service:latest
+	uv run bentoml containerize rakuten-text-service:latest -t rakuten-ml/rakuten-text-service:latest
 
 
 # ============================================================

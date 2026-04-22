@@ -1,11 +1,5 @@
 """Main Streamlit application for Rakuten product classification."""
 
-import sys
-import os
-
-# Ensure the streamlit directory is on the path for imports
-sys.path.insert(0, os.path.dirname(__file__))
-
 import streamlit as st
 from auth import get_current_user, render_login_page, logout, ensure_password_hashes
 from settings_manager import load_config
