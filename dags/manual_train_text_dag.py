@@ -16,7 +16,7 @@ DEVICE = os.getenv("DEVICE", "cpu")
 USE_GPU = DEVICE != "cpu"
 DOCKER_NAMESPACE = os.getenv("DOCKER_NAMESPACE", "mlops2026")
 TRAINING_IMAGE = f"{DOCKER_NAMESPACE}/train-text:{DEVICE}"
-EVALUATE_IMAGE = "rakuten-ml/evaluate-text:latest"
+EVALUATE_IMAGE = f"{DOCKER_NAMESPACE}/evaluate-text:{DEVICE}"
 
 # PROJECT_ROOT must be an absolute path on the host machine
 PROJECT_ROOT = os.getenv("PROJECT_ROOT")

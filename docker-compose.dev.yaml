@@ -1,6 +1,5 @@
 networks:
   mlops-network:
-    external: true
     name: mlops-rakuten
 
 volumes:

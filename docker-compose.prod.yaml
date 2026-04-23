@@ -1,6 +1,5 @@
 networks:
   mlops-network:
-    external: true
     name: mlops-rakuten
 
 volumes:
@@ -12,8 +11,7 @@ services:
   # TRAINING (NO BUILD, NO GIT MOUNT)
   # ============================================================
   train-text:
-    profiles: ["train"]
-    image: ${DOCKER_USERNAME}/train-text:latest
+    image: ${DOCKER_USERNAME}/train-text:${DEVICE}
 
     env_file:
       - .env
@@ -28,14 +26,12 @@ services:
 
 
   finetune-text:
-    profiles: ["finetune"]
-    image: ${DOCKER_USERNAME}/train-text:latest
+    image: ${DOCKER_USERNAME}/train-text:${DEVICE}
 
     env_file:
       - .env
 
     environment:
-      FINETUNE_MODE: "true"
       DEVICE: ${DEVICE:-cpu}
 
     networks:
@@ -43,11 +39,13 @@ services:
 
 
   evaluate-text:
-    profiles: ["evaluate"]
-    image: ${DOCKER_USERNAME}/evaluate-text:latest
+    image: ${DOCKER_USERNAME}/evaluate-text:${DEVICE}
 
     env_file:
       - .env
+
+    environment:
+      DEVICE: ${DEVICE:-cpu}
 
     networks:
       - mlops-network

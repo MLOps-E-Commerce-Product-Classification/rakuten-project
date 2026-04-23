@@ -49,7 +49,6 @@ x-airflow-common: &airflow-common
 # ============================================================
 networks:
   mlops-network:
-    external: true
     name: mlops-rakuten
 
 volumes:
