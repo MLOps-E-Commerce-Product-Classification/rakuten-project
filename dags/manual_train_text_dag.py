@@ -158,6 +158,7 @@ with DAG(
 
             # 2. Sync project dependencies (e.g. torch, transformers)
             export UV_LINK_MODE=copy
+            rm -rf .venv
             uv sync --no-dev --frozen --extra training-text
 
             # 3. Stage changes like in the local Makefile
