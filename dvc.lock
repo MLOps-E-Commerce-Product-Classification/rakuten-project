@@ -9,7 +9,7 @@ stages:
       size: 216
     - path: configs/text_train_config.yaml
       hash: md5
-      md5: 126918294c82ec4b4c6f8d742e2cc186
+      md5: c643e9a025aa32e00f245686859900f6
       size: 450
     - path: data/processed/
       hash: md5
@@ -30,7 +30,7 @@ stages:
         training:
           learning_rate: 2e-05
           early_stopping_patience: 1
-          num_epochs: 2
+          num_epochs: 1
           batch_size: 32
           weight_decay: 0.05
           num_workers: 2
@@ -38,8 +38,8 @@ stages:
     outs:
     - path: results/dvc_metrics.json
       hash: md5
-      md5: aabd49d52f601ef734bf48351a4a5414
-      size: 113
+      md5: ba83a84cd6571fe92847078f19d839b4
+      size: 111
   preprocess-text:
     cmd: uv run python -m src.pipeline.preprocess_text_pipeline
     deps:
