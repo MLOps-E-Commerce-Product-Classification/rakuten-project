@@ -183,7 +183,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.streamlit
 
-    image: rakuten-ml/rakuten-streamlit:latest
+    image: rakuten-ml/streamlit:latest
 
     ports:
       - "8502:8502"

@@ -69,7 +69,7 @@ services:
 
 
   streamlit:
-    image: ${DOCKER_USERNAME}/rakuten-streamlit:latest
+    image: ${DOCKER_USERNAME}/streamlit:latest
 
     ports:
       - "8502:8502"
