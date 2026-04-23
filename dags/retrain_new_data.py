@@ -27,22 +27,9 @@ LABEL_ENCODING_PATH = Path("/app/configs/label_encoding.json")
 MIN_SAMPLES = 10
 
 # Dynamic Image Selection based on .env / environment
-# DEVICE = os.getenv("DEVICE", "cpu")
-DEVICE = os.environ["DEVICE"]
+DEVICE = os.getenv("DEVICE", "cpu")
 TRAINING_IMAGE = f"rakuten-ml/train-text:{DEVICE}"
 PROJECT_ROOT = os.getenv("PROJECT_ROOT")  # Needs to be absolute host path (from .env)
-print(f"DEBUG DEVICE={DEVICE}")
-print(f"DEBUG TRAINING_IMAGE={TRAINING_IMAGE}")
-print(f"DEBUG DEVICE={DEVICE}")
-print(f"DEBUG TRAINING_IMAGE={TRAINING_IMAGE}")
-print(f"DEBUG DEVICE={DEVICE}")
-print(f"DEBUG TRAINING_IMAGE={TRAINING_IMAGE}")
-print(f"DEBUG DEVICE={DEVICE}")
-print(f"DEBUG TRAINING_IMAGE={TRAINING_IMAGE}")
-print(f"DEBUG DEVICE={DEVICE}")
-print(f"DEBUG TRAINING_IMAGE={TRAINING_IMAGE}")
-print(f"DEBUG DEVICE={DEVICE}")
-print(f"DEBUG TRAINING_IMAGE={TRAINING_IMAGE}")
 
 
 def get_training_env():
