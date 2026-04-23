@@ -198,6 +198,7 @@ services:
 
     volumes:
       - ./data:/app/data
+      - ./streamlit:/app/streamlit
 
     networks:
       - mlops-network

@@ -8,6 +8,7 @@ from filelock import FileLock
 from auth import get_current_user
 from api_client import get_client
 from settings_manager import load_config
+from category_names import load_category_names, format_category
 
 
 def _csv_path(key: str) -> str:
@@ -66,6 +67,7 @@ def render():
         return
 
     cfg = load_config()
+    category_names = load_category_names()
     pred_cfg = cfg.get("prediction", {})
     default_top_k = pred_cfg.get("default_top_k", 5)
     max_top_k = pred_cfg.get("max_top_k", 27)
@@ -74,7 +76,10 @@ def render():
         designation = st.text_input("Designation (required)")
         description = st.text_area("Description (optional)", value="")
         top_k = st.number_input(
-            "Top-K", min_value=1, max_value=max_top_k, value=default_top_k
+            "Top-K",
+            min_value=1,
+            max_value=max_top_k,
+            value=default_top_k,
         )
         submitted = st.form_submit_button("Run Prediction")
 
@@ -86,7 +91,9 @@ def render():
             client = get_client()
             with st.spinner("Running prediction..."):
                 result = client.predict_single(
-                    designation.strip(), description.strip(), int(top_k)
+                    designation.strip(),
+                    description.strip(),
+                    int(top_k),
                 )
             st.session_state["single_result"] = result
             st.session_state["single_designation"] = designation.strip()
@@ -110,7 +117,11 @@ def render():
             rank = i + 1
             code = pred.get("rakuten_code", "?")
             prob = pred.get("probability", 0)
-            label = f"Rank {rank}: Code {code} (Probability: {prob:.2%})"
+            label = (
+                f"Rank {rank}: "
+                f"{format_category(code, category_names)} "
+                f"(Probability: {prob:.2%})"
+            )
             options.append(label)
 
         selected_idx = st.radio(
@@ -145,7 +156,11 @@ def render():
                 corr_path = _csv_path("corrections_csv")
                 _write_csv_row(corr_path, row)
 
-            st.success(f"Selection saved: Code {selected_code} (Rank {selected_rank})")
+            st.success(
+                f"Selection saved: "
+                f"{format_category(selected_code, category_names)} "
+                f"(Rank {selected_rank})"
+            )
 
             for k in ["single_result", "single_designation", "single_description"]:
                 st.session_state.pop(k, None)

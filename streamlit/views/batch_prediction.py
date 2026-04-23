@@ -10,6 +10,7 @@ from filelock import FileLock
 from auth import get_current_user
 from api_client import get_client
 from settings_manager import load_config
+from category_names import load_category_names, format_category
 
 
 def _csv_path(key: str) -> str:
@@ -67,6 +68,7 @@ def render():
         return
 
     cfg = load_config()
+    category_names = load_category_names()
     pred_cfg = cfg.get("prediction", {})
     default_top_k = pred_cfg.get("default_top_k", 5)
     batch_limit = pred_cfg.get("batch_limit", 100)
@@ -121,7 +123,8 @@ def render():
                 for i in range(0, len(items), chunk_size):
                     chunk = items[i : i + chunk_size]
                     status_text.text(
-                        f"Processing {i + 1} to {min(i + chunk_size, len(items))} of {len(items)}..."
+                        f"Processing {i + 1} to "
+                        f"{min(i + chunk_size, len(items))} of {len(items)}..."
                     )
                     results = client.predict_batch(chunk)
                     if isinstance(results, list):
@@ -152,8 +155,10 @@ def render():
                 "Description": item["description"],
             }
             for j, pred in enumerate(top_k_preds):
+                code = pred.get("rakuten_code", "?")
+                prob = pred.get("probability", 0)
                 row_data[f"Rank {j + 1}"] = (
-                    f"{pred.get('rakuten_code', '?')} ({pred.get('probability', 0):.2%})"
+                    f"{format_category(code, category_names)} ({prob:.2%})"
                 )
             table_data.append(row_data)
 
@@ -166,11 +171,14 @@ def render():
             top_k_preds = result.get("top_k_predictions", [])[:5]
             if not top_k_preds:
                 continue
+
             options = []
             for j, pred in enumerate(top_k_preds):
                 code = pred.get("rakuten_code", "?")
                 prob = pred.get("probability", 0)
-                options.append(f"Rank {j + 1}: Code {code} ({prob:.2%})")
+                options.append(
+                    f"Rank {j + 1}: {format_category(code, category_names)} ({prob:.2%})"
+                )
 
             sel = st.radio(
                 f"Row {i + 1}: {item['designation'][:50]}",
@@ -216,7 +224,8 @@ def render():
                 count_total += 1
 
             st.success(
-                f"{count_total} selections saved, {count_corrections} of which are corrections."
+                f"{count_total} selections saved, "
+                f"{count_corrections} of which are corrections."
             )
 
         if result_df is not None:
