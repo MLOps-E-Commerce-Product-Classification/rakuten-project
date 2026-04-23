@@ -1,7 +1,20 @@
 #!/bin/bash
 set -e
 
-export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
+# Check if we have SSH access or need a token
+if ! ssh-add -l > /dev/null 2>&1 && [ -z "$GIT_TOKEN" ]; then
+    echo "ERROR: No SSH key found in agent AND GIT_TOKEN is not set!" >&2
+    exit 1
+fi
+
+# If a token is available, redirect Git to use HTTPS instead of SSH
+if [ -n "$GIT_TOKEN" ]; then
+    echo ">>> Using GIT_TOKEN for authentication..."
+    git config --global url."https://${GIT_TOKEN}@github.com/".insteadOf "git@github.com:"
+else
+    echo ">>> No GIT_TOKEN found, falling back to SSH..."
+    export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
+fi
 
 echo ">>> Pulling data from DVC remote..."
 uv run dvc pull data/raw/
@@ -35,13 +48,12 @@ EOF
     fi
 
     echo ">>> Pushing to Git remote..."
-    git push
+    git push origin HEAD
 fi
 
 echo ">>> Pushing results to DVC remote..."
 uv run dvc push
 
-# Clean up any file-system drift between container and host
 git update-index --really-refresh > /dev/null 2>&1 || true
 git reset --mixed HEAD > /dev/null 2>&1 || true
 

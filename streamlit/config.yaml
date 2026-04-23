@@ -1,44 +1,31 @@
-# Rakuten Product Classification — Streamlit config
-#
-# Credentials are loaded from the project-root .env file (see .env.example).
-# The following keys are intentionally left blank here:
-#   api.base_url, api.api_key, api.nginx_user, api.nginx_pass,
-#   api.bento_user, api.bento_pass
-# Set them via environment variables instead (STREAMLIT_* prefix).
-
 api:
-  base_url: ""
-  api_key: ""
-  nginx_user: ""
-  nginx_pass: ""
-  bento_user: ""
-  bento_pass: ""
+  base_url: ''
+  api_key: ''
+  nginx_user: ''
+  nginx_pass: ''
+  bento_user: ''
+  bento_pass: ''
   timeout_seconds: 30
-
 prediction:
   default_top_k: 5
   max_top_k: 27
   batch_limit: 100
-
 monitoring:
-  grafana_url: ""
-  prometheus_url: ""
+  grafana_url: ''
+  prometheus_url: ''
   refresh_interval_seconds: 30
-
 app:
-  title: "Rakuten Product Classification"
+  title: Rakuten Product Classification
   session_timeout_minutes: 60
   max_csv_upload_mb: 10
-
 paths:
-  corrections_csv: "streamlit/data/corrections.csv"
-  demo_selections_csv: "streamlit/data/demo_selections.csv"
-  logs: "streamlit/data/logs"
-
+  corrections_csv: streamlit/data/corrections.csv
+  demo_selections_csv: streamlit/data/demo_selections.csv
+  logs: streamlit/data/logs
 users:
   admin:
-    password_hash: ""
+    password_hash: $2b$12$xpTS23pQ/ZuHx5lfBYfCBuRLY7DoxLUZUGDjr3KMoCtd5jSLlT4SC
     role: admin
   demo_user:
-    password_hash: ""
+    password_hash: $2b$12$DNuuapn2B.ZYiEU7JNWqh.UWvc8DPNTnzPCPfxay5bFgSD22TfSCy
     role: user
