@@ -78,9 +78,9 @@ stages:
       size: 152507972
       nfiles: 3
   preprocess-text-new:
-    cmd: uv run python -m src.pipeline.preprocess_text_pipeline 
-      --x_data_csv_path data/raw/X_train_new.csv --y_data_csv_path 
-      data/raw/Y_train_new.csv --output_dir data/processed_new --split_ids_dir 
+    cmd: uv run python -m src.pipeline.preprocess_text_pipeline
+      --x_data_csv_path data/raw/X_train_new.csv --y_data_csv_path
+      data/raw/Y_train_new.csv --output_dir data/processed_new --split_ids_dir
       artifacts/splits_new --force_new_split
     deps:
     - path: configs/label_encoding.json
