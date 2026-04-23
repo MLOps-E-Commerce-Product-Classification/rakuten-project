@@ -50,7 +50,6 @@ jobs:
           export MPLBACKEND=Agg
           uv run pytest -vv --disable-warnings
 
-
   build:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
@@ -60,17 +59,44 @@ jobs:
     strategy:
       matrix:
         include:
+          # train-text: CPU + cu121 (GPU)
           - name: train-text
             dockerfile: docker/Dockerfile.train-text
+            tag: cpu
+            device: cpu
+
+          - name: train-text
+            dockerfile: docker/Dockerfile.train-text
+            tag: cu121
+            device: cu121
+
+          # evaluate-text: CPU + cu121 (GPU)
+          - name: evaluate-text
+            dockerfile: docker/Dockerfile.evaluate-text
+            tag: cpu
+            device: cpu
 
           - name: evaluate-text
             dockerfile: docker/Dockerfile.evaluate-text
+            tag: cu121
+            device: cu121
+
+          # inference: CPU + cu121 (GPU)
+          - name: inference
+            dockerfile: docker/Dockerfile.inference
+            tag: cpu
+            device: cpu
 
           - name: inference
             dockerfile: docker/Dockerfile.inference
+            tag: cu121
+            device: cu121
 
+          # streamlit
           - name: streamlit
             dockerfile: docker/Dockerfile.streamlit
+            tag: cpu
+            device: cpu
 
     steps:
       - uses: actions/checkout@v4
@@ -83,16 +109,20 @@ jobs:
 
       - name: Build & Push
         run: |
+          REPO=${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}
+
           docker build \
-            --cache-from=${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:latest \
+            --build-arg DEVICE=${{ matrix.device }} \
+            --build-arg GIT_COMMIT=${{ github.sha }} \
+            --build-arg GIT_BRANCH=${{ github.ref_name }} \
+            --cache-from=$REPO:${{ matrix.tag }} \
             -f ${{ matrix.dockerfile }} \
-            -t ${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:${{ github.sha }} \
-            -t ${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:latest \
+            -t $REPO:${{ github.sha }}-${{ matrix.tag }} \
+            -t $REPO:${{ matrix.tag }} \
             .
 
-          docker push ${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:${{ github.sha }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/${{ matrix.name }}:latest
-
+          docker push $REPO:${{ github.sha }}-${{ matrix.tag }}
+          docker push $REPO:${{ matrix.tag }}
 
   bento:
     name: Build & Push Bento Service

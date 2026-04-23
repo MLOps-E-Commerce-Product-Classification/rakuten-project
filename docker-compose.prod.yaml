@@ -12,6 +12,7 @@ services:
   # TRAINING (NO BUILD, NO GIT MOUNT)
   # ============================================================
   train-text:
+    profiles: ["train"]
     image: ${DOCKER_USERNAME}/train-text:latest
 
     env_file:
@@ -27,6 +28,7 @@ services:
 
 
   finetune-text:
+    profiles: ["finetune"]
     image: ${DOCKER_USERNAME}/train-text:latest
 
     env_file:
@@ -41,6 +43,7 @@ services:
 
 
   evaluate-text:
+    profiles: ["evaluate"]
     image: ${DOCKER_USERNAME}/evaluate-text:latest
 
     env_file:
@@ -56,11 +59,15 @@ services:
   bentoml:
     image: ${DOCKER_USERNAME}/rakuten-text-service:latest
 
+    container_name: bentoml
+
     ports:
       - "3000:3000"
 
-    env_file:
-      - .env
+    environment:
+    - BENTO_USER=${BENTO_USER}
+    - BENTO_PASS=${BENTO_PASS}
+    - BENTO_JWT_SECRET=${BENTO_JWT_SECRET}
 
     restart: unless-stopped
 
@@ -73,6 +80,18 @@ services:
 
     ports:
       - "8502:8502"
+
+    environment:
+      - STREAMLIT_ADMIN_PASSWORD=${STREAMLIT_ADMIN_PASSWORD}
+      - STREAMLIT_DEMO_PASSWORD=${STREAMLIT_DEMO_PASSWORD}
+      - STREAMLIT_BASE_URL=${STREAMLIT_BASE_URL}
+      - STREAMLIT_BENTO_USER=${STREAMLIT_BENTO_USER}
+      - STREAMLIT_BENTO_PASS=${STREAMLIT_BENTO_PASS}
+      - STREAMLIT_API_KEY=${STREAMLIT_API_KEY}
+
+    volumes:
+      - ./data:/app/data
+      - ./streamlit:/app/streamlit
 
     restart: unless-stopped
 

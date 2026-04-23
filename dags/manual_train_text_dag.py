@@ -12,9 +12,10 @@ from docker.types import Mount, DeviceRequest
 # ---------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------
-IMAGE_TAG = os.getenv("DEVICE", "cpu")
-USE_GPU = IMAGE_TAG != "cpu"
-TRAINING_IMAGE = f"rakuten-ml/train-text:{IMAGE_TAG}"
+DEVICE = os.getenv("DEVICE", "cpu")
+USE_GPU = DEVICE != "cpu"
+DOCKER_NAMESPACE = os.getenv("DOCKER_NAMESPACE", "mlops2026")
+TRAINING_IMAGE = f"{DOCKER_NAMESPACE}/train-text:{DEVICE}"
 EVALUATE_IMAGE = "rakuten-ml/evaluate-text:latest"
 
 # PROJECT_ROOT must be an absolute path on the host machine
@@ -121,7 +122,7 @@ with DAG(
             "GIT_AUTHOR_EMAIL": "mlops@rakuten.com",
             "GIT_COMMITTER_NAME": "Airflow MLOps",
             "GIT_COMMITTER_EMAIL": "mlops@rakuten.com",
-            "DEVICE": IMAGE_TAG,
+            "DEVICE": DEVICE,
         },
     )
 
@@ -174,7 +175,7 @@ with DAG(
             "GIT_AUTHOR_EMAIL": "mlops@rakuten.com",
             "GIT_COMMITTER_NAME": "Airflow MLOps",
             "GIT_COMMITTER_EMAIL": "mlops@rakuten.com",
-            "DEVICE": IMAGE_TAG,
+            "DEVICE": DEVICE,
         },
     )
 
@@ -212,7 +213,7 @@ with DAG(
         ],
         environment={
             **get_training_env(),
-            "DEVICE": IMAGE_TAG,
+            "DEVICE": DEVICE,
         },
     )
 

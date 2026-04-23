@@ -28,7 +28,8 @@ MIN_SAMPLES = 10
 
 # Dynamic Image Selection based on .env / environment
 DEVICE = os.getenv("DEVICE", "cpu")
-TRAINING_IMAGE = f"rakuten-ml/train-text:{DEVICE}"
+DOCKER_NAMESPACE = os.getenv("DOCKER_NAMESPACE", "mlops2026")
+TRAINING_IMAGE = f"{DOCKER_NAMESPACE}/train-text:{DEVICE}"
 PROJECT_ROOT = os.getenv("PROJECT_ROOT")  # Needs to be absolute host path (from .env)
 
 
