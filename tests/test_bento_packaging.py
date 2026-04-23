@@ -21,7 +21,7 @@ def test_compose_uses_bento_image_runtime():
     compose = yaml.safe_load(compose_path.read_text())
 
     service = compose["services"]["bento-text-service"]
-    assert service["image"] == "rakuten_text_service:latest"
+    assert service["image"] == "rakuten-text-service:latest"
     assert "build" not in service
 
 

@@ -1,7 +1,6 @@
-version: "3.9"
-
 networks:
   mlops-network:
+    external: true
     name: mlops-rakuten
 
 volumes:
