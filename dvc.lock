@@ -18,7 +18,7 @@ stages:
       nfiles: 3
     - path: src/
       hash: md5
-      md5: a5afe668f2ac1efed01c213eeecb15e5.dir
+      md5: efc708f7e52780def6ad29b7efdb6529.dir
       size: 737457
       nfiles: 124
     params:
@@ -38,8 +38,8 @@ stages:
     outs:
     - path: results/dvc_metrics.json
       hash: md5
-      md5: ba83a84cd6571fe92847078f19d839b4
-      size: 111
+      md5: c6438b97701b94ca5a00c01b9a004066
+      size: 112
   preprocess-text:
     cmd: uv run python -m src.pipeline.preprocess_text_pipeline
     deps:
@@ -78,9 +78,9 @@ stages:
       size: 152507972
       nfiles: 3
   preprocess-text-new:
-    cmd: uv run python -m src.pipeline.preprocess_text_pipeline
-      --x_data_csv_path data/raw/X_train_new.csv --y_data_csv_path
-      data/raw/Y_train_new.csv --output_dir data/processed_new --split_ids_dir
+    cmd: uv run python -m src.pipeline.preprocess_text_pipeline 
+      --x_data_csv_path data/raw/X_train_new.csv --y_data_csv_path 
+      data/raw/Y_train_new.csv --output_dir data/processed_new --split_ids_dir 
       artifacts/splits_new --force_new_split
     deps:
     - path: configs/label_encoding.json
