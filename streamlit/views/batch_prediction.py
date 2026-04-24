@@ -1,5 +1,3 @@
-"""Batch Prediction page."""
-
 import os
 import csv
 import datetime

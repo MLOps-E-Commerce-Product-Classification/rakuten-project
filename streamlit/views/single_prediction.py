@@ -1,5 +1,3 @@
-"""Single Prediction page."""
-
 import os
 import csv
 import datetime

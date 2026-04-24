@@ -136,6 +136,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./streamlit:/app/streamlit
+      - ./configs:/app/configs
     networks:
       - mlops-network
     restart: unless-stopped

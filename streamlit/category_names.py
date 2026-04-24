@@ -1,29 +1,54 @@
-"""Utilities for loading and formatting category names for Streamlit."""
-
 from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 
-def load_category_names() -> dict[str, str]:
-    """Load category names from streamlit/data/category_names.json."""
-    path = Path(__file__).resolve().parent / "data" / "category_names.json"
+def load_category_names() -> dict[str, dict[str, Any]]:
+    path = Path(__file__).resolve().parent.parent / "configs" / "label_encoding.json"
     with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
-    return {str(k): str(v) for k, v in data.items()}
+
+    return {
+        "idx_to_name": {str(k): str(v) for k, v in data.get("idx_to_name", {}).items()},
+        "idx_to_code": {str(k): v for k, v in data.get("idx_to_code", {}).items()},
+        "code_to_name": {
+            str(k): str(v) for k, v in data.get("code_to_name", {}).items()
+        },
+    }
 
 
-def format_category(code: int | str, category_names: dict[str, str]) -> str:
-    """Format a category code as 'Name (Code)' if known, else 'Code <code>'."""
-    code_str = str(code)
-    name = category_names.get(code_str)
-    print(name)
-    print(name)
-    print(name)
-    print(name)
-    print(name)
-    print(name)
+def resolve_to_code(value: int | str, maps: dict[str, dict[str, Any]]) -> int | None:
+    s = str(value)
+
+    if s in maps["code_to_name"]:
+        try:
+            return int(s)
+        except ValueError:
+            return None
+
+    if s in maps["idx_to_code"]:
+        code = maps["idx_to_code"].get(s)
+        try:
+            return int(code)
+        except Exception:
+            return None
+
+    return None
+
+
+def format_category(value: int | str, maps: dict[str, dict[str, Any]]) -> str:
+    s = str(value)
+
+    if s in maps["idx_to_name"]:
+        name = maps["idx_to_name"].get(s)
+        code = maps["idx_to_code"].get(s, "?")
+        return f"{name} ({code})"
+
+    # Else treat as real code
+    name = maps["code_to_name"].get(s)
     if name:
-        return f"{name} ({code_str})"
-    return f"Code {code_str}"
+        return f"{name} ({s})"
+
+    return f"Code {s}"
