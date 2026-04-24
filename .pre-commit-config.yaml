@@ -4,7 +4,9 @@ repos:
     hooks:
       - id: check-yaml
       - id: end-of-file-fixer
+        exclude: ^dvc\.lock$
       - id: trailing-whitespace
+        exclude: ^dvc\.lock$
       - id: check-added-large-files
         args: ['--maxkb=1000']
 
@@ -12,5 +14,5 @@ repos:
     rev: v0.15.9
     hooks:
       - id: ruff
-        args: [ --fix ]
+        args: [--fix]
       - id: ruff-format
