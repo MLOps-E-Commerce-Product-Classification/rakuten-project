@@ -70,6 +70,17 @@ dev-build:
 		--build-arg GIT_BRANCH=$(GIT_BRANCH)
 	$(MAKE) containerize-bento
 
+PROFILE ?= train finetune evaluate
+
+PROFILE_FLAGS = $(addprefix --profile ,$(PROFILE))
+
+.PHONY: dev-build-model
+dev-build-model:
+	$(DEV_STACK) $(PROFILE_FLAGS) build \
+		--build-arg DEVICE=$(DEVICE) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg GIT_BRANCH=$(GIT_BRANCH)
+
 .PHONY: dev-up
 dev-up:
 	$(DEV_STACK) up
