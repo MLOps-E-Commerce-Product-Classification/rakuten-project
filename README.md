@@ -226,13 +226,19 @@ make containerize-bento
 Start BentoML service:
 
 ``` bash
-make serve
+make serve-internal
 ```
 
-Stop service:
+Start BentoML and streamlit service:
 
 ``` bash
-make serve-stop
+make serve-external
+```
+
+Stop all services:
+
+``` bash
+make serve-down
 ```
 
 View logs:

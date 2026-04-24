@@ -143,17 +143,21 @@ evaluate:
 # SERVING (DEV)
 # ============================================================
 
-.PHONY: serve
-serve:
-	$(DEV_STACK) up -d bentoml
+.PHONY: serve-internal
+serve-internal:
+	$(DEV_STACK) up -d bentoml 
 
-.PHONY: serve-stop
-serve-stop:
-	$(DEV_STACK) stop bentoml
+.PHONY: serve-external
+serve-external:
+	$(DEV_STACK) up -d bentoml streamlit
+
+.PHONY: serve-down
+serve-down:
+	$(DEV_STACK) stop bentoml streamlit
 
 .PHONY: serve-logs
 serve-logs:
-	$(DEV_STACK) logs -f bentoml
+	$(DEV_STACK) logs -f bentoml streamlit
 
 .PHONY: inference
 inference:
@@ -165,7 +169,7 @@ inference-batch:
 
 
 # ============================================================
-# BENTO / ML OPS
+# BENTO 
 # ============================================================
 
 .PHONY: prepare-bento
@@ -267,7 +271,8 @@ help:
 	@echo "  make evaluate MLFLOW_ID=<id>"
 	@echo ""
 	@echo "Serving:"
-	@echo "  make serve"
+	@echo "  make serve-internal (BentoML)"
+	@echo "  make serve-external (BentoML & Streamlit)"
 	@echo ""
 	@echo "Production:"
 	@echo "  make prod-up"

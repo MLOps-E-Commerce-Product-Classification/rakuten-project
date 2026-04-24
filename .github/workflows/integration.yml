@@ -117,11 +117,9 @@ jobs:
             --build-arg GIT_BRANCH=${{ github.ref_name }} \
             --cache-from=$REPO:${{ matrix.tag }} \
             -f ${{ matrix.dockerfile }} \
-            -t $REPO:${{ github.sha }}-${{ matrix.tag }} \
             -t $REPO:${{ matrix.tag }} \
             .
 
-          docker push $REPO:${{ github.sha }}-${{ matrix.tag }}
           docker push $REPO:${{ matrix.tag }}
 
   bento:
@@ -191,12 +189,8 @@ jobs:
       - name: Tag image
         run: |
           docker tag ${BENTO_TAG} \
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-
-          docker tag ${BENTO_TAG} \
             ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Push image
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
