@@ -1,6 +1,3 @@
-# ============================================================
-# AIRFLOW COMMON
-# ============================================================
 x-airflow-common: &airflow-common
   image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.8.1}
   environment: &airflow-common-env
@@ -44,14 +41,12 @@ x-airflow-common: &airflow-common
     postgres:
       condition: service_healthy
 
-# ============================================================
-# NETWORKS & VOLUMES
-# ============================================================
 networks:
   mlops-network:
     name: mlops-rakuten
 
 volumes:
+  dvc-cache:
   postgres-db-volume:
   prometheus-data:
   grafana-data:
@@ -140,7 +135,6 @@ services:
       retries: 5
     restart: always
 
-  # --- Monitoring (Neu hinzugefügt) ---
   prometheus:
     image: prom/prometheus
     ports:

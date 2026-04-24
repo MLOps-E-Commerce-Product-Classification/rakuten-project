@@ -27,13 +27,12 @@ export GIT_COMMIT
 # ============================================================
 
 COMPOSE_BASE = docker compose
-INFRA = -f docker-compose.infrastructure.yaml
 DEV = -f docker-compose.dev.yaml
 PROD = -f docker-compose.prod.yaml
 
 # Combined stacks
-DEV_STACK = $(COMPOSE_BASE) $(INFRA) $(DEV)
-PROD_STACK = $(COMPOSE_BASE) $(INFRA) $(PROD)
+DEV_STACK = $(COMPOSE_BASE) $(DEV)
+PROD_STACK = $(COMPOSE_BASE) $(PROD)
 
 
 # ============================================================
@@ -64,55 +63,47 @@ infra-restart:
 
 .PHONY: dev-build
 dev-build:
-	$(DEV_STACK) build \
+	docker-compose build \
 		--build-arg DEVICE=$(DEVICE) \
 		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
 		--build-arg GIT_BRANCH=$(GIT_BRANCH)
 	$(MAKE) containerize-bento
 
-PROFILE ?= train finetune evaluate
-
-PROFILE_FLAGS = $(addprefix --profile ,$(PROFILE))
+PROFILES = --profile train --profile finetune --profile evaluate
 
 .PHONY: dev-build-model
 dev-build-model:
-	$(DEV_STACK) $(PROFILE_FLAGS) build \
+	docker-compose $(PROFILES) build \
 		--build-arg DEVICE=$(DEVICE) \
 		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
 		--build-arg GIT_BRANCH=$(GIT_BRANCH)
 
 .PHONY: dev-up
 dev-up:
-	$(DEV_STACK) up
+	docker-compose up
 
 .PHONY: dev-down
 dev-down:
-	$(DEV_STACK) down
+	docker-compose down
 
 .PHONY: dev-restart
 dev-restart:
-	$(DEV_STACK) down
-	$(DEV_STACK) up -d --build
+	docker-compose down
+	docker-compose up -d --build
 
 .PHONY: dev-logs
 dev-logs:
-	$(DEV_STACK) logs -f
-
-.PHONY: train-text-run
-train-text-run:
-	git add src/ configs/ || true
-	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
-	$(DEV_STACK) --profile train run --rm train-text
+	docker-compose logs -f
 
 # ============================================================
 # TRAINING (DEV only)
 # ============================================================
 
-.PHONY: train
-train:
+.PHONY: train-text-run
+train-text-run:
 	git add src/ configs/ || true
-	git commit -m "exp: training run $(shell date '+%Y-%m-%d %H:%M')" || true
-	$(DEV_STACK) run --rm train-text
+	git commit -m "exp: start training run - $(shell date '+%Y-%m-%d %H:%M')" || true
+	docker-compose --profile train run --rm train-text
 
 .PHONY: finetune
 finetune:
@@ -121,11 +112,11 @@ finetune:
 	DEVICE=$(DEVICE) \
 	GIT_COMMIT=`git rev-parse HEAD` \
 	GIT_BRANCH=`git rev-parse --abbrev-ref HEAD` \
-	$(DEV_STACK) run --profile finetune --rm finetune-text
+	docker-compose run --profile finetune --rm finetune-text
 
 .PHONY: train-logs
 train-logs:
-	$(DEV_STACK) logs -f train-text
+	docker-compose logs -f train-text
 
 
 # ============================================================
