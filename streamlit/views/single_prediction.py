@@ -1,3 +1,5 @@
+"""Single Prediction page."""
+
 import os
 import csv
 import datetime
@@ -96,6 +98,7 @@ def render():
             st.session_state["single_result"] = result
             st.session_state["single_designation"] = designation.strip()
             st.session_state["single_description"] = description.strip()
+            st.session_state["single_top_k"] = int(top_k)
         except Exception as e:
             st.error(f"Prediction error: {e}")
             return
@@ -107,7 +110,8 @@ def render():
             st.warning("No predictions received.")
             return
 
-        display_preds = predictions[:5]
+        saved_top_k = st.session_state.get("single_top_k", len(predictions))
+        display_preds = predictions[:saved_top_k]
         st.subheader("Prediction Results")
 
         options = []
@@ -160,5 +164,10 @@ def render():
                 f"(Rank {selected_rank})"
             )
 
-            for k in ["single_result", "single_designation", "single_description"]:
+            for k in [
+                "single_result",
+                "single_designation",
+                "single_description",
+                "single_top_k",
+            ]:
                 st.session_state.pop(k, None)

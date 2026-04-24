@@ -5,3 +5,7 @@
     - docker-compose.base.yaml is now inculded in docker-compose.prod.yaml and docker-compose.yaml
     - Makefile has now less commands, texk
 - small clean up
+- remove empty files in /src
+- streamlit improvements
+    - now looks into the label_encoding.json to create the idx -> name mapping.
+    - single prediction k wasn't working above 5
