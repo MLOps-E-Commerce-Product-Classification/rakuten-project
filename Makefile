@@ -145,7 +145,7 @@ evaluate:
 
 .PHONY: serve-internal
 serve-internal:
-	$(DEV_STACK) up -d bentoml 
+	$(DEV_STACK) up -d bentoml
 
 .PHONY: serve-external
 serve-external:
@@ -169,7 +169,7 @@ inference-batch:
 
 
 # ============================================================
-# BENTO 
+# BENTO
 # ============================================================
 
 .PHONY: prepare-bento
