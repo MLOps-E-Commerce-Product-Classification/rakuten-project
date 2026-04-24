@@ -9,3 +9,7 @@
 - streamlit improvements
     - now looks into the label_encoding.json to create the idx -> name mapping.
     - single prediction k wasn't working above 5
+- evluation improvements
+    - now category names in pictures
+    - improved output
+    - added new output
