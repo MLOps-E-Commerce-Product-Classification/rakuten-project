@@ -63,8 +63,8 @@ stages:
       isexec: true
     - path: src/
       hash: md5
-      md5: b89fec175a5652d52601c72765c21519.dir
-      size: 761835
+      md5: 04dcefd67e524c01d838a83b6659f610.dir
+      size: 762163
       nfiles: 118
     outs:
     - path: artifacts/splits/
@@ -93,27 +93,27 @@ stages:
       size: 216
     - path: data/raw/X_train_new.csv
       hash: md5
-      md5: b5328c6502905c442edb7793fa577da4
-      size: 45968
+      md5: 94702b5ff2afd71870225b70ad5a63a1
+      size: 42289
     - path: data/raw/Y_train_new.csv
       hash: md5
-      md5: f9f917f1896be6694795032fd2efd262
+      md5: 75b1b8e6a0be30d343b537705d96602d
       size: 403
     - path: src/
       hash: md5
-      md5: b89fec175a5652d52601c72765c21519.dir
-      size: 761835
+      md5: 04dcefd67e524c01d838a83b6659f610.dir
+      size: 762163
       nfiles: 118
     outs:
     - path: artifacts/splits_new/
       hash: md5
-      md5: 2bc3f916e96297fe0075a0fcbbe1c12b.dir
+      md5: 1d02e617390f7bdf35a9431a3f29b5b2.dir
       size: 161
       nfiles: 3
     - path: data/processed_new/
       hash: md5
-      md5: 4ad86373209f71b5b11d314c6f86caf5.dir
-      size: 136244
+      md5: dd79490ad0d6e61d443cc12720542d91.dir
+      size: 126100
       nfiles: 3
   finetune-text:
     cmd: uv run python -m src.pipeline.finetune_pipeline --mode finetune
@@ -133,13 +133,13 @@ stages:
       nfiles: 3
     - path: data/processed_new/
       hash: md5
-      md5: 4ad86373209f71b5b11d314c6f86caf5.dir
-      size: 136244
+      md5: dd79490ad0d6e61d443cc12720542d91.dir
+      size: 126100
       nfiles: 3
     - path: src/
       hash: md5
-      md5: b89fec175a5652d52601c72765c21519.dir
-      size: 761835
+      md5: 04dcefd67e524c01d838a83b6659f610.dir
+      size: 762163
       nfiles: 118
     params:
       configs/text_finetune_config.yaml:
@@ -158,5 +158,5 @@ stages:
     outs:
     - path: results/dvc_metrics_finetune.json
       hash: md5
-      md5: 5f20c6bc9318721a74d0d2e73d8dc97c
-      size: 113
+      md5: b45c2472f4f6a79c8654b36c9c3bef63
+      size: 112
