@@ -69,7 +69,7 @@ dev-build:
 		--build-arg GIT_BRANCH=$(GIT_BRANCH)
 	$(MAKE) containerize-bento
 
-PROFILES = --profile train --profile finetune --profile evaluate
+PROFILES ?= --profile train --profile finetune --profile evaluate
 
 .PHONY: dev-build-model
 dev-build-model:

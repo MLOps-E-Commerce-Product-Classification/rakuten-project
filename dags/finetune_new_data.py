@@ -130,7 +130,7 @@ def read_mlflow_run_id(**context):
 # DAG Definition
 # ---------------------------------------------------------------------
 with DAG(
-    dag_id="retrain_text_classifier",
+    dag_id="finetune_text_classifier",
     default_args=DEFAULT_ARGS,
     start_date=datetime(2024, 1, 1),
     schedule="*/10 * * * *",
