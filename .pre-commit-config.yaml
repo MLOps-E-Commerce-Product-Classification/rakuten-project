@@ -1,12 +1,16 @@
+exclude: |
+  (?x)^(
+    dvc\.lock|
+    results/.*
+  )
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
       - id: check-yaml
       - id: end-of-file-fixer
-        exclude: ^dvc\.lock$
       - id: trailing-whitespace
-        exclude: ^dvc\.lock$
       - id: check-added-large-files
         args: ['--maxkb=1000']
 
