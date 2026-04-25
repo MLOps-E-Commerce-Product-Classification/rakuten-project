@@ -21,3 +21,4 @@
     - secured trough nginx (user: admin, password: test (nginx))
 - prometheus and grafana
     - implementened bentoml metrics for dev enviroment
+    - grafana bentoml metric for prod environment
