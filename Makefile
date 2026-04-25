@@ -209,7 +209,7 @@ containerize-bento: build-bento
 .PHONY: prod-up
 prod-up:
 	$(PROD_STACK) pull
-	$(PROD_STACK) up -d
+	$(PROD_STACK) up
 
 .PHONY: prod-down
 prod-down:
