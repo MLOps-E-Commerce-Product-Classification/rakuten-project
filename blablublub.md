@@ -19,3 +19,5 @@
     - now with nginx (no ports open; only 80 from nginx).
     - tools available in prod: streamlit (http://localhost), airflow (http://localhost/airflow), grafana (http://localhost/grafana), flower (http://localhost/flower)
     - secured trough nginx (user: admin, password: test (nginx))
+- prometheus and grafana
+    - implementened bentoml metrics for dev enviroment
