@@ -1,48 +1,37 @@
-# Default: cpu – override with: --build-arg DEVICE=cu121
 ARG DEVICE=cpu
-
 FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04 AS base-cu121
 FROM python:3.11-slim AS base-cpu
-
 FROM base-${DEVICE} AS final
-
-ARG GIT_COMMIT=unknown
-ARG GIT_BRANCH=unknown
-
-ENV GIT_COMMIT=${GIT_COMMIT} \
-    GIT_BRANCH=${GIT_BRANCH} \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 python3-pip git openssh-client \
     && rm -rf /var/lib/apt/lists/*
-
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Create user early so venv is owned correctly from the start
 RUN useradd --create-home --no-log-init appuser
-
 WORKDIR /app
 RUN chown appuser:appuser /app
-
 RUN mkdir -p /home/appuser/.cache/uv /home/appuser/.cache/dvc && \
     chown -R appuser:appuser /home/appuser/.cache
 
 USER appuser
 
 COPY --chown=appuser:appuser pyproject.toml uv.lock ./
-
 RUN --mount=type=cache,target=/home/appuser/.cache/uv,uid=1000 \
     uv sync --frozen --no-dev --extra training-text
 
 COPY --chown=appuser:appuser src/ ./src/
 COPY --chown=appuser:appuser configs/ ./configs/
 COPY --chown=appuser:appuser results/ ./results/
-
-RUN git config --global --add safe.directory /app
-
 COPY --chown=appuser:appuser docker/entrypoint.sh ./entrypoint.sh
 COPY --chown=appuser:appuser docker/entrypoint_finetune.sh ./entrypoint_finetune.sh
 
 RUN chmod +x entrypoint.sh entrypoint_finetune.sh
+RUN git config --global --add safe.directory /app
+
+ARG GIT_COMMIT=unknown
+ARG GIT_BRANCH=unknown
+ENV GIT_COMMIT=${GIT_COMMIT} \
+    GIT_BRANCH=${GIT_BRANCH} \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1

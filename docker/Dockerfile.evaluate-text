@@ -1,44 +1,39 @@
-# Default: cpu – override with: --build-arg DEVICE=cu121
 ARG DEVICE=cpu
-
 FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04 AS base-cu121
 FROM python:3.11-slim AS base-cpu
-
 FROM base-${DEVICE} AS final
 
-ARG GIT_COMMIT=unknown
-ARG GIT_BRANCH=unknown
-
-ENV GIT_COMMIT=${GIT_COMMIT} \
-    GIT_BRANCH=${GIT_BRANCH} \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    VIRTUAL_ENV=/app/.venv \
-    PATH="/app/.venv/bin:$PATH"
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3 python3-pip git \
+        python3 git \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Create user early so venv/cache permissions are correct
 RUN useradd --create-home --no-log-init appuser
-
 WORKDIR /app
 RUN chown appuser:appuser /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    VIRTUAL_ENV=/app/.venv \
+    PATH="/app/.venv/bin:$PATH" \
+    UV_CACHE_DIR=/home/appuser/.cache/uv
+
 USER appuser
 
 COPY --chown=appuser:appuser pyproject.toml uv.lock README.md ./
 
-# Evaluation needs text + (very likely) data extras for pandas/sklearn
 RUN --mount=type=cache,target=/home/appuser/.cache/uv,uid=1000 \
     uv sync --frozen --no-dev --no-editable --extra text --extra data
 
 COPY --chown=appuser:appuser src/ ./src/
 COPY --chown=appuser:appuser configs/ ./configs/
 
-# Ensure runtime output dirs exist (useful if you don't mount them)
 RUN mkdir -p /app/results /app/logs
+
+ARG GIT_COMMIT=unknown
+ARG GIT_BRANCH=unknown
+ENV GIT_COMMIT=${GIT_COMMIT} \
+    GIT_BRANCH=${GIT_BRANCH}
 
 ENTRYPOINT ["python", "-m", "src.pipeline.text_pipeline", "--mode", "evaluate"]

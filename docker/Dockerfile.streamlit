@@ -1,28 +1,31 @@
 FROM python:3.11-slim
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    VIRTUAL_ENV=/app/.venv \
+    PATH="/app/.venv/bin:$PATH"
+
 WORKDIR /app
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+        build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for layer caching
-COPY streamlit/requirements.txt /app/streamlit/requirements.txt
-RUN pip install --no-cache-dir -r /app/streamlit/requirements.txt
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Copy project directories
-COPY streamlit/ /app/streamlit/
-COPY tests/ /app/tests/
-COPY src/ /app/src/
-COPY configs/ /app/configs/
-COPY pyproject.toml /app/pyproject.toml
+COPY streamlit/requirements.txt ./streamlit/requirements.txt
 
-# Create data directory
+RUN uv pip install --no-cache -r streamlit/requirements.txt
+
+COPY src/ ./src/
+COPY configs/ ./configs/
+COPY pyproject.toml ./
+COPY streamlit/ ./streamlit/
+COPY tests/ ./tests/
+
 RUN mkdir -p /app/streamlit/data/logs
 
 EXPOSE 8502
-
-ENV PYTHONPATH=/app
 
 ENTRYPOINT ["streamlit", "run", "streamlit/app.py", "--server.port", "8502", "--server.address", "0.0.0.0"]
