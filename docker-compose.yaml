@@ -1,0 +1,142 @@
+include:
+  - docker-compose.base.yaml
+
+services:
+
+  train-text:
+    profiles: ["train"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.train-text
+      args:
+        DEVICE: ${DEVICE:-cpu}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+    image: rakuten-ml/train-text:${DEVICE:-cpu}
+    env_file:
+      - .env
+    environment:
+      DEVICE: ${DEVICE:-cpu}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      GIT_BRANCH: ${GIT_BRANCH:-unknown}
+    entrypoint: ["./entrypoint.sh"]
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./src:/app/src
+      - ./configs:/app/configs
+      - ./artifacts:/app/artifacts
+      - ./results:/app/results
+      - ./.dvc:/app/.dvc
+      - ./dvc.lock:/app/dvc.lock
+      - ./dvc.yaml:/app/dvc.yaml
+      - ./params.yaml:/app/params.yaml
+      - ./.dvcignore:/app/.dvcignore
+      - ./.git:/app/.git
+      - ~/.gitconfig:/home/appuser/.gitconfig:ro
+      - dvc-cache:/home/appuser/.cache/dvc
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - mlops-network
+
+  finetune-text:
+    profiles: ["finetune"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.train-text
+      args:
+        DEVICE: ${DEVICE:-cpu}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        GIT_BRANCH: ${GIT_BRANCH:-unknown}
+    image: rakuten-ml/train-text:${DEVICE:-cpu}
+    env_file:
+      - .env
+    environment:
+      DEVICE: ${DEVICE:-cpu}
+      FINETUNE_MODE: "true"
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      GIT_BRANCH: ${GIT_BRANCH:-unknown}
+    entrypoint: ["./entrypoint_finetune.sh"]
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./src:/app/src
+      - ./configs:/app/configs
+      - ./artifacts:/app/artifacts
+      - ./results:/app/results
+      - ./.dvc:/app/.dvc
+      - ./dvc.lock:/app/dvc.lock
+      - ./dvc.yaml:/app/dvc.yaml
+      - ./params.yaml:/app/params.yaml
+      - ./.dvcignore:/app/.dvcignore
+      - ./.git:/app/.git
+      - ~/.gitconfig:/home/appuser/.gitconfig:ro
+      - dvc-cache:/home/appuser/.cache/dvc
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - mlops-network
+
+  evaluate-text:
+    profiles: ["evaluate"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.evaluate-text
+    image: rakuten-ml/evaluate-text:latest
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./configs:/app/configs
+      - ./results:/app/results
+      - ./.git:/app/.git
+      - ./dvc.lock:/app/dvc.lock
+      - ./params.yaml:/app/params.yaml
+    networks:
+      - mlops-network
+
+  bentoml:
+    image: rakuten-ml/rakuten-text-service:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - BENTO_USER=${BENTO_USER}
+      - BENTO_PASS=${BENTO_PASS}
+      - BENTO_JWT_SECRET=${BENTO_JWT_SECRET}
+    networks:
+      - mlops-network
+    restart: unless-stopped
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.streamlit
+    image: rakuten-ml/streamlit:latest
+    ports:
+      - "8502:8502"
+    environment:
+      - STREAMLIT_ADMIN_PASSWORD=${STREAMLIT_ADMIN_PASSWORD}
+      - STREAMLIT_DEMO_PASSWORD=${STREAMLIT_DEMO_PASSWORD}
+      - STREAMLIT_BASE_URL=${STREAMLIT_BASE_URL}
+      - STREAMLIT_BENTO_USER=${STREAMLIT_BENTO_USER}
+      - STREAMLIT_BENTO_PASS=${STREAMLIT_BENTO_PASS}
+      - STREAMLIT_API_KEY=${STREAMLIT_API_KEY}
+    volumes:
+      - ./data:/app/data
+      - ./streamlit:/app/streamlit
+      - ./configs:/app/configs
+    networks:
+      - mlops-network
+    restart: unless-stopped

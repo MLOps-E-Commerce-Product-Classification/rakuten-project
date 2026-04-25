@@ -1,0 +1,17 @@
+- improved airflow dag: finetune now with evaluation
+- docker-compose:
+    - docker-compose.dev.yaml is now called docker-compose.yaml
+    - docker-compose.infrastrucutre.yaml is now called docker-compose.base.yaml
+    - docker-compose.base.yaml is now inculded in docker-compose.prod.yaml and docker-compose.yaml
+    - Makefile has now less commands, texk
+- small clean up
+- remove empty files in /src
+- streamlit improvements
+    - now looks into the label_encoding.json to create the idx -> name mapping.
+    - single prediction k wasn't working above 5
+- evluation improvements
+    - now category names in pictures
+    - improved output
+    - added new output
+- finetune dag
+    - now with promote model
