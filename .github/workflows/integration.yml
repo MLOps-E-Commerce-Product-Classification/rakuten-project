@@ -123,6 +123,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'push'
+    env:
+      DAGSHUB_USER_TOKEN: ${{ secrets.DAGSHUB_USER_TOKEN }}
+      MLFLOW_TRACKING_USERNAME: token
+      MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_USER_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

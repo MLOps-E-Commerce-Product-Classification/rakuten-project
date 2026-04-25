@@ -42,9 +42,17 @@ data = [
   "dagshub>=0.3.0",
 ]
 
+ui = [
+  "streamlit>=1.45.1",
+  "requests==2.32.3",
+  "bcrypt==4.3.0",
+  "python-dotenv==1.0.1",
+  "pytest-timeout==2.3.1",
+]
+
 # Convenience meta-extras
 training-text = ["rakuten-multimodal-classifier[text,data]"]
-all = ["rakuten-multimodal-classifier[text,api,data]"]
+all = ["rakuten-multimodal-classifier[text,api,data,ui]"]
 
 # -----------------------------------------------------------------------------
 [dependency-groups]

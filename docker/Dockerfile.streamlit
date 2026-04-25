@@ -14,13 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-COPY streamlit/requirements.txt ./streamlit/requirements.txt
-
-RUN uv pip install --no-cache -r streamlit/requirements.txt
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --group dev --extra ui
 
 COPY src/ ./src/
 COPY configs/ ./configs/
-COPY pyproject.toml ./
 COPY streamlit/ ./streamlit/
 COPY tests/ ./tests/
 
