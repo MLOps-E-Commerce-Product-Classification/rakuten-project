@@ -23,7 +23,7 @@ OUTPUT_X_CSV = Path("/app/data/raw/X_train_new.csv")
 OUTPUT_Y_CSV = Path("/app/data/raw/Y_train_new.csv")
 LABEL_ENCODING_PATH = Path("/app/configs/label_encoding.json")
 
-MIN_SAMPLES = 10
+MIN_SAMPLES = 250
 
 DEVICE = os.getenv("DEVICE", "cpu")
 USE_GPU = DEVICE != "cpu"
@@ -242,4 +242,37 @@ with DAG(
         },
     )
 
-    wait_for_samples >> convert_jsons >> run_pipeline >> read_run_id >> run_evaluate
+    promote_model_task = DockerOperator(
+        task_id="promote_model_to_champion",
+        image=EVALUATE_IMAGE,
+        docker_url="unix://var/run/docker.sock",
+        force_pull=False,
+        mount_tmp_dir=False,
+        auto_remove=True,
+        entrypoint="python",
+        command=[
+            "-m",
+            "src.serving.promote_mlflow_model",
+            "--model-name",
+            "text-classifier",
+            "--alias",
+            "champion",
+            "--min-improvement",
+            "0.02",
+            "--output-path",
+            "artifacts/mlflow_promotion_manifest.json",
+        ],
+        mounts=[
+            Mount(source=PROJECT_ROOT, target="/app", type="bind"),
+        ],
+        environment=get_training_env(),
+    )
+
+    (
+        wait_for_samples
+        >> convert_jsons
+        >> run_pipeline
+        >> read_run_id
+        >> run_evaluate
+        >> promote_model_task
+    )

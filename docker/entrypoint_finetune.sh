@@ -17,7 +17,7 @@ else
 fi
 
 echo ">>> Pulling data from DVC remote..."
-uv run dvc pull data/raw/
+uv run dvc pull data/raw/ --force
 
 echo ">>> Running DVC Finetuning Pipeline..."
 uv run dvc repro preprocess-text-new

@@ -13,3 +13,5 @@
     - now category names in pictures
     - improved output
     - added new output
+- finetune dag
+    - now with promote model

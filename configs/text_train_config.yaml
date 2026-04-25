@@ -1,10 +1,10 @@
 training:
-  learning_rate: 0.00002
+  learning_rate: 0.000018
   early_stopping_patience: 1
-  num_epochs: 1
+  num_epochs: 6
   batch_size: 32
   weight_decay: 0.05
-  num_workers: 2
+  num_workers: 4
   seed: 42
 
 model:

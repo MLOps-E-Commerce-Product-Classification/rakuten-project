@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 
 from src.serving.mlflow_bento import (
     DEFAULT_MLFLOW_ALIAS,
@@ -103,6 +104,37 @@ def promote_model(
             alias=alias,
             version=str(candidate.version),
         )
+        client.set_model_version_tag(
+            name=model_name,
+            version=str(candidate.version),
+            key="promotion_status",
+            value="champion",
+        )
+        client.set_model_version_tag(
+            name=model_name,
+            version=str(candidate.version),
+            key="promoted_at",
+            value=datetime.now(timezone.utc).isoformat(),
+        )
+        if candidate.run_id:
+            client.set_tag(
+                run_id=candidate.run_id,
+                key="promotion_status",
+                value="champion",
+            )
+        if champion_version is not None:
+            client.set_model_version_tag(
+                name=model_name,
+                version=str(champion_version.version),
+                key="promotion_status",
+                value="retired",
+            )
+            if champion_version.run_id:
+                client.set_tag(
+                    run_id=champion_version.run_id,
+                    key="promotion_status",
+                    value="retired",
+                )
 
     result = {
         "promoted": bool(should_promote),
