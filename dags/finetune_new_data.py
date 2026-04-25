@@ -23,7 +23,7 @@ OUTPUT_X_CSV = Path("/app/data/raw/X_train_new.csv")
 OUTPUT_Y_CSV = Path("/app/data/raw/Y_train_new.csv")
 LABEL_ENCODING_PATH = Path("/app/configs/label_encoding.json")
 
-MIN_SAMPLES = 5000
+MIN_SAMPLES = 200
 
 DEVICE = os.getenv("DEVICE", "cpu")
 USE_GPU = DEVICE != "cpu"

@@ -9,6 +9,7 @@ import jwt
 import pandas as pd
 import numpy as np
 from bentoml.exceptions import NotFound
+from prometheus_client import Counter, Histogram, Gauge
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
@@ -26,6 +27,30 @@ JWT_SECRET_KEY = os.environ.get(
 )
 JWT_ALGORITHM = "HS256"
 
+PREDICTION_COUNTER = Counter(
+    "rakuten_predictions_total",
+    "Total number of predictions",
+    ["service", "predicted_class"],
+)
+
+PREDICTION_CONFIDENCE = Histogram(
+    "rakuten_prediction_confidence",
+    "Confidence score of top prediction",
+    ["service"],
+    buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0],
+)
+
+BATCH_SIZE_HISTOGRAM = Histogram(
+    "rakuten_batch_size",
+    "Batch size of predict_batch requests",
+    buckets=[1, 2, 5, 10, 20, 50, 100],
+)
+
+MODEL_READY_GAUGE = Gauge(
+    "rakuten_model_ready",
+    "Whether the model is loaded and ready (1=ready, 0=not ready)",
+)
+
 
 def _load_users() -> dict[str, str]:
     """Load users from environment variables.
@@ -38,13 +63,11 @@ def _load_users() -> dict[str, str]:
     """
     users: dict[str, str] = {}
 
-    # Single user via BENTO_USER / BENTO_PASS
     single_user = os.environ.get("BENTO_USER", "").strip()
     single_pass = os.environ.get("BENTO_PASS", "").strip()
     if single_user and single_pass:
         users[single_user] = single_pass
 
-    # Multiple users via BENTO_USER_1=user:pass, BENTO_USER_2=user:pass, ...
     i = 1
     while True:
         entry = os.environ.get(f"BENTO_USER_{i}", "").strip()
@@ -125,9 +148,10 @@ class TextModelService:
         try:
             self.raw_model = mlflow.pyfunc.load_model(model_uri)
             self._loaded = True
-            print("Modell erfolgreich geladen (Typ: MLflow Pyfunc Wrapper)")
+            MODEL_READY_GAUGE.set(1)  # <- Hier setzen, wenn Laden fertig!
+            print("Modell erfolgreich geladen")
         except Exception as e:
-            print(f"Kritischer Fehler beim Laden: {e}")
+            MODEL_READY_GAUGE.set(0)  # <- Auf 0 setzen bei Fehler
             raise e
 
     def is_ready(self) -> bool:
@@ -148,7 +172,7 @@ class TextModelService:
 
             top_k_list = [
                 {
-                    "rakuten_code": int(idx),  # Muss laut Schema ein int sein
+                    "rakuten_code": int(idx),
                     "probability": float(preds[i][idx]),
                 }
                 for idx in top_k_indices
@@ -196,6 +220,9 @@ class TextBentoService:
     def health(self) -> HealthResponse:
         ready_value = self.model_service.is_ready()
         ready = ready_value if isinstance(ready_value, bool) else _check_model_ready()
+
+        MODEL_READY_GAUGE.set(1 if ready else 0)
+
         model_reference = _resolved_model_reference()
         return HealthResponse(
             status="ok" if ready else "degraded",
@@ -218,14 +245,42 @@ class TextBentoService:
     @bentoml.api(route="/predict")
     def predict(self, input_data: TextPredictionRequest) -> TextPredictionResponse:
         result = self.model_service.predict_text(input_data)
-        return TextPredictionResponse.model_validate(result)
+        response = TextPredictionResponse.model_validate(result)
+
+        top_prob = (
+            response.top_k_predictions[0].probability
+            if response.top_k_predictions
+            else 0.0
+        )
+        PREDICTION_COUNTER.labels(
+            service="text",
+            predicted_class=str(response.predicted_rakuten_code),
+        ).inc()
+        PREDICTION_CONFIDENCE.labels(service="text").observe(top_prob)
+
+        return response
 
     @bentoml.api(route="/predict_batch")
     def predict_batch(
         self, input_data: BatchTextPredictionRequest
     ) -> list[TextPredictionResponse]:
         results = self.model_service.predict_texts(input_data.items)
-        return [TextPredictionResponse.model_validate(result) for result in results]
+        responses = [TextPredictionResponse.model_validate(r) for r in results]
+
+        BATCH_SIZE_HISTOGRAM.observe(len(input_data.items))
+        for response in responses:
+            top_prob = (
+                response.top_k_predictions[0].probability
+                if response.top_k_predictions
+                else 0.0
+            )
+            PREDICTION_COUNTER.labels(
+                service="text",
+                predicted_class=str(response.predicted_rakuten_code),
+            ).inc()
+            PREDICTION_CONFIDENCE.labels(service="text").observe(top_prob)
+
+        return responses
 
 
 TextBentoService.add_asgi_middleware(JWTAuthMiddleware)
