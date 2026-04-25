@@ -89,7 +89,7 @@ dev-down:
 .PHONY: dev-restart
 dev-restart:
 	docker-compose down
-	docker-compose up -d --build
+	docker-compose up --build
 
 .PHONY: dev-logs
 dev-logs:
@@ -209,7 +209,7 @@ containerize-bento: build-bento
 .PHONY: prod-up
 prod-up:
 	$(PROD_STACK) pull
-	$(PROD_STACK) up
+	$(PROD_STACK) up -d
 
 .PHONY: prod-down
 prod-down:
