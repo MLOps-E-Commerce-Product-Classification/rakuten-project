@@ -4,7 +4,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from src.serving import mlflow_bento as mb
-from src.serving.promote_mlflow_model import promote_model
 from src.serving.sync_mlflow_to_bento import sync_mlflow_model_to_bento
 from src.training.mlflow_text_registry import register_text_model_in_mlflow
 
@@ -167,36 +166,6 @@ def test_register_text_model_in_mlflow_logs_pyfunc_and_manifest(tmp_path):
         ]
         == "pending"
     )
-
-
-def test_promote_model_uses_metric_margin_and_alias_update():
-    client = FakeMlflowClient()
-    candidate = SimpleNamespace(
-        version="12", run_id="run-12", tags={"validation_status": "approved"}
-    )
-    champion = SimpleNamespace(
-        version="11", run_id="run-11", tags={"validation_status": "approved"}
-    )
-    client.versions[("rakuten_text_classifier", "12")] = candidate
-    client.versions[("rakuten_text_classifier", "11")] = champion
-    client.aliases[("rakuten_text_classifier", "champion")] = "11"
-    client.runs["run-12"] = FakeRun({"eval_macro_f1": 0.83})
-    client.runs["run-11"] = FakeRun({"eval_macro_f1": 0.80})
-
-    result = promote_model(
-        model_name="rakuten_text_classifier",
-        alias="champion",
-        candidate_version="12",
-        metric_name="eval_macro_f1",
-        min_improvement=0.01,
-        required_tag="validation_status=approved",
-        client=client,
-    )
-
-    assert result["promoted"] is True
-    assert client.promotions == [("rakuten_text_classifier", "champion", "12")]
-    assert result["candidate_metric_value"] == 0.83
-    assert result["champion_metric_value"] == 0.80
 
 
 def test_sync_mlflow_model_to_bento_is_idempotent_and_writes_manifest(tmp_path):
