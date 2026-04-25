@@ -2,7 +2,6 @@ include:
   - docker-compose.base.yaml
 
 services:
-
   train-text:
     image: ${DOCKER_USERNAME}/train-text:${DEVICE}
     env_file:
@@ -32,32 +31,65 @@ services:
     networks:
       - mlops-network
 
+  redis:
+    ports: []
+    networks:
+      - mlops-network
+
+  airflow-webserver:
+    ports: []
+    environment:
+      AIRFLOW__WEBSERVER__BASE_URL: ${AIRFLOW__WEBSERVER__BASE_URL:-http://localhost/airflow}
+    networks:
+      - mlops-network
+
+  flower:
+    ports: []
+    command: celery flower --url-prefix=/flower
+    networks:
+      - mlops-network
+
+  prometheus:
+    ports: []
+    networks:
+      - mlops-network
+
+  grafana:
+    ports: []
+    environment:
+      GF_SERVER_ROOT_URL: ${GF_SERVER_ROOT_URL:-http://localhost/grafana/}
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    networks:
+      - mlops-network
+
   bentoml:
     image: ${DOCKER_USERNAME}/rakuten-text-service:latest
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
-      - BENTO_USER=${BENTO_USER}
-      - BENTO_PASS=${BENTO_PASS}
-      - BENTO_JWT_SECRET=${BENTO_JWT_SECRET}
+      BENTO_USER: ${BENTO_USER}
+      BENTO_PASS: ${BENTO_PASS}
+      BENTO_JWT_SECRET: ${BENTO_JWT_SECRET}
     restart: unless-stopped
     networks:
       - mlops-network
 
   streamlit:
     image: ${DOCKER_USERNAME}/streamlit:latest
-    ports:
-      - "8502:8502"
+    expose:
+      - "8502"
     environment:
-      - STREAMLIT_ADMIN_PASSWORD=${STREAMLIT_ADMIN_PASSWORD}
-      - STREAMLIT_DEMO_PASSWORD=${STREAMLIT_DEMO_PASSWORD}
-      - STREAMLIT_BASE_URL=${STREAMLIT_BASE_URL}
-      - STREAMLIT_BENTO_USER=${STREAMLIT_BENTO_USER}
-      - STREAMLIT_BENTO_PASS=${STREAMLIT_BENTO_PASS}
-      - STREAMLIT_API_KEY=${STREAMLIT_API_KEY}
+      STREAMLIT_ADMIN_PASSWORD: ${STREAMLIT_ADMIN_PASSWORD}
+      STREAMLIT_DEMO_PASSWORD: ${STREAMLIT_DEMO_PASSWORD}
+      STREAMLIT_BASE_URL: ${STREAMLIT_BASE_URL}
+      STREAMLIT_BENTO_USER: ${STREAMLIT_BENTO_USER}
+      STREAMLIT_BENTO_PASS: ${STREAMLIT_BENTO_PASS}
+      STREAMLIT_API_KEY: ${STREAMLIT_API_KEY}
     volumes:
       - ./data:/app/data
       - ./streamlit:/app/streamlit
+    depends_on:
+      - bentoml
     restart: unless-stopped
     networks:
       - mlops-network
@@ -66,6 +98,17 @@ services:
     image: nginx:latest
     ports:
       - "80:80"
+      # - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      # - ./ssl:/etc/nginx/ssl:ro
+      # nginx:
+    depends_on:
+      - streamlit
+      - airflow-webserver
+      - grafana
+      - flower
     restart: unless-stopped
     networks:
       - mlops-network

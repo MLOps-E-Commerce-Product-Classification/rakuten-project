@@ -12,7 +12,7 @@ NEW_DATA_DIR = Path("/app/data/new_data")
 def sample_data():
     df = pd.read_csv("/app/data/raw/X_test_update.csv")
 
-    n = random.randint(1, 10)
+    n = random.randint(1, 100)
     sample = df.sample(n)
 
     output_dir = Path(NEW_DATA_DIR)

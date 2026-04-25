@@ -23,7 +23,7 @@ OUTPUT_X_CSV = Path("/app/data/raw/X_train_new.csv")
 OUTPUT_Y_CSV = Path("/app/data/raw/Y_train_new.csv")
 LABEL_ENCODING_PATH = Path("/app/configs/label_encoding.json")
 
-MIN_SAMPLES = 250
+MIN_SAMPLES = 5000
 
 DEVICE = os.getenv("DEVICE", "cpu")
 USE_GPU = DEVICE != "cpu"
@@ -258,7 +258,7 @@ with DAG(
             "--alias",
             "champion",
             "--min-improvement",
-            "0.02",
+            "0.003",
             "--output-path",
             "artifacts/mlflow_promotion_manifest.json",
         ],
