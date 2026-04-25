@@ -71,6 +71,13 @@ services:
       BENTO_USER: ${BENTO_USER}
       BENTO_PASS: ${BENTO_PASS}
       BENTO_JWT_SECRET: ${BENTO_JWT_SECRET}
+      BENTOML_ENABLE_METRICS: "true"
+      METRICS_PORT: "3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-X", "POST", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
     networks:
       - mlops-network
@@ -89,6 +96,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./streamlit:/app/streamlit
+      - ./configs:/app/configs
     depends_on:
       - bentoml
     restart: unless-stopped
@@ -111,5 +119,10 @@ services:
       - grafana
       - flower
     restart: unless-stopped
+    networks:
+      - mlops-network
+
+  node-exporter:
+    ports: []
     networks:
       - mlops-network
