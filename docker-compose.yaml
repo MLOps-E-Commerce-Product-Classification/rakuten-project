@@ -111,10 +111,17 @@ services:
     image: rakuten-ml/rakuten-text-service:latest
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-X", "POST", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     environment:
       - BENTO_USER=${BENTO_USER}
       - BENTO_PASS=${BENTO_PASS}
       - BENTO_JWT_SECRET=${BENTO_JWT_SECRET}
+      - BENTOML_ENABLE_METRICS=true
+      - METRICS_PORT=3000
     networks:
       - mlops-network
     restart: unless-stopped
