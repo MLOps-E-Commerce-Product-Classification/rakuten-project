@@ -22,3 +22,16 @@
 - prometheus and grafana
     - implementened bentoml metrics for dev enviroment
     - grafana bentoml metric for prod environment
+    - grafana sections:
+        - Hardware Infrastructure (Node Exporter)
+        - Traffic
+        - Errors
+        - Latency
+        - ML Model Performance (BentoML)
+        - Input Text Metrics
+- Dockerfiles improvments
+    - faster building, pushing, pulling
+    - CI Pipeline adjustments
+
+
+TODOs: 1. grafana (siehe abacus), README.md, Makefile, swinlanediagram, architechture diagram
