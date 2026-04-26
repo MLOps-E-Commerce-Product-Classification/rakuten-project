@@ -63,8 +63,8 @@ stages:
       isexec: true
     - path: src/
       hash: md5
-      md5: 04dcefd67e524c01d838a83b6659f610.dir
-      size: 762163
+      md5: 9a49c903504ce2b93d33c2ae16e9cf99.dir
+      size: 765714
       nfiles: 118
     outs:
     - path: artifacts/splits/
@@ -93,27 +93,27 @@ stages:
       size: 216
     - path: data/raw/X_train_new.csv
       hash: md5
-      md5: 2d45e0930dfc70457dd36f8848cdf13a
-      size: 185743
+      md5: 34ed40f48bf308e4203cc65ff26a08d2
+      size: 197164
     - path: data/raw/Y_train_new.csv
       hash: md5
-      md5: 722ab215bcc41420bffd2ff3259af883
+      md5: 9c84dc20ac6a949c9fe50d2cc57dcd80
       size: 1703
     - path: src/
       hash: md5
-      md5: 04dcefd67e524c01d838a83b6659f610.dir
-      size: 762163
+      md5: 9a49c903504ce2b93d33c2ae16e9cf99.dir
+      size: 765714
       nfiles: 118
     outs:
     - path: artifacts/splits_new/
       hash: md5
-      md5: 04f3f81286307ddf41b47dccff175b9a.dir
+      md5: 370b71bc77f78c64ff0df6e40bafaa12.dir
       size: 711
       nfiles: 3
     - path: data/processed_new/
       hash: md5
-      md5: 39662f362e7861efd8120247a830a476.dir
-      size: 547919
+      md5: 3090bd8c05188d209a6a17ae1bd3de0a.dir
+      size: 582676
       nfiles: 3
   finetune-text:
     cmd: uv run python -m src.pipeline.finetune_pipeline --mode finetune
@@ -133,13 +133,13 @@ stages:
       nfiles: 3
     - path: data/processed_new/
       hash: md5
-      md5: 39662f362e7861efd8120247a830a476.dir
-      size: 547919
+      md5: 3090bd8c05188d209a6a17ae1bd3de0a.dir
+      size: 582676
       nfiles: 3
     - path: src/
       hash: md5
-      md5: 04dcefd67e524c01d838a83b6659f610.dir
-      size: 762163
+      md5: 9a49c903504ce2b93d33c2ae16e9cf99.dir
+      size: 765714
       nfiles: 118
     params:
       configs/text_finetune_config.yaml:
@@ -158,5 +158,5 @@ stages:
     outs:
     - path: results/dvc_metrics_finetune.json
       hash: md5
-      md5: dbea79d23c91db17efcf00c546cab4de
+      md5: eb0717aea901f4848404dd9070be81ce
       size: 112

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -46,9 +47,34 @@ BATCH_SIZE_HISTOGRAM = Histogram(
     buckets=[1, 2, 5, 10, 20, 50, 100],
 )
 
+TEXT_LENGTH_HISTOGRAM = Histogram(
+    "rakuten_text_length_chars",
+    "Distribution of input text lengths (designation + description) in chars",
+    buckets=[10, 50, 100, 200, 500, 1000, 2000, 5000],
+)
+
 MODEL_READY_GAUGE = Gauge(
     "rakuten_model_ready",
     "Whether the model is loaded and ready (1=ready, 0=not ready)",
+)
+
+# ----- HTTP / Traffic metrics -----
+HTTP_REQUESTS = Counter(
+    "rakuten_http_requests_total",
+    "Total HTTP requests received",
+    ["method", "endpoint", "http_status"],
+)
+
+HTTP_REQUEST_DURATION = Histogram(
+    "rakuten_http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["method", "endpoint"],
+    buckets=[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+)
+
+AUTH_FAILURES = Counter(
+    "rakuten_auth_failures_total",
+    "Authentication failures (invalid or missing tokens)",
 )
 
 
@@ -84,12 +110,39 @@ def _load_users() -> dict[str, str]:
 USERS = _load_users()
 
 
+# ----- Metrics middleware -----
+class MetricsMiddleware(BaseHTTPMiddleware):
+    """Tracks request count, duration and HTTP status per endpoint."""
+
+    async def dispatch(self, request, call_next):
+        start = time.perf_counter()
+        route = request.scope.get("route")
+        endpoint = route.path if route and hasattr(route, "path") else request.url.path
+        status = 500
+        try:
+            response = await call_next(request)
+            status = getattr(response, "status_code", 200)
+            return response
+        except Exception:
+            # on exception, we'll still record the metric and re-raise
+            raise
+        finally:
+            duration = time.perf_counter() - start
+            HTTP_REQUESTS.labels(
+                method=request.method, endpoint=endpoint, http_status=str(status)
+            ).inc()
+            HTTP_REQUEST_DURATION.labels(
+                method=request.method, endpoint=endpoint
+            ).observe(duration)
+
+
 class JWTAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         protected_paths = {"/predict", "/predict_batch"}
         if request.url.path in protected_paths:
             authorization_header = request.headers.get("Authorization")
             if not authorization_header:
+                AUTH_FAILURES.inc()
                 return JSONResponse(
                     status_code=401, content={"detail": "Missing authentication token"}
                 )
@@ -99,10 +152,12 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
                     raise ValueError("Unsupported authorization scheme")
                 payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
             except jwt.ExpiredSignatureError:
+                AUTH_FAILURES.inc()
                 return JSONResponse(
                     status_code=401, content={"detail": "Token has expired"}
                 )
             except (ValueError, jwt.InvalidTokenError):
+                AUTH_FAILURES.inc()
                 return JSONResponse(
                     status_code=401, content={"detail": "Invalid token"}
                 )
@@ -148,10 +203,10 @@ class TextModelService:
         try:
             self.raw_model = mlflow.pyfunc.load_model(model_uri)
             self._loaded = True
-            MODEL_READY_GAUGE.set(1)  # <- Hier setzen, wenn Laden fertig!
+            MODEL_READY_GAUGE.set(1)
             print("Modell erfolgreich geladen")
         except Exception as e:
-            MODEL_READY_GAUGE.set(0)  # <- Auf 0 setzen bei Fehler
+            MODEL_READY_GAUGE.set(0)
             raise e
 
     def is_ready(self) -> bool:
@@ -244,6 +299,17 @@ class TextBentoService:
 
     @bentoml.api(route="/predict")
     def predict(self, input_data: TextPredictionRequest) -> TextPredictionResponse:
+        try:
+            des_len = len(input_data.designation or "")
+        except Exception:
+            des_len = 0
+        try:
+            desc_len = len(input_data.description or "")
+        except Exception:
+            desc_len = 0
+        total_len = des_len + desc_len
+        TEXT_LENGTH_HISTOGRAM.observe(total_len)
+
         result = self.model_service.predict_text(input_data)
         response = TextPredictionResponse.model_validate(result)
 
@@ -264,10 +330,23 @@ class TextBentoService:
     def predict_batch(
         self, input_data: BatchTextPredictionRequest
     ) -> list[TextPredictionResponse]:
+        BATCH_SIZE_HISTOGRAM.observe(len(input_data.items))
+
+        for item in input_data.items:
+            try:
+                des_len = len(item.designation or "")
+            except Exception:
+                des_len = 0
+            try:
+                desc_len = len(item.description or "")
+            except Exception:
+                desc_len = 0
+            total_len = des_len + desc_len
+            TEXT_LENGTH_HISTOGRAM.observe(total_len)
+
         results = self.model_service.predict_texts(input_data.items)
         responses = [TextPredictionResponse.model_validate(r) for r in results]
 
-        BATCH_SIZE_HISTOGRAM.observe(len(input_data.items))
         for response in responses:
             top_prob = (
                 response.top_k_predictions[0].probability
@@ -283,4 +362,6 @@ class TextBentoService:
         return responses
 
 
+# Wichtig: MetricsMiddleware zuerst registrieren, damit auch Auth-Failures mitgetrackt werden.
+TextBentoService.add_asgi_middleware(MetricsMiddleware)
 TextBentoService.add_asgi_middleware(JWTAuthMiddleware)
