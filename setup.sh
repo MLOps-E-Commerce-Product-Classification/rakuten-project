@@ -9,15 +9,15 @@ echo "AIRFLOW_UID=50000" >> .env
 echo "AIRFLOW_GID=0" >> .env
 echo "DOCKER_GID=$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo 0)" >> .env
 echo "PROJECT_ROOT=$(pwd)" >> .env
-echo ".env ready ✅"
+echo ".env ready :white_check_mark:"
 
 # --- 2. DVC Local Config Setup ---
 echo "Step 2: Setting up DVC local configuration..."
 mkdir -p .dvc
 
 # Extract credentials from the newly created .env
-DVC_KEY=$(grep '^DVC_ACCESS_KEY_ID=' .env | cut -d '=' -f2)
-DVC_SECRET=$(grep '^DVC_SECRET_ACCESS_KEY=' .env | cut -d '=' -f2)
+DVC_KEY=$(grep '^TOKEN=' .env | cut -d '=' -f2)
+DVC_SECRET=$(grep '^TOKEN=' .env | cut -d '=' -f2)
 
 if [ -n "$DVC_KEY" ] && [ -n "$DVC_SECRET" ]; then
     cat <<EOF > .dvc/config.local
@@ -25,9 +25,9 @@ if [ -n "$DVC_KEY" ] && [ -n "$DVC_SECRET" ]; then
     access_key_id = $DVC_KEY
     secret_access_key = $DVC_SECRET
 EOF
-    echo "  + DVC config.local created ✅"
+    echo "  + DVC config.local created :white_check_mark:"
 else
-    echo "  ⚠️  Note: DVC credentials missing in .env, skipping config.local creation."
+    echo "  :warning:  Note: DVC credentials missing in .env, skipping config.local creation."
 fi
 
 # --- 3. Directory Structure, Sync & DVC Pull ---
@@ -44,13 +44,13 @@ mkdir -p ./logs ./plugins ./dags
 # Pull data from DVC
 if command -v uv &> /dev/null; then
     echo "  Installing all dependencies (dev group & extras)..."
-    uv sync --all-extras --group dev
-    
+    uv sync --all-extras --group dev --link-mode copy
+
     echo "  Running dvc pull..."
     uv run dvc pull
-    echo "DVC pull complete ✅"
+    echo "DVC pull complete :white_check_mark:"
 else
-    echo "❌ Error: 'uv' is not installed. Skipping DVC pull."
+    echo ":x: Error: 'uv' is not installed. Skipping DVC pull."
 fi
 
 # --- 4. Final Ownership & Permissions ---
@@ -73,8 +73,8 @@ sudo chown -R 50000:$MY_GROUP ./logs ./plugins ./dags
 sudo chmod -R 777 ./logs ./dags ./plugins
 
 # Standard permissions for data (755) and special case for archived (775)
-chmod -R 755 "$DATA_DIR"
-chmod 775 "$DATA_DIR/new_train_data_archived"
+sudo chmod -R 755 "$DATA_DIR"
+sudo chmod 775 "$DATA_DIR/new_train_data_archived"
 
-echo "Permissions and ownership set ✅"
-echo "🎉 Setup complete! All systems go."
+echo "Permissions and ownership set :white_check_mark:"
+echo ":tada: Setup complete! All systems go."

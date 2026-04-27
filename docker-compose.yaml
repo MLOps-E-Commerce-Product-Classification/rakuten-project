@@ -4,7 +4,6 @@ include:
 services:
 
   train-text:
-    profiles: ["train"]
     build:
       context: .
       dockerfile: docker/Dockerfile.train-text
@@ -46,7 +45,6 @@ services:
       - mlops-network
 
   finetune-text:
-    profiles: ["finetune"]
     build:
       context: .
       dockerfile: docker/Dockerfile.train-text
@@ -89,7 +87,6 @@ services:
       - mlops-network
 
   evaluate-text:
-    profiles: ["evaluate"]
     build:
       context: .
       dockerfile: docker/Dockerfile.evaluate-text
