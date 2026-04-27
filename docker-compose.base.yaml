@@ -51,6 +51,7 @@ volumes:
   postgres-db-volume:
   prometheus-data:
   grafana-data:
+  evidently-reports:
 
 services:
   postgres:
@@ -135,6 +136,30 @@ services:
       timeout: 10s
       retries: 5
     restart: always
+
+  evidently-drift:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.evidently
+    image: rakuten-ml/evidently-drift:latest
+    container_name: evidently-drift
+    environment:
+      - DATA_DIR=/app/data/raw
+      - DRIFT_RUN_INTERVAL=${DRIFT_RUN_INTERVAL:-300}
+      - DRIFT_PORT=8080
+    volumes:
+      - ./data/raw:/app/data/raw:ro
+      - evidently-reports:/app/reports
+    ports:
+      - "8899:8080"
+    networks:
+      - mlops-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   prometheus:
     image: prom/prometheus

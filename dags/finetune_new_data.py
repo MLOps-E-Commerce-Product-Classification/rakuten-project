@@ -113,6 +113,105 @@ def jsons_to_csv():
     print(f"Success! Processed {len(df)} samples.")
 
 
+def detect_data_drift(**context) -> None:
+    """
+    Runs Evidently drift detection between *_update (reference) and
+    *_new (current) CSVs and pushes a summary dict to XCom.
+    Does NOT fail the DAG on drift — only logs and reports.
+    """
+    import logging
+    from pathlib import Path
+
+    import pandas as pd
+    from evidently import ColumnMapping
+    from evidently.metrics import DatasetDriftMetric, ColumnDriftMetric
+    from evidently.report import Report
+
+    log = logging.getLogger(__name__)
+
+    data_dir = Path("/app/data/raw")
+    ref_x_path = data_dir / "X_train_update.csv"
+    ref_y_path = data_dir / "Y_train_CVw08PX.csv"
+    cur_x_path = data_dir / "X_train_new.csv"
+    cur_y_path = data_dir / "Y_train_new.csv"
+
+    if not all(p.exists() for p in [ref_x_path, ref_y_path, cur_x_path, cur_y_path]):
+        log.warning("Drift detection skipped — one or more CSV files missing.")
+        context["ti"].xcom_push(key="drift_result", value={"skipped": True})
+        return
+
+    ref_x = pd.read_csv(ref_x_path, index_col=0).reset_index(drop=True)
+    cur_x = pd.read_csv(cur_x_path, index_col=0).reset_index(drop=True)
+    ref_y = pd.read_csv(ref_y_path, index_col=0).reset_index(drop=True)
+    cur_y = pd.read_csv(cur_y_path, index_col=0).reset_index(drop=True)
+
+    text_features = ["designation", "description"]
+
+    def build_features(df_x: pd.DataFrame) -> pd.DataFrame:
+        frames = {}
+        for col in text_features:
+            if col not in df_x.columns:
+                continue
+            s = df_x[col].fillna("")
+            frames[f"{col}_length"] = s.str.len().astype(float)
+            frames[f"{col}_word_count"] = s.str.split().str.len().fillna(0).astype(float)
+            frames[f"{col}_is_empty"] = (s == "").astype(float)
+        return pd.DataFrame(frames)
+
+    ref_feat = build_features(ref_x)
+    cur_feat = build_features(cur_x)
+    target_col = "prdtypecode"
+    ref_feat[target_col] = ref_y[target_col].astype(str)
+    cur_feat[target_col] = cur_y[target_col].astype(str)
+
+    numeric_features = [c for c in ref_feat.columns if c != target_col]
+    column_mapping = ColumnMapping(
+        target=target_col,
+        numerical_features=numeric_features,
+        categorical_features=[target_col],
+    )
+
+    metrics_list = [DatasetDriftMetric()]
+    for feat in numeric_features:
+        metrics_list.append(ColumnDriftMetric(column_name=feat))
+    metrics_list.append(ColumnDriftMetric(column_name=target_col))
+
+    report = Report(metrics=metrics_list)
+    report.run(
+        reference_data=ref_feat,
+        current_data=cur_feat,
+        column_mapping=column_mapping,
+    )
+
+    result = report.as_dict()
+    summary: dict = {"ref_rows": len(ref_feat), "cur_rows": len(cur_feat), "features": {}}
+
+    for m in result.get("metrics", []):
+        m_type = m.get("metric", "")
+        val = m.get("result", {})
+        if m_type == "DatasetDriftMetric":
+            summary["dataset_drift_detected"] = val.get("dataset_drift", False)
+            summary["dataset_drift_share"] = val.get("share_of_drifted_columns", 0.0)
+        elif m_type == "ColumnDriftMetric":
+            col = val.get("column_name", "")
+            summary["features"][col] = {
+                "drift_detected": val.get("drift_detected", False),
+                "drift_score": round(float(val.get("drift_score", 0.0)), 4),
+            }
+
+    log.info(
+        "Drift summary: dataset_drift=%s, share=%.3f, ref=%d rows, cur=%d rows",
+        summary.get("dataset_drift_detected"),
+        summary.get("dataset_drift_share", 0.0),
+        summary["ref_rows"],
+        summary["cur_rows"],
+    )
+    for feat, info in summary["features"].items():
+        log.info("  %-35s drift=%s  score=%.4f", feat, info["drift_detected"], info["drift_score"])
+
+    context["ti"].xcom_push(key="drift_result", value=summary)
+
+
 def read_mlflow_run_id(**context):
     """Reads the MLflow run_id written by the training container and pushes it to XCom."""
     run_id_file = Path("/app/results/mlflow_run_id_finetune.txt")
@@ -149,6 +248,11 @@ with DAG(
     convert_jsons = PythonOperator(
         task_id="convert_jsons_to_csv",
         python_callable=jsons_to_csv,
+    )
+
+    detect_drift = PythonOperator(
+        task_id="detect_data_drift",
+        python_callable=detect_data_drift,
     )
 
     run_pipeline = DockerOperator(
@@ -271,6 +375,7 @@ with DAG(
     (
         wait_for_samples
         >> convert_jsons
+        >> detect_drift
         >> run_pipeline
         >> read_run_id
         >> run_evaluate
