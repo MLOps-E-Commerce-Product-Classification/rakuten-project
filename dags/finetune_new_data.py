@@ -166,7 +166,9 @@ def detect_data_drift(**context) -> None:
                 continue
             s = df_x[col].fillna("")
             frames[f"{col}_length"] = s.str.len().astype(float)
-            frames[f"{col}_word_count"] = s.str.split().str.len().fillna(0).astype(float)
+            frames[f"{col}_word_count"] = (
+                s.str.split().str.len().fillna(0).astype(float)
+            )
             frames[f"{col}_is_empty"] = (s == "").astype(float)
         return pd.DataFrame(frames)
 
@@ -196,7 +198,11 @@ def detect_data_drift(**context) -> None:
     )
 
     result = report.as_dict()
-    summary: dict = {"ref_rows": len(ref_feat), "cur_rows": len(cur_feat), "features": {}}
+    summary: dict = {
+        "ref_rows": len(ref_feat),
+        "cur_rows": len(cur_feat),
+        "features": {},
+    }
 
     for m in result.get("metrics", []):
         m_type = m.get("metric", "")
@@ -219,7 +225,12 @@ def detect_data_drift(**context) -> None:
         summary["cur_rows"],
     )
     for feat, info in summary["features"].items():
-        log.info("  %-35s drift=%s  score=%.4f", feat, info["drift_detected"], info["drift_score"])
+        log.info(
+            "  %-35s drift=%s  score=%.4f",
+            feat,
+            info["drift_detected"],
+            info["drift_score"],
+        )
 
     context["ti"].xcom_push(key="drift_result", value=summary)
 

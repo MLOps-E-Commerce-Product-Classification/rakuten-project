@@ -60,7 +60,7 @@ dev-build: ## Build the development environment and containerize Bento
 	$(MAKE) containerize-bento
 
 dev-up: ## Start dev services
-	$(COMPOSE_BASE) up 
+	$(COMPOSE_BASE) up
 
 dev-down: ## Stop dev services
 	$(COMPOSE_BASE) down

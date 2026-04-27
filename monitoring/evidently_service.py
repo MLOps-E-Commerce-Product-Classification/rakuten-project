@@ -59,7 +59,7 @@ REFERENCE_Y = DATA_DIR / "Y_train_CVw08PX.csv"
 CURRENT_X = DATA_DIR / "X_train_new.csv"
 CURRENT_Y = DATA_DIR / "Y_train_new.csv"
 
-RUN_INTERVAL = int(os.getenv("DRIFT_RUN_INTERVAL", "300"))   # seconds between runs
+RUN_INTERVAL = int(os.getenv("DRIFT_RUN_INTERVAL", "300"))  # seconds between runs
 PORT = int(os.getenv("DRIFT_PORT", "8080"))
 
 TEXT_FEATURES = ["designation", "description"]
@@ -252,7 +252,11 @@ def run_drift_analysis() -> None:
 
     report = Report(metrics=metrics_list)
 
-    log.info("Running Evidently report (ref=%d rows, cur=%d rows) …", len(ref_feat), len(cur_feat))
+    log.info(
+        "Running Evidently report (ref=%d rows, cur=%d rows) …",
+        len(ref_feat),
+        len(cur_feat),
+    )
     report.run(
         reference_data=ref_feat,
         current_data=cur_feat,
@@ -272,21 +276,15 @@ def run_drift_analysis() -> None:
             detected = int(val.get("dataset_drift", False))
             g_dataset_drift_share.set(share)
             g_dataset_drift_detected.set(detected)
-            log.info(
-                "Dataset drift: detected=%s, share=%.3f", bool(detected), share
-            )
+            log.info("Dataset drift: detected=%s, share=%.3f", bool(detected), share)
 
         elif m_type == "DatasetMissingValuesMetric":
             cur_mv = val.get("current", {})
             ref_mv = val.get("reference", {})
             ref_total = ref_mv.get("number_of_rows", 1) or 1
             cur_total = cur_mv.get("number_of_rows", 1) or 1
-            g_missing_ref.set(
-                ref_mv.get("number_of_missing_values", 0) / ref_total
-            )
-            g_missing_cur.set(
-                cur_mv.get("number_of_missing_values", 0) / cur_total
-            )
+            g_missing_ref.set(ref_mv.get("number_of_missing_values", 0) / ref_total)
+            g_missing_cur.set(cur_mv.get("number_of_missing_values", 0) / cur_total)
 
         elif m_type == "ColumnDriftMetric":
             col = val.get("column_name", "")
