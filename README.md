@@ -379,4 +379,3 @@ pytest
 ## License
 
 This project is intended for educational and portfolio use. Add a license if you plan to publish or distribute it publicly.
-
