@@ -120,14 +120,26 @@ def detect_data_drift(**context) -> None:
     Does NOT fail the DAG on drift — only logs and reports.
     """
     import logging
+    import subprocess
+    import sys
     from pathlib import Path
+
+    log = logging.getLogger(__name__)
+
+    # Install evidently at runtime if not present (Airflow image may not have it)
+    try:
+        import evidently  # noqa: F401
+    except ImportError:
+        log.info("evidently not found — installing via pip …")
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "--quiet", "evidently==0.4.33"]
+        )
+        log.info("evidently installed successfully.")
 
     import pandas as pd
     from evidently import ColumnMapping
     from evidently.metrics import DatasetDriftMetric, ColumnDriftMetric
     from evidently.report import Report
-
-    log = logging.getLogger(__name__)
 
     data_dir = Path("/app/data/raw")
     ref_x_path = data_dir / "X_train_update.csv"
