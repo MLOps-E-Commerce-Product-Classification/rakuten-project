@@ -1,8 +1,8 @@
 api:
   base_url: ''
   api_key: ''
-  nginx_user: ''
-  nginx_pass: ''
+  nginx_user: admin
+  nginx_pass: test
   bento_user: ''
   bento_pass: ''
   timeout_seconds: 30
@@ -28,4 +28,7 @@ users:
     role: admin
   demo_user:
     password_hash: $2b$12$DNuuapn2B.ZYiEU7JNWqh.UWvc8DPNTnzPCPfxay5bFgSD22TfSCy
+    role: user
+  demo:
+    password_hash: $2b$12$gsCLO/iCYws6F3f7EYdP6edZj1k0BTWq9SmT7Uup6PaBk5M/wlkX6
     role: user
