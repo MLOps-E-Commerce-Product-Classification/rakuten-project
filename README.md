@@ -1,5 +1,7 @@
 # Rakuten Multimodal Product Classifier
 
+TODO: Update README
+
 Multimodal e-commerce classification pipeline for predicting the
 **Rakuten product category (`prdtypecode`)** using product **text**.
 Product **images** are available but not used, as they provided limited
