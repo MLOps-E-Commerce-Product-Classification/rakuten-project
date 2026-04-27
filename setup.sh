@@ -3,15 +3,6 @@
 # --- 1. Environment Configuration ---
 echo "Step 1: Configuring .env file..."
 
-# Check if .env.example exists and copy it to .env
-if [ -f .env.example ]; then
-    cp .env.example .env
-    echo "  + Copied .env.example to .env"
-else
-    echo "  ⚠️  Warning: .env.example not found, creating a new .env"
-    touch .env
-fi
-
 # Append Airflow and Docker specific configurations
 echo -e "\n# Added by setup.sh" >> .env
 echo "AIRFLOW_UID=50000" >> .env
@@ -23,6 +14,7 @@ echo ".env ready ✅"
 # --- 2. DVC Local Config Setup ---
 echo "Step 2: Setting up DVC local configuration..."
 mkdir -p .dvc
+
 # Extract credentials from the newly created .env
 DVC_KEY=$(grep '^DVC_ACCESS_KEY_ID=' .env | cut -d '=' -f2)
 DVC_SECRET=$(grep '^DVC_SECRET_ACCESS_KEY=' .env | cut -d '=' -f2)
@@ -33,10 +25,12 @@ if [ -n "$DVC_KEY" ] && [ -n "$DVC_SECRET" ]; then
     access_key_id = $DVC_KEY
     secret_access_key = $DVC_SECRET
 EOF
-    echo "DVC config.local created ✅"
+    echo "  + DVC config.local created ✅"
+else
+    echo "  ⚠️  Note: DVC credentials missing in .env, skipping config.local creation."
 fi
 
-# --- 3. Directory Structure & DVC Pull ---
+# --- 3. Directory Structure, Sync & DVC Pull ---
 echo "Step 3: Creating directory structure and pulling data..."
 DATA_DIR="./data"
 SUBFOLDERS=("new_data" "new_train_data" "new_train_data_archived" "processed" "processed_new" "raw")
@@ -49,8 +43,14 @@ mkdir -p ./logs ./plugins ./dags
 
 # Pull data from DVC
 if command -v uv &> /dev/null; then
+    echo "  Installing all dependencies (dev group & extras)..."
+    uv sync --all-extras --group dev
+    
+    echo "  Running dvc pull..."
     uv run dvc pull
     echo "DVC pull complete ✅"
+else
+    echo "❌ Error: 'uv' is not installed. Skipping DVC pull."
 fi
 
 # --- 4. Final Ownership & Permissions ---
@@ -60,21 +60,21 @@ ME=$(whoami)
 MY_GROUP=$(id -gn)
 
 # Step A: Clean up ownership (Everything to current user first)
+# This ensures files created by 'uv' or 'root' belong to you
 sudo chown -R $ME:$MY_GROUP .
 
 # Step B: Assign specific folders to Airflow (50000)
-# These folders must be owned by the container user
+echo "  Setting Airflow ownership for specific data and core folders..."
 sudo chown -R 50000:50000 "$DATA_DIR/new_data" "$DATA_DIR/new_train_data" "$DATA_DIR/new_train_data_archived" "$DATA_DIR/raw"
-
-# Airflow core folders (Logs, Dags, Plugins)
 sudo chown -R 50000:$MY_GROUP ./logs ./plugins ./dags
 
 # Step C: Set Permissions
-# Full access for Airflow directories to avoid Docker permission issues
+# 777 for Airflow core folders to prevent any Docker mount issues
 sudo chmod -R 777 ./logs ./dags ./plugins
 
-# Standard permissions for the rest
+# Standard permissions for data (755) and special case for archived (775)
 chmod -R 755 "$DATA_DIR"
 chmod 775 "$DATA_DIR/new_train_data_archived"
 
-echo "🎉 Setup complete! .env initialized from example and permissions optimized."
+echo "Permissions and ownership set ✅"
+echo "🎉 Setup complete! All systems go."
