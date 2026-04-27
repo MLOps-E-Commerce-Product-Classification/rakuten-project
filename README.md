@@ -1,319 +1,382 @@
 # Rakuten Multimodal Product Classifier
 
-TODO: Update README
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](#)
+[![MLflow](https://img.shields.io/badge/MLflow-Experiment%20Tracking-orange)](#)
+[![DVC](https://img.shields.io/badge/DVC-Pipelines-945DD6)](#)
+[![BentoML](https://img.shields.io/badge/BentoML-Serving-00A3A3)](#)
+[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED)](#)
+[![Streamlit](https://img.shields.io/badge/Streamlit-UI-FF4B4B)](#)
+[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF)](#)
+[![License](https://img.shields.io/badge/License-MIT-lightgrey)](#)
 
-Multimodal e-commerce classification pipeline for predicting the
-**Rakuten product category (`prdtypecode`)** using product **text**.
-Product **images** are available but not used, as they provided limited
-additional predictive power while significantly increasing computational
-requirements.
+> A production-oriented multimodal e-commerce classification pipeline for predicting the Rakuten product category (`prdtypecode`).
 
-The repository includes:
+## Overview
 
--   Text classification with Hugging Face Transformers
--   Experiment tracking with MLflow / DagsHub
--   Reproducible pipelines with DVC
--   Model serving via BentoML
--   UI with Streamlit
--   Containerized workflows using Docker Compose
--   Workflow automation with Airflow
--   Monitoring with Prometheus, Grafana, and Evidently
+This repository contains an end-to-end machine learning system for classifying Rakuten products into **27 product categories**.
+The production model currently focuses on **text-based classification** using:
 
-------------------------------------------------------------------------
+- `designation`
+- `description`
 
-# Project Goal
+Product images are available in the dataset, but are not used in the current production path because they added limited incremental value compared to the additional training and inference cost.
 
-The objective is to classify Rakuten products into **27 product
-categories**.
+## What This Project Covers
 
-Input features:
+- Data processing and train/validation splitting
+- Text classification with Hugging Face Transformers
+- Experiment tracking with MLflow and DagsHub
+- Reproducible pipelines with DVC
+- Model evaluation and promotion
+- Model serving with BentoML
+- Interactive UI with Streamlit
+- Containerized execution with Docker Compose
+- Workflow automation with Airflow
+- Monitoring with Prometheus, Grafana, and Evidently
 
--   product **designation**
--   product **description**
+## Project Goals
 
-Output:
+- Predict the correct `prdtypecode` for each product
+- Return confidence scores and top-k predictions
+- Provide reproducible training and inference workflows
+- Support local development and production-style deployment
 
--   predicted **prdtypecode**
--   probability scores
--   top-k predictions
+## ML Workflow
 
-------------------------------------------------------------------------
+```mermaid
+flowchart LR
+    A[Raw Rakuten data] --> B[Data cleaning & preprocessing]
+    B --> C[Train/validation split]
+    C --> D[Text tokenization]
+    D --> E[Transformer training]
+    E --> F[Evaluation & metrics]
+    F --> G[MLflow tracking]
+    F --> H[Model promotion]
+    H --> I[BentoML packaging]
+    I --> J[Inference API]
+    I --> K[Streamlit UI]
+    I --> L[Monitoring stack]
+```
 
-# Repository Structure
+## Repository Structure
 
-    rakuten-project/
+```text
+rakuten-project/
+├── artifacts/                 # DVC artifacts (splits, models)
+├── configs/                   # Experiment and model configurations
+├── data/                      # Raw and processed data
+├── dags/                      # Airflow DAGs
+├── docker/                     # Docker and service-specific container setup
+├── logs/                       # Runtime logs
+├── models/                     # Saved model artifacts
+├── monitoring/                # Prometheus / Grafana / Evidently
+├── nginx/                     # Reverse proxy configuration
+├── plugins/                   # Airflow or platform plugins
+├── results/                    # Reports and experiment outputs
+├── src/
+│   ├── data/                  # Data ingestion and cleaning
+│   ├── evaluation/            # Evaluation and reporting
+│   ├── inference/             # Single and batch inference
+│   ├── models/                # Model definitions and helpers
+│   ├── pipeline/              # End-to-end pipeline orchestration
+│   ├── serving/               # BentoML service implementation
+│   └── training/              # Training and MLflow logic
+├── streamlit/                 # Streamlit application
+├── tests/                     # Automated tests
+├── Makefile                   # Unified command interface
+├── bentofile.yaml             # BentoML build configuration
+├── dvc.yaml                   # DVC pipeline stages
+├── dvc.lock                   # DVC lock file
+├── params.yaml                # DVC parameters
+├── docker-compose.yaml        # Main compose file
+├── docker-compose.base.yaml   # Base compose configuration
+├── docker-compose.prod.yaml   # Production compose configuration
+├── pyproject.toml             # Project metadata and dependencies
+├── requirements.txt           # Optional pip dependency list
+├── setup.sh                   # Environment bootstrap script
+├── uv.lock                    # Locked dependency state for uv
+└── README.md
+```
 
-    artifacts/            # DVC artifacts (splits, models)
-    configs/              # experiment configurations
-    dags/                 # Airflow DAGs
-    docker/               # Docker & Compose setup
-    monitoring/           # Prometheus / Grafana / Evidently
+## Screenshots
 
-    src/
-      data/
-      evaluation/
-      inference/
-      models/
-      pipeline/
-      serving/
-      training/
+> Dummy placeholders for documentation. Replace these with real screenshots when available.
 
-    streamlit/            # UI
-    tests/
+### Training Dashboard
 
-    Makefile
-    pyproject.toml
-    README.md
+```text
+./docs/images/training-dashboard.png
+```
 
-------------------------------------------------------------------------
+### Streamlit Prediction UI
 
-# Environment Setup
+```text
+./docs/images/streamlit-ui.png
+```
 
-Install dependencies:
+### BentoML API Response
 
-``` bash
+```text
+./docs/images/api-response.png
+```
+
+## Requirements
+
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/)
+- Docker
+- Docker Compose
+- Make
+
+## Quickstart
+
+### 1) Clone the Repository
+
+```bash
+git clone <your-repo-url>
+cd rakuten-project
+```
+
+### 2) Install Dependencies
+
+```bash
 uv lock
 uv sync --all-extras
 ```
 
-Activate environment:
+### 3) Activate the Environment
 
-``` bash
+```bash
 source .venv/bin/activate
 ```
 
-------------------------------------------------------------------------
+### 4) Run Initial Setup (Validate `.env`)
 
-# Development Environment
+```bash
+make setup
+```
 
-Start development stack:
+Optional validation-only step:
 
-``` bash
+```bash
+make check-env
+```
+
+### 5) Start the Development Stack
+
+```bash
 make dev-up
 ```
 
-Stop development services:
+### 6) Run a Text Training Experiment
 
-``` bash
+```bash
+make train-text-run
+```
+
+### 7) Evaluate a Model (MLflow Run ID)
+
+```bash
+make evaluate MLFLOW_ID=<run_id>
+```
+
+## Usage
+
+### Development
+
+Start the development services:
+
+```bash
+make dev-up
+```
+
+(Optional) Build the development environment and containerize Bento:
+
+```bash
+make dev-build
+```
+
+Stop them:
+
+```bash
 make dev-down
 ```
 
-Restart development environment:
+Restart them:
 
-``` bash
+```bash
 make dev-restart
 ```
 
 View logs:
 
-``` bash
+```bash
 make dev-logs
 ```
 
-------------------------------------------------------------------------
+### Training
 
-# Infrastructure
+Run a training experiment (text-only):
 
-Start infrastructure services:
-
-``` bash
-make infra-up
+```bash
+make train-text-run
 ```
 
-Stop infrastructure services:
+Run fine-tuning:
 
-``` bash
-make infra-down
-```
-
-View infrastructure logs:
-
-``` bash
-make infra-logs
-```
-
-------------------------------------------------------------------------
-
-# Training
-
-Run training experiment:
-
-``` bash
-make train
-```
-
-Run finetuning:
-
-``` bash
+```bash
 make finetune
 ```
 
-View training logs:
+View logs (dev stack):
 
-``` bash
-make train-logs
+```bash
+make dev-logs
 ```
 
-------------------------------------------------------------------------
+### Evaluation
 
-# Evaluation
+Evaluate a trained model by MLflow run ID:
 
-Evaluate a trained model:
-
-``` bash
+```bash
 make evaluate MLFLOW_ID=<run_id>
 ```
 
 Optional parameters:
 
--   X_DATA: data/processed/val.csv
--   Y_DATA: data/processed/val.csv
--   WEIGHTS: models/best_text_model.pt
--   ENCODING: configs/label_encoding.json
+- `X_DATA`: `data/processed/val.csv`
+- `Y_DATA`: `data/processed/val.csv`
+- `WEIGHTS`: `models/best_text_model.pt`
+- `ENCODING`: `configs/label_encoding.json`
 
-------------------------------------------------------------------------
+### Inference
 
-# Inference
+Model inference/serving is handled via the BentoML + Docker Compose setup (see `docker-compose*.yaml` and BentoML configuration). In this Makefile, the focus is on training/evaluation and BentoML packaging.
 
-Single prediction:
+### Model Promotion & BentoML
 
-``` bash
-make inference TEXT="Jeu vidéo action PS4"
-```
+Sync the latest MLflow model to the BentoLocal store:
 
-Batch prediction:
-
-``` bash
-make inference-batch
-```
-
-------------------------------------------------------------------------
-
-# Model Promotion & BentoML
-
-Prepare Bento assets:
-
-``` bash
-make prepare-bento
-```
-
-Promote best MLflow model:
-
-``` bash
-make promote-model
-```
-
-Sync MLflow model to BentoML:
-
-``` bash
+```bash
 make sync-bento
 ```
 
-Build Bento:
+Build the Bento bundle:
 
-``` bash
+```bash
 make build-bento
 ```
 
-Containerize Bento service:
+Containerize the Bento bundle into a Docker image:
 
-``` bash
+```bash
 make containerize-bento
 ```
 
-------------------------------------------------------------------------
+### Serving
+Model serving is handled via BentoML + Docker Compose. This Makefile version focuses on training/evaluation and BentoML packaging targets; start inference services using the relevant `docker-compose*.yaml` and BentoML configuration.
 
-# Serving
+### Infrastructure
+This Makefile version does not expose “infra-*” targets. Use `docker compose` directly with the relevant compose files if you need infrastructure services.
 
-Start BentoML service:
+### Production
 
-``` bash
-make serve-internal
-```
+Start the production stack:
 
-Start BentoML and streamlit service:
-
-``` bash
-make serve-external
-```
-
-Stop all services:
-
-``` bash
-make serve-down
-```
-
-View logs:
-
-``` bash
-make serve-logs
-```
-
-------------------------------------------------------------------------
-
-# Production
-
-Start production stack:
-
-``` bash
+```bash
 make prod-up
 ```
 
 Stop production services:
 
-``` bash
+```bash
 make prod-down
 ```
 
-View logs:
+View production logs:
 
-``` bash
+```bash
 make prod-logs
 ```
 
-Restart production:
+### Monitoring
 
-``` bash
-make prod-restart
-```
+This repository version does not expose “monitoring” targets via the Makefile. Use `docker compose` with the relevant compose files and/or the configuration in `monitoring/`.
 
-------------------------------------------------------------------------
-
-# Monitoring
-
-Show monitoring endpoints:
-
-``` bash
-make monitoring
-```
-
-Services:
-
--   Grafana → http://localhost:3001
--   Prometheus → http://localhost:9090
-
-------------------------------------------------------------------------
-
-# Utilities
-
-Check running containers:
-
-``` bash
-make status
-```
-
-Clean Docker resources:
-
-``` bash
-make clean
-```
-
-------------------------------------------------------------------------
-
-# Help
+### Utilities
 
 Show all commands:
 
-``` bash
+```bash
 make help
 ```
+
+## API Example
+
+The BentoML service exposes a prediction endpoint that accepts product text and returns the predicted category and confidence scores.
+
+### Request
+
+```json
+{
+  "text": "Jeu vidéo action PS4"
+}
+```
+
+### Response
+
+```json
+{
+  "prediction": "2463",
+  "confidence": 0.94,
+  "top_k": [
+    {"label": "2463", "score": 0.94},
+    {"label": "2403", "score": 0.03},
+    {"label": "2464", "score": 0.02}
+  ]
+}
+```
+
+### cURL Example
+
+```bash
+curl -X POST http://localhost:3000/predict   -H "Content-Type: application/json"   -d '{"text":"Jeu vidéo action PS4"}'
+```
+
+## Configuration
+
+Key configuration files:
+
+- `configs/` for experiment settings and label encoding
+- `params.yaml` for DVC parameters
+- `dvc.yaml` for pipeline stages
+- `bentofile.yaml` for BentoML build configuration
+- `docker-compose*.yaml` for local and production orchestration
+- `monitoring/` for Prometheus, Grafana, and Evidently configuration
+
+## Monitoring & Observability
+
+The project includes a monitoring stack to support operational visibility:
+
+- **Grafana** for dashboards and metrics visualization
+- **Prometheus** for metric collection and alerting
+- **Evidently** for model and data quality monitoring
+
+## Testing
+
+Run the test suite:
+
+```bash
+pytest
+```
+
+## Notes
+
+- The current model is text-first by design.
+- Image features are intentionally excluded from the production path for efficiency.
+- The project is organized to support reproducibility, traceability, and deployment readiness.
+
+## License
+
+This project is intended for educational and portfolio use. Add a license if you plan to publish or distribute it publicly.
+
