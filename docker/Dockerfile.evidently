@@ -1,0 +1,23 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install --no-cache-dir \
+    evidently==0.4.33 \
+    pandas>=2.2.0 \
+    prometheus-client>=0.20.0
+
+# Copy monitoring service
+COPY monitoring/evidently_service.py /app/evidently_service.py
+
+# Non-root user
+RUN useradd -m appuser && chown -R appuser /app
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
+
+CMD ["python", "/app/evidently_service.py"]

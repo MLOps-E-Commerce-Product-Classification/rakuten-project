@@ -1,0 +1,560 @@
+{
+  "uid": "rakuten-drift",
+  "title": "Rakuten — Data Drift (Evidently)",
+  "description": "Data drift between *_update (reference) and *_new (current) datasets",
+  "tags": ["rakuten", "drift", "evidently", "mlops"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Overview",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Service Ready",
+      "description": "1 = both *_update and *_new CSVs available",
+      "gridPos": { "x": 0, "y": 1, "w": 3, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "NOT READY", "color": "red" }, "1": { "text": "READY", "color": "green" } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_service_ready",
+          "legendFormat": "Service Ready",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Dataset Drift Detected",
+      "description": "Overall drift: 1 = drift detected across features",
+      "gridPos": { "x": 3, "y": 1, "w": 3, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "NO DRIFT", "color": "green" }, "1": { "text": "DRIFT!", "color": "red" } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_dataset_drift_detected",
+          "legendFormat": "Dataset Drift",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 4,
+      "type": "gauge",
+      "title": "Drifted Features Share",
+      "description": "Share of features showing drift (0.0 – 1.0)",
+      "gridPos": { "x": 6, "y": 1, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.3 },
+              { "color": "red", "value": 0.5 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_dataset_drift_share",
+          "legendFormat": "Drift Share",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Label Drift Detected",
+      "description": "Drift in prdtypecode (target label distribution)",
+      "gridPos": { "x": 10, "y": 1, "w": 3, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "NO DRIFT", "color": "green" }, "1": { "text": "DRIFT!", "color": "orange" } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 1 } ] }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_label_drift_detected",
+          "legendFormat": "Label Drift",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Label Drift Score",
+      "description": "Statistical drift score for label distribution",
+      "gridPos": { "x": 13, "y": 1, "w": 3, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.05 },
+              { "color": "red", "value": 0.1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_label_drift_score",
+          "legendFormat": "Label Drift Score",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Last Analysis Run",
+      "description": "Timestamp of last successful Evidently analysis",
+      "gridPos": { "x": 16, "y": 1, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsLocal",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_drift_last_run_timestamp * 1000",
+          "legendFormat": "Last Run",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Reference Rows (*_update)",
+      "gridPos": { "x": 20, "y": 1, "w": 2, "h": 2 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] } } },
+      "targets": [
+        { "expr": "rakuten_reference_row_count", "legendFormat": "Ref Rows", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Current Rows (*_new)",
+      "gridPos": { "x": 20, "y": 3, "w": 2, "h": 2 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "purple", "value": null } ] } } },
+      "targets": [
+        { "expr": "rakuten_current_row_count", "legendFormat": "Cur Rows", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Feature Drift Details",
+      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+
+    {
+      "id": 11,
+      "type": "bargauge",
+      "title": "Drift Score per Feature",
+      "description": "Statistical drift score per engineered text feature. Higher = more drift.",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 4,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.05 },
+              { "color": "red", "value": 0.1 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_drift_score",
+          "legendFormat": "{{feature}}",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Feature Drift Status",
+      "description": "1 = drift detected, 0 = no drift",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "options": {
+        "sortBy": [ { "displayName": "Value", "desc": true } ],
+        "footer": { "show": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "color-background"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "✓ OK", "color": "green" }, "1": { "text": "⚠ DRIFT", "color": "red" } } }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_drift_detected",
+          "legendFormat": "{{feature}}",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 13,
+      "type": "row",
+      "title": "Drift Score Over Time",
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Designation — Length Drift Score",
+      "gridPos": { "x": 0, "y": 15, "w": 8, "h": 6 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.1 } ] },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_drift_score{feature=\"designation_length\"}",
+          "legendFormat": "designation_length",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "expr": "rakuten_drift_score{feature=\"designation_word_count\"}",
+          "legendFormat": "designation_word_count",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "expr": "rakuten_drift_score{feature=\"designation_is_empty\"}",
+          "legendFormat": "designation_is_empty",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Description — Drift Score",
+      "gridPos": { "x": 8, "y": 15, "w": 8, "h": 6 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.1 } ] }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_drift_score{feature=\"description_length\"}",
+          "legendFormat": "description_length",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "expr": "rakuten_drift_score{feature=\"description_word_count\"}",
+          "legendFormat": "description_word_count",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "expr": "rakuten_drift_score{feature=\"description_is_empty\"}",
+          "legendFormat": "description_is_empty",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Label & Overall Dataset Drift Over Time",
+      "gridPos": { "x": 16, "y": 15, "w": 8, "h": 6 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.1 } ] }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_label_drift_score",
+          "legendFormat": "label drift score",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "expr": "rakuten_dataset_drift_share",
+          "legendFormat": "dataset drift share",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 17,
+      "type": "row",
+      "title": "Label Distribution",
+      "gridPos": { "x": 0, "y": 21, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+
+    {
+      "id": 18,
+      "type": "piechart",
+      "title": "Label Distribution — Reference (*_update)",
+      "description": "Top labels by fraction in the reference dataset",
+      "gridPos": { "x": 0, "y": 22, "w": 12, "h": 8 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "pieType": "pie",
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value"] }
+      },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 } },
+      "targets": [
+        {
+          "expr": "topk(15, rakuten_label_distribution_reference)",
+          "legendFormat": "{{label}}",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 19,
+      "type": "piechart",
+      "title": "Label Distribution — Current (*_new)",
+      "description": "Top labels by fraction in the current dataset",
+      "gridPos": { "x": 12, "y": 22, "w": 12, "h": 8 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "pieType": "pie",
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value"] }
+      },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 2 } },
+      "targets": [
+        {
+          "expr": "topk(15, rakuten_label_distribution_current)",
+          "legendFormat": "{{label}}",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Data Quality",
+      "gridPos": { "x": 0, "y": 30, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Missing Values Share",
+      "description": "Share of missing values in reference vs current dataset",
+      "gridPos": { "x": 0, "y": 31, "w": 12, "h": 6 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": { "lineWidth": 2, "fillOpacity": 20 },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.1 }, { "color": "red", "value": 0.3 } ] }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_missing_values_reference_share",
+          "legendFormat": "Reference (*_update)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "expr": "rakuten_missing_values_current_share",
+          "legendFormat": "Current (*_new)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Dataset Size Over Time",
+      "description": "Row counts of reference and current dataset",
+      "gridPos": { "x": 12, "y": 31, "w": 12, "h": 6 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 15 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rakuten_reference_row_count",
+          "legendFormat": "Reference (*_update)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        },
+        {
+          "expr": "rakuten_current_row_count",
+          "legendFormat": "Current (*_new)",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    }
+
+  ]
+}

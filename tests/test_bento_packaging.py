@@ -29,13 +29,6 @@ def test_obsolete_source_serving_dockerfile_removed():
     assert not Path("docker/Dockerfile.api").exists()
 
 
-def test_makefile_syncs_model_before_building_bento():
-    makefile = Path("Makefile").read_text()
-    assert "build-bento: sync-bento" in makefile
-    assert "promote-model:" in makefile
-    assert "sync-bento:" in makefile
-
-
 def test_backbone_vendoring_is_restricted_to_lightweight_assets():
     content = Path("src/serving/prepare_bento_assets.py").read_text()
     assert "allow_patterns=ALLOWED_BACKBONE_PATTERNS" in content

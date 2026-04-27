@@ -10,7 +10,6 @@ GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
 MLFLOW_MODEL_NAME ?= text-classifier
 MLFLOW_ALIAS      ?= production
 BENTO_MODEL_NAME  ?= text-classifier
-BENTO_TAG         ?= latest
 
 COMPOSE_BASE := docker compose
 PROD_FILES   := -f docker-compose.prod.yaml
@@ -61,7 +60,7 @@ dev-build: ## Build the development environment and containerize Bento
 	$(MAKE) containerize-bento
 
 dev-up: ## Start dev services
-	$(COMPOSE_BASE) up -d
+	$(COMPOSE_BASE) up
 
 dev-down: ## Stop dev services
 	$(COMPOSE_BASE) down
@@ -117,7 +116,7 @@ build-bento: ## Build Bento bundle
 
 containerize-bento: ## Containerize the Bento bundle into a Docker Image
 	$(MAKE) build-bento
-	uv run bentoml containerize $(BENTO_MODEL_NAME):latest -t rakuten-ml/rakuten-text-service:$(BENTO_TAG)
+	uv run bentoml containerize rakuten-text-service:latest -t rakuten-ml/rakuten-text-service:latest
 
 # ============================================================
 # PRODUCTION
