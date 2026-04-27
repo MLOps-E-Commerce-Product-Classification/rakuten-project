@@ -182,3 +182,17 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     networks:
       - mlops-network
+
+  dcgm-exporter:
+    image: nvidia/dcgm-exporter:4.5.2-4.8.1-distroless
+    runtime: nvidia
+    privileged: true
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    ports:
+      - "9400:9400"
+    volumes:
+      - /var/lib/nvidia-docker:/var/lib/nvidia-docker
+    networks:
+      - mlops-network
+    restart: unless-stopped
