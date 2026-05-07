@@ -30,13 +30,13 @@ PAGES_USER = {
     "Single Prediction": "single_prediction",
     "Batch Prediction": "batch_prediction",
     "History / Corrections": "corrections",
-    "Monitoring": "monitoring",
+    # "Monitoring": "monitoring",
 }
 
 PAGES_ADMIN = {
     **PAGES_USER,
     "Settings": "admin_settings",
-    "Unit Tests": "admin_tests",
+    # "Unit Tests": "admin_tests",
 }
 
 pages = PAGES_ADMIN if user["role"] == "admin" else PAGES_USER

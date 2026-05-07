@@ -111,12 +111,109 @@
       "type": "timeseries"
     },
 
-    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }, "id": 20, "panels": [], "title": "Traffic", "type": "row" },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 70,
+      "panels": [],
+      "title": "GPU Monitoring (DCGM Exporter)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "percent" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "id": 301,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "avg(DCGM_FI_DEV_GPU_UTIL)",
+          "legendFormat": "GPU Utilization",
+          "refId": "A"
+        }
+      ],
+      "title": "GPU Utilization (%)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "celsius" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "id": 302,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "avg(DCGM_FI_DEV_GPU_TEMP)",
+          "legendFormat": "GPU Temperature",
+          "refId": "A"
+        }
+      ],
+      "title": "GPU Temperature (°C)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "percent" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "id": 303,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "avg(DCGM_FI_DEV_MEM_COPY_UTIL)",
+          "legendFormat": "Memory Copy Utilization",
+          "refId": "A"
+        }
+      ],
+      "title": "GPU Memory Copy Utilization (%)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "bytes" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+      "id": 304,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "sum(DCGM_FI_DEV_FB_USED)",
+          "legendFormat": "VRAM Used",
+          "refId": "A"
+        }
+      ],
+      "title": "VRAM Used",
+      "type": "timeseries"
+    },
+
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 }, "id": 20, "panels": [], "title": "Traffic", "type": "row" },
 
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
       "id": 201,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
       "targets": [{ "expr": "sum(rate(rakuten_http_requests_total[1m]))", "legendFormat": "req/s", "refId": "A" }],
@@ -126,7 +223,7 @@
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 12, "y": 10 },
+      "gridPos": { "h": 8, "w": 8, "x": 12, "y": 27 },
       "id": 202,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [{ "expr": "sum(rate(rakuten_http_requests_total[5m])) by (endpoint)", "legendFormat": "{{endpoint}}", "refId": "A" }],
@@ -136,7 +233,7 @@
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "none" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 4, "x": 20, "y": 10 },
+      "gridPos": { "h": 8, "w": 4, "x": 20, "y": 27 },
       "id": 203,
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
       "targets": [{ "expr": "sum(rate(nginx_connections_active[5m]))", "legendFormat": "Active nginx Connections", "refId": "A" }],
@@ -144,12 +241,12 @@
       "type": "stat"
     },
 
-    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 }, "id": 30, "panels": [], "title": "Errors", "type": "row" },
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 }, "id": 30, "panels": [], "title": "Errors", "type": "row" },
 
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "percent" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 19 },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 36 },
       "id": 204,
       "options": { "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
       "targets": [{
@@ -168,7 +265,7 @@
           "unit": "short"
         }, "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 19 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 36 },
       "id": 205,
       "options": { "colorMode": "background", "reduceOptions": { "calcs": ["sum"] }, "textMode": "auto" },
       "targets": [{ "expr": "sum(increase(rakuten_auth_failures_total[5m]))", "legendFormat": "Auth Failures", "refId": "A" }],
@@ -176,12 +273,12 @@
       "type": "stat"
     },
 
-    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 }, "id": 40, "panels": [], "title": "Latency", "type": "row" },
+    { "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 44 }, "id": 40, "panels": [], "title": "Latency", "type": "row" },
 
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 45 },
       "id": 206,
       "options": { "legend": { "calcs": ["mean"], "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
       "targets": [
@@ -195,7 +292,7 @@
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 28 },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 45 },
       "id": 207,
       "options": { "legend": { "calcs": ["mean"], "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
       "targets": [{
@@ -208,7 +305,7 @@
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": { "defaults": { "color": { "mode": "spectrum" }, "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 28 },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 45 },
       "id": 208,
       "options": { "calculate": false, "cellGap": 1, "color": { "mode": "spectrum", "scheme": "Oranges" }, "tooltip": { "mode": "single" }, "yAxis": { "unit": "s" } },
       "targets": [{
@@ -221,8 +318,8 @@
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 },
-      "id": 20,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 53 },
+      "id": 50,
       "panels": [],
       "title": "ML Model Performance (BentoML)",
       "type": "row"
@@ -233,7 +330,7 @@
         "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 37 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 54 },
       "id": 1,
       "options": { "legend": { "calcs": ["sum"], "displayMode": "list", "placement": "bottom" } },
       "targets": [
@@ -248,7 +345,7 @@
         "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 37 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 54 },
       "id": 2,
       "options": { "legend": { "calcs": ["sum"], "displayMode": "list", "placement": "bottom" } },
       "targets": [
@@ -263,7 +360,7 @@
         "defaults": { "color": { "mode": "palette-classic" }, "unit": "percentunit" },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 45 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 62 },
       "id": 3,
       "options": { "legend": { "calcs": ["mean"], "displayMode": "list", "placement": "bottom" } },
       "targets": [
@@ -279,14 +376,13 @@
         "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 45 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 62 },
       "id": 4,
       "options": { "legend": { "calcs": ["mean"], "displayMode": "list", "placement": "bottom" } },
       "targets": [{ "expr": "histogram_quantile(0.50, sum(rate(rakuten_batch_size_bucket[5m])) by (le))", "legendFormat": "p50 Batch Size", "refId": "A" }],
       "title": "Batch Size Percentiles",
       "type": "timeseries"
     },
-
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": {
@@ -311,7 +407,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 53 },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 70 },
       "id": 5,
       "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value_and_name" },
       "targets": [
@@ -344,7 +440,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 53 },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 70 },
       "id": 6,
       "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value_and_name" },
       "targets": [
@@ -356,7 +452,7 @@
 
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 57 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 74 },
       "id": 60,
       "panels": [],
       "title": "Input Text Metrics",
@@ -365,7 +461,7 @@
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 58 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 75 },
       "id": 100,
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
       "targets": [
@@ -378,7 +474,7 @@
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": { "defaults": { "color": { "mode": "spectrum" }, "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 66 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 83 },
       "id": 101,
       "options": { "calculate": false, "cellGap": 1, "color": { "mode": "spectrum", "scheme": "Oranges" }, "tooltip": { "mode": "single" }, "yAxis": { "unit": "short" } },
       "targets": [{ "expr": "sum(rate(rakuten_text_length_chars_bucket[5m])) by (le)", "legendFormat": "{{le}}", "refId": "A", "format": "heatmap" }],
@@ -388,107 +484,11 @@
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 66 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 83 },
       "id": 102,
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
       "targets": [{ "expr": "sum(rate(rakuten_text_length_chars_bucket[5m])) by (le)", "legendFormat": "le={{le}}", "refId": "A" }],
       "title": "Text Length Buckets (counts per bucket)",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 74 },
-      "id": 70,
-      "panels": [],
-      "title": "GPU Monitoring (DCGM Exporter)",
-      "type": "row"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "fieldConfig": {
-        "defaults": { "color": { "mode": "palette-classic" }, "unit": "percent" },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 75 },
-      "id": 301,
-      "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "single" }
-      },
-      "targets": [
-        {
-          "expr": "avg(DCGM_FI_DEV_GPU_UTIL)",
-          "legendFormat": "GPU Utilization",
-          "refId": "A"
-        }
-      ],
-      "title": "GPU Utilization (%)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "fieldConfig": {
-        "defaults": { "color": { "mode": "palette-classic" }, "unit": "celsius" },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 75 },
-      "id": 302,
-      "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "single" }
-      },
-      "targets": [
-        {
-          "expr": "avg(DCGM_FI_DEV_GPU_TEMP)",
-          "legendFormat": "GPU Temperature",
-          "refId": "A"
-        }
-      ],
-      "title": "GPU Temperature (°C)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "fieldConfig": {
-        "defaults": { "color": { "mode": "palette-classic" }, "unit": "percent" },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 83 },
-      "id": 303,
-      "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "single" }
-      },
-      "targets": [
-        {
-          "expr": "avg(DCGM_FI_DEV_MEM_COPY_UTIL)",
-          "legendFormat": "Memory Copy Utilization",
-          "refId": "A"
-        }
-      ],
-      "title": "GPU Memory Copy Utilization (%)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "fieldConfig": {
-        "defaults": { "color": { "mode": "palette-classic" }, "unit": "bytes" },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 83 },
-      "id": 304,
-      "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "single" }
-      },
-      "targets": [
-        {
-          "expr": "sum(DCGM_FI_DEV_FB_USED)",
-          "legendFormat": "VRAM Used",
-          "refId": "A"
-        }
-      ],
-      "title": "VRAM Used",
       "type": "timeseries"
     }
   ],
