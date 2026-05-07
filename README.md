@@ -597,4 +597,3 @@ Generated local folders such as `artifacts/`, `logs/`, and `plugins/` may be cre
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 For information on third-party packages and their licenses, see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
-
