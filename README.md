@@ -30,7 +30,7 @@ The project focuses on MLOps, combining data versioning, preprocessing, training
 
 ------------------------------------------------------------------------
 
-## Project Overview {#project-overview}
+## Project Overview
 
 The business use case is automatic product category classification for e-commerce listings. Given product text, the system predicts the corresponding Rakuten product category code (`prdtypecode`).
 
@@ -46,7 +46,7 @@ The project goals are to:
 
 ------------------------------------------------------------------------
 
-## Architecture {#architecture}
+## Architecture
 
 ![](images/MLOps%20-%20Liora.png)
 
@@ -56,7 +56,7 @@ The development stack is coordinated through Docker Compose. The core service pa
 
 ------------------------------------------------------------------------
 
-## Requirements {#requirements}
+## Requirements
 
 -   Python `>=3.11,<3.13`
 -   `uv`
@@ -74,7 +74,7 @@ Strongly recommended:
 
 ------------------------------------------------------------------------
 
-### Quickstart {#quickstart}
+### Quickstart
 
 > Notes: - Use `DEVICE=cu121` only if you have a compatible NVIDIA GPU and configured CUDA. - To run on a machine without GPU support, omit the `DEVICE` environment variable. - If a command fails due to permissions, check whether sudo privileges are required and consult your system administrator.
 
@@ -169,9 +169,9 @@ make evaluate MLFLOW_ID=<run_id>
 
 ------------------------------------------------------------------------
 
-## Additional information: {#additional-information}
+## Additional information:
 
-### 1. Components {#components}
+### 1. Components
 
 +---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
 | Area                | Implemented component                                                           | Where to look                              |
@@ -239,7 +239,7 @@ data/raw.dvc
 
 ------------------------------------------------------------------------
 
-### 2. Local Services and Ports {#local-services-and-ports}
+### 2. Local Services and Ports
 
 | Service                 | Local URL / port        |
 |-------------------------|-------------------------|
@@ -256,7 +256,7 @@ data/raw.dvc
 
 ------------------------------------------------------------------------
 
-### 3. Separate workflow commands {#separate-workflow-commands}
+### 3. Separate workflow commands
 
 #### DVC
 
@@ -378,7 +378,7 @@ bentofile.yaml
 
 ------------------------------------------------------------------------
 
-### 4. Airflow Orchestration {#airflow-orchestration}
+### 4. Airflow Orchestration
 
 Airflow is included in the Docker Compose stack. The repository contains DAGs for:
 
@@ -393,7 +393,7 @@ New-data is being retrieved from the file `data/raw/X_test_update.csv`.
 
 ------------------------------------------------------------------------
 
-### 5. Testing and CI {#testing-and-ci}
+### 5. Testing and CI
 
 Run the test suite locally:
 
@@ -412,7 +412,7 @@ The GitHub Actions CI workflow is triggered for pushes and pull requests targeti
 
 ------------------------------------------------------------------------
 
-### 6. Monitoring and Observability {#monitoring-and-observability}
+### 6. Monitoring and Observability
 
 | Component | Purpose | Location / port |
 |----|----|----|
@@ -424,7 +424,7 @@ The GitHub Actions CI workflow is triggered for pushes and pull requests targeti
 
 ------------------------------------------------------------------------
 
-### 7. Streamlit UI {#streamlit-ui}
+### 7. Streamlit UI
 
 The user interface is exposed on:
 
@@ -440,7 +440,7 @@ The Streamlit container receives BentoML connection and authentication settings 
 
 ------------------------------------------------------------------------
 
-### 8. API Usage {#api-usage}
+### 8. API Usage
 
 The BentoML service exposes:
 
@@ -585,7 +585,7 @@ curl -X POST http://localhost:3000/predict_batch \
 
 ------------------------------------------------------------------------
 
-### 9. Repository Structure {#repository-structure}
+### 9. Repository Structure
 
 ``` text
 rakuten-project/
@@ -628,7 +628,7 @@ Generated local folders such as `artifacts/`, `logs/`, and `plugins/` may be cre
 
 ------------------------------------------------------------------------
 
-## License {#license}
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
