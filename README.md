@@ -173,63 +173,27 @@ make evaluate MLFLOW_ID=<run_id>
 
 ### 1. Components
 
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Area                | Implemented component                                                           | Where to look                              |
-+=====================+=================================================================================+============================================+
-| Data versioning     | DVC-tracked raw data directory and pipeline definition                          | `data/raw.dvc` · `.dvc/config`\            |
-|                     |                                                                                 | `dvc.yaml` · `dvc.lock`                    |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Text preprocessing  | Cleaning, field combination, tokenization configuration                         | `configs/text_preprocessing_config.yaml`\  |
-|                     |                                                                                 | `src/pipeline/preprocess_text_pipeline.py` |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Text model training | Transformer-based text classifier training                                      | `configs/text_train_config.yaml`\          |
-|                     |                                                                                 | `src/training/`\                           |
-|                     |                                                                                 | `src/pipeline/text_pipeline.py`            |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Fine-tuning         | Fine-tuning workflow for new data                                               | `configs/text_finetune_config.yaml`\       |
-|                     |                                                                                 | `src/training/run_text_finetuning.py`\     |
-|                     |                                                                                 | `dags/finetune_new_data.py`                |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Inference           | Single and batch inference scripts                                              | `src/inference/`\                          |
-|                     |                                                                                 | `dags/infere_new_data.py`                  |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Experiment tracking | MLflow / DagsHub tracking and model registry                                    | `.env.example`\                            |
-|                     |                                                                                 | `src/training/mlflow_text_registry.py`\    |
-|                     |                                                                                 | `src/training/mlflow_text_pyfunc.py`       |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Evaluation          | DVC metrics and evaluation scripts                                              | `results/dvc_metrics.json`\                |
-|                     |                                                                                 | `src/evaluation/`                          |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Model definitions   | Text and image classifier modules                                               | `src/models/`                              |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Model registry sync | MLflow model alias to local BentoML model store                                 | `src/serving/sync_mlflow_to_bento.py`      |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Serving             | JWT-protected BentoML text service                                              | `bentofile.yaml`\                          |
-|                     |                                                                                 | `src/serving/bento_service.py`             |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| API schemas         | Request and response models for prediction                                      | `src/serving/schemas.py`                   |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| UI                  | Streamlit application for interacting with the service                          | `streamlit/`                               |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Orchestration       | Airflow DAGs for training, inference, simulation, and fine-tuning workflows     | `dags/`                                    |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Monitoring          | Prometheus, Grafana, Evidently, node exporter, DCGM exporter                    | `monitoring/`\                             |
-|                     |                                                                                 | `docker-compose.base.yaml`                 |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Containers          | Development and production Docker Compose setups                                | `docker-compose.yaml`\                     |
-|                     |                                                                                 | `docker-compose.base.yaml`\                |
-|                     |                                                                                 | `docker-compose.prod.yaml`\                |
-|                     |                                                                                 | `docker/`                                  |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Reverse proxy       | Nginx configuration for production routing                                      | `nginx/`\                                  |
-|                     |                                                                                 | `docker-compose.prod.yaml`                 |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Build automation    | Unified command interface for all workflows                                     | `Makefile`                                 |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| Testing             | Unit/integration tests for API, BentoML, data, training, pipeline, and registry | `tests/`                                   |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
-| CI                  | Pre-commit, pytest, Docker image builds, Bento build/containerization           | `.github/workflows/integration.yml`        |
-+---------------------+---------------------------------------------------------------------------------+--------------------------------------------+
+| Area | Implemented component | Where to look |
+| :--- | :--- | :--- |
+| **Data versioning** | DVC-tracked raw data directory and pipeline definition | `data/raw.dvc` · `.dvc/config`<br>`dvc.yaml` · `dvc.lock` |
+| **Text preprocessing** | Cleaning, field combination, tokenization configuration | `configs/text_preprocessing_config.yaml`<br>`src/pipeline/preprocess_text_pipeline.py` |
+| **Text model training** | Transformer-based text classifier training | `configs/text_train_config.yaml`<br>`src/training/`<br>`src/pipeline/text_pipeline.py` |
+| **Fine-tuning** | Fine-tuning workflow for new data | `configs/text_finetune_config.yaml`<br>`src/training/run_text_finetuning.py`<br>`dags/finetune_new_data.py` |
+| **Inference** | Single and batch inference scripts | `src/inference/`<br>`dags/infere_new_data.py` |
+| **Experiment tracking** | MLflow / DagsHub tracking and model registry | `.env.example`<br>`src/training/mlflow_text_registry.py`<br>`src/training/mlflow_text_pyfunc.py` |
+| **Evaluation** | DVC metrics and evaluation scripts | `results/dvc_metrics.json`<br>`src/evaluation/` |
+| **Model definitions** | Text and image classifier modules | `src/models/` |
+| **Model registry sync** | MLflow model alias to local BentoML model store | `src/serving/sync_mlflow_to_bento.py` |
+| **Serving** | JWT-protected BentoML text service | `bentofile.yaml`<br>`src/serving/bento_service.py` |
+| **API schemas** | Request and response models for prediction | `src/serving/schemas.py` |
+| **UI** | Streamlit application for interacting with the service | `streamlit/` |
+| **Orchestration** | Airflow DAGs for training, inference, simulation, and fine-tuning workflows | `dags/` |
+| **Monitoring** | Prometheus, Grafana, Evidently, node exporter, DCGM exporter | `monitoring/`<br>`docker-compose.base.yaml` |
+| **Containers** | Development and production Docker Compose setups | `docker-compose.yaml`<br>`docker-compose.base.yaml`<br>`docker-compose.prod.yaml`<br>`docker/` |
+| **Reverse proxy** | Nginx configuration for production routing | `nginx/`<br>`docker-compose.prod.yaml` |
+| **Build automation** | Unified command interface for all workflows | `Makefile` |
+| **Testing** | Unit/integration tests for API, BentoML, data, training, pipeline, and registry | `tests/` |
+| **CI** | Pre-commit, pytest, Docker image builds, Bento build/containerization | `.github/workflows/integration.yml` |
 
 Note. Raw data is managed through DVC. The repository contains a DVC pointer file:
 
@@ -633,4 +597,3 @@ Generated local folders such as `artifacts/`, `logs/`, and `plugins/` may be cre
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 For information on third-party packages and their licenses, see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
-
